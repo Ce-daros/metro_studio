@@ -98,7 +98,7 @@ export function buildSchematicSvg(project, options = {}) {
 export async function downloadOfficialSchematicPng(project, options = {}) {
   await downloadSchematicPng(project, {
     ...options,
-    mirrorVertical: true,
+    mirrorVertical: false,
     fileName: `${sanitizeFileName(project?.name, 'metro-studio')}_官方风格图.png`,
   })
 }
