@@ -13,7 +13,6 @@ import PanelEdgeSingle from './panels/PanelEdgeSingle.vue'
 import PanelEdgeMulti from './panels/PanelEdgeMulti.vue'
 import PanelAnchor from './panels/PanelAnchor.vue'
 import PanelAnnotation from './panels/PanelAnnotation.vue'
-import PanelQuickRename from './panels/PanelQuickRename.vue'
 
 const store = useProjectStore()
 const { width, onPointerDown } = usePanelResize()
@@ -33,7 +32,6 @@ const selectedStation = computed(() => {
 
 const panelType = computed(() => {
   console.log('[panel] selectedAnnotationId:', store.selectedAnnotationId, 'anchor:', store.selectedEdgeAnchor, 'edges:', selectedEdgeCount.value, 'stations:', selectedStationCount.value)
-  if (store.quickRename?.active) return 'quick-rename'
   if (store.selectedAnnotationId) return 'annotation'
   if (store.selectedEdgeAnchor) return 'anchor'
   if (selectedEdgeCount.value > 1) return 'edge-multi'
@@ -45,7 +43,6 @@ const panelType = computed(() => {
 
 const panelTitle = computed(() => {
   switch (panelType.value) {
-    case 'quick-rename': return '快速改站名'
     case 'annotation': return '注释'
     case 'anchor': return '锚点'
     case 'edge-multi': return `线段（${selectedEdgeCount.value}）`
@@ -58,7 +55,6 @@ const panelTitle = computed(() => {
 
 const panelIcon = computed(() => {
   switch (panelType.value) {
-    case 'quick-rename': return 'edit-3'
     case 'annotation': return 'message-square'
     case 'anchor': return 'anchor'
     case 'edge-multi':
@@ -93,8 +89,7 @@ function toggleCollapse() {
       </NTooltip>
     </div>
     <div v-if="!collapsed" ref="panelBody" class="properties-panel__body">
-      <PanelQuickRename v-if="panelType === 'quick-rename'" :visible="true" @close="store.setMode('select')" />
-      <PanelAnnotation v-else-if="panelType === 'annotation'" />
+      <PanelAnnotation v-if="panelType === 'annotation'" />
       <PanelAnchor v-else-if="panelType === 'anchor'" />
       <PanelEdgeMulti v-else-if="panelType === 'edge-multi'" />
       <PanelEdgeSingle v-else-if="panelType === 'edge-single'" />

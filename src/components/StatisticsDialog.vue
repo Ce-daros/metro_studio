@@ -10,7 +10,7 @@ const props = defineProps({
   visible: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'show-reachability'])
 
 const store = useProjectStore()
 const activeTab = ref('basics')
@@ -23,6 +23,7 @@ const tabs = [
   { key: 'paths', label: '最长路径', icon: 'route' },
   { key: 'interchanges', label: '换乘枢纽', icon: 'git-branch' },
   { key: 'lines', label: '线路分析', icon: 'git-branch' },
+  { key: 'reachability', label: '可达性', icon: 'target' },
 ]
 
 function doClose() {
@@ -184,6 +185,28 @@ const shortestLine = computed(() => {
 })
 
 const STATUS_LABELS = { open: '运营', construction: '在建', proposed: '规划' }
+
+const reachStation = ref(null)
+const reachThreshold = ref(20000)
+const thresholdOptions = [
+  { label: '5 km', value: 5000 },
+  { label: '10 km', value: 10000 },
+  { label: '20 km', value: 20000 },
+  { label: '50 km', value: 50000 },
+  { label: '100 km', value: 100000 },
+  { label: '不限', value: Infinity },
+]
+
+const stationOptions = computed(() => {
+  return (store.project?.stations || [])
+    .map(s => ({ id: s.id, name: s.nameZh || s.id }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
+})
+
+function applyReachability() {
+  if (!reachStation.value) return
+  emit('show-reachability', { stationId: reachStation.value, thresholdMeters: reachThreshold.value })
+}
 
 function statusLabel(status) {
   return STATUS_LABELS[status] || status
@@ -508,6 +531,43 @@ watch(
                 </div>
               </div>
             </template>
+
+            <div v-show="activeTab === 'reachability'" class="stats__section">
+              <div class="reach-controls">
+                <label class="reach-controls__label">
+                  起始站
+                  <select v-model="reachStation" class="reach-controls__select">
+                    <option :value="null" disabled>选择站点…</option>
+                    <option v-for="s in stationOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+                  </select>
+                </label>
+                <label class="reach-controls__label">
+                  距离阈值
+                  <select v-model.number="reachThreshold" class="reach-controls__select">
+                    <option v-for="opt in thresholdOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                </label>
+                <button class="stats-dialog__btn stats-dialog__btn--primary" :disabled="!reachStation" type="button" @click="applyReachability">分析</button>
+              </div>
+
+              <template v-if="store.reachability.active && store.reachability.result">
+                <div class="reach-summary">
+                  共可达 <strong>{{ store.reachability.result.totalCount }}</strong> 个站点
+                </div>
+                <div v-for="band in store.reachability.result.bands" :key="band.label" class="reach-band">
+                  <div class="reach-band__header">
+                    <span class="reach-band__dot" :style="{ background: band.color }" />
+                    {{ band.label }}（{{ band.stations.length }} 站）
+                  </div>
+                  <ul class="reach-band__list">
+                    <li v-for="s in band.stations" :key="s.id" class="reach-band__item">
+                      {{ s.name }}
+                      <span class="reach-band__dist">{{ formatDistance(s.distance) }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </template>
+            </div>
           </div>
 
     <template #footer>
@@ -904,5 +964,88 @@ watch(
 
 .stats-dialog__btn--primary:hover {
   box-shadow: 0 2px 8px var(--ark-pink-glow);
+}
+
+.stats-dialog__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.reach-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reach-controls__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--toolbar-muted);
+}
+
+.reach-controls__select {
+  padding: 6px 8px;
+  background: var(--toolbar-input-bg);
+  border: 1px solid var(--toolbar-input-border);
+  color: var(--toolbar-text);
+  font-size: 13px;
+  min-width: 140px;
+}
+
+.reach-summary {
+  font-size: 13px;
+  color: var(--toolbar-text);
+  padding: 8px 0;
+}
+
+.reach-band {
+  background: var(--toolbar-input-bg);
+  border: 1px solid var(--toolbar-input-border);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.reach-band__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--toolbar-text);
+  margin-bottom: 8px;
+}
+
+.reach-band__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.reach-band__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.reach-band__item {
+  font-size: 12px;
+  color: var(--toolbar-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reach-band__dist {
+  font-size: 11px;
+  color: var(--toolbar-muted);
 }
 </style>

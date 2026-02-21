@@ -1,6 +1,7 @@
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useDialog } from './useDialog.js'
+import { isTrial, TRIAL_LIMITS } from './useLicense'
 
 /**
  * Composable for project lifecycle management in the toolbar:
@@ -11,6 +12,7 @@ import { useDialog } from './useDialog.js'
 export function useToolbarProjectManagement() {
   const store = useProjectStore()
   const { confirm } = useDialog()
+  const showUpgradeDialog = inject('showUpgradeDialog', () => {})
 
   const newProjectName = ref('新建工程')
   const projectRenameName = ref('')
@@ -35,6 +37,13 @@ export function useToolbarProjectManagement() {
   }
 
   async function createProject() {
+    if (isTrial.value) {
+      const projects = await store.listProjects()
+      if (projects.length >= TRIAL_LIMITS.maxProjects) {
+        showUpgradeDialog(`试用版最多创建 ${TRIAL_LIMITS.maxProjects} 个项目，请激活正式版以解除限制。`)
+        return
+      }
+    }
     await store.createNewProject(newProjectName.value.trim() || '新建工程')
     projectRenameName.value = store.project?.name || ''
     await refreshProjectOptions()
@@ -79,6 +88,13 @@ export function useToolbarProjectManagement() {
 
   async function duplicateCurrentProject() {
     if (!store.project) return
+    if (isTrial.value) {
+      const projects = await store.listProjects()
+      if (projects.length >= TRIAL_LIMITS.maxProjects) {
+        showUpgradeDialog(`试用版最多创建 ${TRIAL_LIMITS.maxProjects} 个项目，请激活正式版以解除限制。`)
+        return
+      }
+    }
     await store.duplicateCurrentProject(projectRenameName.value || `${store.project.name} 副本`)
     projectRenameName.value = store.project?.name || ''
     await refreshProjectOptions()

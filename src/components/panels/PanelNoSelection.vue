@@ -1,13 +1,15 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, inject, reactive, ref, watch } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import IconBase from '../IconBase.vue'
 import { NTooltip } from 'naive-ui'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { LINE_STYLE_OPTIONS, normalizeLineStyle } from '../../lib/lineStyles'
+import { isTrial, TRIAL_LIMITS } from '../../composables/useLicense'
 
 const store = useProjectStore()
+const showUpgradeDialog = inject('showUpgradeDialog', () => {})
 
 const activeLine = computed(() => {
   if (!store.project || !store.activeLineId) return null
@@ -27,6 +29,10 @@ function displayLineName(line) {
 }
 
 function addLine() {
+  if (isTrial.value && store.project?.lines?.length >= TRIAL_LIMITS.maxLines) {
+    showUpgradeDialog(`试用版最多创建 ${TRIAL_LIMITS.maxLines} 条线路，请激活正式版以解除限制。`)
+    return
+  }
   store.addLine({})
 }
 

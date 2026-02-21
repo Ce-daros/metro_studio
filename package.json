@@ -1,7 +1,7 @@
 {
   "name": "metro-studio",
   "private": true,
-  "version": "0.45.0",
+  "version": "0.46.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +23,7 @@
     "maplibre-gl": "^5.18.0",
     "marked": "^17.0.3",
     "naive-ui": "^2.43.2",
+    "opencc-js": "^1.0.5",
     "pinia": "^3.0.4",
     "pmtiles": "^4.4.0",
     "vue": "^3.5.25"

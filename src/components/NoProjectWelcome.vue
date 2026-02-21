@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import IconBase from './IconBase.vue'
+import { isTrial } from '../composables/useLicense'
 
 const emit = defineEmits(['create-project', 'import-project', 'enter-directly'])
 
@@ -10,16 +11,16 @@ let frameId = 0
 let decorFrameId = 0
 let onResize = null
 
-// WELCOME 字母的点阵定义 (7x5 网格)
+// METRO STUDIO 字母的点阵定义 (7x5 网格)
 // 1: 节点, 0: 空白
 const LETTER_MAP = {
-  W: [
+  M: [
     [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1],
-    [1, 0, 1, 0, 1],
     [1, 1, 0, 1, 1],
-    [0, 1, 0, 1, 0]
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1]
   ],
   E: [
     [1, 1, 1, 1, 1],
@@ -29,21 +30,21 @@ const LETTER_MAP = {
     [1, 0, 0, 0, 0],
     [1, 1, 1, 1, 1]
   ],
-  L: [
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [1, 1, 1, 1, 1]
+  T: [
+    [1, 1, 1, 1, 1],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0]
   ],
-  C: [
-    [0, 1, 1, 1, 1],
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [1, 0, 0, 0, 0],
-    [0, 1, 1, 1, 1]
+  R: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0],
+    [1, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0]
   ],
   O: [
     [0, 1, 1, 1, 0],
@@ -53,17 +54,49 @@ const LETTER_MAP = {
     [1, 0, 0, 0, 1],
     [0, 1, 1, 1, 0]
   ],
-  M: [
+  S: [
+    [0, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0]
+  ],
+  U: [
     [1, 0, 0, 0, 1],
-    [1, 1, 0, 1, 1],
-    [1, 0, 1, 0, 1],
     [1, 0, 0, 0, 1],
     [1, 0, 0, 0, 1],
-    [1, 0, 0, 0, 1]
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0]
+  ],
+  D: [
+    [1, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 1, 1, 1, 0]
+  ],
+  I: [
+    [1, 1, 1, 1, 1],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [1, 1, 1, 1, 1]
+  ],
+  ' ': [
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0]
   ]
 }
 
-const LETTER_ORDER = ['W', 'E', 'L', 'C', 'O', 'M', 'E']
+const LETTER_ORDER = ['M', 'E', 'T', 'R', 'O', ' ', 'S', 'T', 'U', 'D', 'I', 'O']
 
 class MetroAgent {
   constructor(targetPoints, color, speed = 2) {
@@ -423,7 +456,7 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="welcome" aria-label="欢迎页">
-    <!-- 主 Canvas：绘制 WELCOME -->
+    <!-- 主 Canvas：绘制 METRO STUDIO -->
     <canvas ref="canvasRef" class="welcome__canvas" aria-hidden="true"></canvas>
     
     <!-- 装饰性 UI 元素 -->
@@ -455,8 +488,17 @@ onBeforeUnmount(() => {
           RAILWAY MAP DESIGN SYSTEM / VERSION 2.0
           <span class="welcome__subtitle-id">#{{ Math.random().toString(16).slice(2, 8).toUpperCase() }}</span>
         </div>
-        <!-- 隐形标题，用于 SEO 和占位，实际视觉由 Canvas 提供 -->
-        <h1 class="welcome__title-ghost" aria-label="WELCOME">WELCOME</h1>
+        <div class="welcome__title-shell">
+          <!-- 隐形标题，用于 SEO 和占位，实际视觉由 Canvas 提供 -->
+          <h1 class="welcome__title-ghost" aria-label="METRO STUDIO">METRO STUDIO</h1>
+          <div
+            class="welcome__mode-badge"
+            :class="isTrial ? 'welcome__mode-badge--free' : 'welcome__mode-badge--paid'"
+            aria-label="license mode"
+          >
+            {{ isTrial ? 'FREE' : 'PAID' }}
+          </div>
+        </div>
       </header>
 
       <div class="welcome__actions-wrap">
@@ -688,6 +730,50 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
+.welcome__title-shell {
+  position: relative;
+  width: fit-content;
+}
+
+.welcome__mode-badge {
+  position: absolute;
+  right: -24px;
+  bottom: -18px;
+  padding: 4px 14px 6px;
+  border: 1px solid rgba(249, 0, 191, 0.75);
+  border-radius: 3px;
+  font-family: var(--app-font-display);
+  font-size: clamp(22px, 2.4vw, 34px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #ffd9ff;
+  background: rgba(39, 6, 45, 0.28);
+  transform-origin: center;
+  transform: rotate(-14deg) scale(1);
+  text-shadow:
+    0 0 4px rgba(249, 0, 191, 0.95),
+    0 0 12px rgba(188, 31, 255, 0.92),
+    0 0 28px rgba(188, 31, 255, 0.82);
+  box-shadow:
+    0 0 6px rgba(249, 0, 191, 0.55),
+    0 0 22px rgba(188, 31, 255, 0.42),
+    inset 0 0 10px rgba(249, 0, 191, 0.22);
+  animation:
+    mode-neon-flicker 2.1s steps(1, end) infinite,
+    mode-splash-bounce 0.62s ease-in-out infinite;
+}
+
+.welcome__mode-badge--paid {
+  border-color: rgba(249, 0, 191, 0.85);
+}
+
+.welcome__mode-badge--free {
+  border-color: rgba(188, 31, 255, 0.85);
+  color: #ffe8ff;
+}
+
 .welcome__actions-wrap {
   margin-top: 20vh;
   display: flex;
@@ -902,6 +988,30 @@ onBeforeUnmount(() => {
   to { transform: rotate(360deg); }
 }
 
+@keyframes mode-splash-bounce {
+  0%, 100% {
+    transform: rotate(-14deg) scale(0.96);
+  }
+  50% {
+    transform: rotate(-14deg) scale(1.12);
+  }
+}
+
+@keyframes mode-neon-flicker {
+  0%, 18%, 22%, 62%, 67%, 100% {
+    opacity: 1;
+  }
+  20%, 64% {
+    opacity: 0.88;
+  }
+  21%, 65% {
+    opacity: 0.42;
+  }
+  66% {
+    opacity: 0.7;
+  }
+}
+
 @media (max-width: 1024px) {
   .welcome__decoration {
     display: none;
@@ -915,6 +1025,22 @@ onBeforeUnmount(() => {
   /* 移动端需要调整 Canvas 字母的大小，可能比较难适配，这里简单处理 */
   .welcome__title-ghost {
       display: none; /* 移动端暂时隐藏大标题 */
+  }
+
+  .welcome__title-shell {
+    width: 100%;
+    min-height: 32px;
+  }
+
+  .welcome__mode-badge {
+    right: 0;
+    bottom: 2px;
+    font-size: clamp(18px, 7vw, 26px);
+    padding: 3px 10px 5px;
+  }
+
+  .welcome__subtitle {
+      font-size: 10px; /* 减小移动端副标题字号以适应更长的标题 */
   }
   .welcome__header {
       height: auto;

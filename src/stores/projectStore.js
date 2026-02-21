@@ -12,6 +12,7 @@ import { navigationActions } from './project/actions/navigationActions'
 import { styleBrushActions } from './project/actions/styleBrushActions'
 import { annotationActions } from './project/actions/annotationActions'
 import { clipboardActions } from './project/actions/clipboard'
+import { reachabilityActions } from './project/actions/reachabilityActions'
 
 function getInitialProtomapsApiKey() {
   try {
@@ -72,21 +73,17 @@ export const useProjectStore = defineStore('project', {
       destinationLngLat: null,
       result: null,
     },
+    reachability: {
+      active: false,
+      stationId: null,
+      thresholdMeters: 0,
+      result: null,
+    },
     styleBrush: {
       active: false,
       sourceType: null,
       sourceId: null,
       styleData: null,
-    },
-    measure: {
-      mode: null, // 'two-point' | 'multi'
-      points: [], // [{lngLat: [lng, lat], label?}]
-      totalMeters: 0,
-    },
-    quickRename: {
-      active: false,
-      currentIndex: 0,
-      stationOrder: [],
     },
     fitToNetworkTrigger: 0,
     history: {
@@ -204,6 +201,7 @@ export const useProjectStore = defineStore('project', {
     ...styleBrushActions,
     ...annotationActions,
     ...clipboardActions,
+    ...reachabilityActions,
     fitToNetwork() {
       this.fitToNetworkTrigger++
     },

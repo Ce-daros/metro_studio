@@ -37,7 +37,6 @@ const DEFAULT_SHORTCUTS = [
   { id: 'tool.boxSelect',    label: '框选工具',   defaultBinding: 'B', category: '工具', when: 'mapEditor' },
   { id: 'tool.anchorEdit',   label: '锚点编辑',   defaultBinding: 'P', category: '工具', when: 'mapEditor' },
   { id: 'tool.annotation',   label: '注释工具',   defaultBinding: 'N', category: '工具', when: 'mapEditor' },
-  { id: 'tool.quickRename',  label: '线路改站名', defaultBinding: 'Q', category: '工具', when: 'mapEditor' },
 
   // 导航
   { id: 'nav.exit', label: '退出导航', defaultBinding: 'Escape', category: '导航', when: 'navigation' },

@@ -1,7 +1,8 @@
-import { computed, reactive, watch } from 'vue'
+import { computed, inject, reactive, watch } from 'vue'
 import { getDisplayLineName } from '../lib/lineNaming'
 import { normalizeLineStyle } from '../lib/lineStyles'
 import { useProjectStore } from '../stores/projectStore'
+import { isTrial, TRIAL_LIMITS } from './useLicense'
 
 /**
  * Composable for line-related operations in the toolbar:
@@ -11,6 +12,7 @@ import { useProjectStore } from '../stores/projectStore'
  */
 export function useToolbarLineOps() {
   const store = useProjectStore()
+  const showUpgradeDialog = inject('showUpgradeDialog', () => {})
 
   const lineForm = reactive({
     nameZh: '',
@@ -39,6 +41,10 @@ export function useToolbarLineOps() {
   )
 
   function addLine() {
+    if (isTrial.value && store.project?.lines?.length >= TRIAL_LIMITS.maxLines) {
+      showUpgradeDialog(`试用版最多创建 ${TRIAL_LIMITS.maxLines} 条线路，请激活正式版以解除限制。`)
+      return
+    }
     store.addLine({})
   }
 

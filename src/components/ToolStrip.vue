@@ -21,7 +21,6 @@ const TOOL_SHORTCUT_MAP = {
   'box-select': 'tool.boxSelect',
   'anchor-edit': 'tool.anchorEdit',
   'annotation': 'tool.annotation',
-  'quick-rename': 'tool.quickRename',
 }
 
 const activeIndex = computed(() => {
@@ -36,7 +35,6 @@ const tools = computed(() => {
     { mode: 'add-station', icon: 'plus-circle', label: '添加站点' },
     { mode: 'add-edge', icon: 'git-branch', label: '添加线段' },
     { mode: 'route-draw', icon: 'route', label: '连续布线' },
-    { mode: 'quick-rename', icon: 'edit-3', label: '线路改站名' },
     { mode: 'style-brush', icon: 'paintbrush', label: '样式刷' },
     { mode: 'box-select', icon: 'box-select', label: '框选' },
     { mode: 'anchor-edit', icon: 'edit-3', label: '锚点' },

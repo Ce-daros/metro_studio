@@ -21,6 +21,7 @@ import AiConfigDialog from './components/AiConfigDialog.vue'
 import ShortcutSettingsDialog from './components/ShortcutSettingsDialog.vue'
 import StatisticsDialog from './components/StatisticsDialog.vue'
 import AboutDialog from './components/AboutDialog.vue'
+import UpgradeDialog from './components/UpgradeDialog.vue'
 import BatchNameEditDialog from './components/BatchNameEditDialog.vue'
 import StationTTSDialog from './components/StationTTSDialog.vue'
 import MapSearchDialog from './components/MapSearchDialog.vue'
@@ -32,6 +33,7 @@ import { useDialog } from './composables/useDialog.js'
 import { useAnimationSettings } from './composables/useAnimationSettings.js'
 import { useShortcuts } from './composables/useShortcuts.js'
 import { useMapSearch } from './composables/useMapSearch.js'
+import { isTrial, TRIAL_LIMITS } from './composables/useLicense'
 
 const store = useProjectStore()
 const { searchVisible, mapViewbox, targetProvince, openSearchDialogWithProvince, closeSearchDialog, onSearchResultSelect } = useMapSearch()
@@ -45,6 +47,12 @@ provide('autoSaveSaveNow', saveNow)
 
 const stationRenameTrigger = ref(0)
 provide('stationRenameTrigger', stationRenameTrigger)
+
+function showUpgradeDialog(msg) {
+  upgradeMessage.value = msg
+  upgradeVisible.value = true
+}
+provide('showUpgradeDialog', showUpgradeDialog)
 
 // ── Escape callback registry ──
 // MapEditor (and other components) can register callbacks to handle Escape
@@ -63,6 +71,8 @@ const statisticsVisible = ref(false)
 const aboutVisible = ref(false)
 const batchNameEditVisible = ref(false)
 const ttsDialogVisible = ref(false)
+const upgradeVisible = ref(false)
+const upgradeMessage = ref('')
 const helpVisible = ref(false)
 const helpInitCategory = ref('guide')
 const ttsDialogRef = ref(null)
@@ -131,12 +141,26 @@ function handleMenuAction(action) {
 
   const actionMap = {
     createProject: async () => {
+      if (isTrial.value) {
+        const projects = await store.listProjects()
+        if (projects.length >= TRIAL_LIMITS.maxProjects) {
+          showUpgradeDialog(`试用版最多创建 ${TRIAL_LIMITS.maxProjects} 个项目，请激活正式版以解除限制。`)
+          return
+        }
+      }
       const name = await prompt({ title: '新建工程', message: '请输入工程名称', defaultValue: '新建工程', placeholder: '工程名称' })
       if (name === null) return
       await store.createNewProject(name.trim() || '新建工程')
     },
     duplicateProject: async () => {
       if (!store.project) return
+      if (isTrial.value) {
+        const projects = await store.listProjects()
+        if (projects.length >= TRIAL_LIMITS.maxProjects) {
+          showUpgradeDialog(`试用版最多创建 ${TRIAL_LIMITS.maxProjects} 个项目，请激活正式版以解除限制。`)
+          return
+        }
+      }
       const name = await prompt({ title: '复制工程', message: '请输入副本名称', defaultValue: `${store.project.name} 副本`, placeholder: '副本名称' })
       if (name === null) return
       await store.duplicateCurrentProject(name.trim() || `${store.project.name} 副本`)
@@ -191,6 +215,10 @@ function openGlobalProjectFilePicker() {
   globalFileInputRef.value?.click()
 }
 
+function onShowReachability({ stationId, thresholdMeters }) {
+  store.setReachability(stationId, thresholdMeters)
+}
+
 // ── Shortcut system ──
 
 function getShortcutContext() {
@@ -206,10 +234,16 @@ const { rebuildBindings } = useShortcuts({
       store.statusText = '已保存到本地库'
     }).catch(() => {})
   },
-  'file.exportFile': () => store.exportProjectFile(),
+  'file.exportFile': () => {
+    if (isTrial.value) { showUpgradeDialog('导出功能仅限正式版使用，请激活 License Key 以解除限制。'); return }
+    store.exportProjectFile()
+  },
   'file.newProject': () => handleMenuAction('createProject'),
   'file.openFile': () => globalFileInputRef.value?.click(),
-  'file.exportPng': () => store.exportOfficialSchematicPng(),
+  'file.exportPng': () => {
+    if (isTrial.value) { showUpgradeDialog('导出功能仅限正式版使用，请激活 License Key 以解除限制。'); return }
+    store.exportOfficialSchematicPng()
+  },
 
   // 编辑
   'edit.undo': () => store.undo(),
@@ -227,15 +261,6 @@ const { rebuildBindings } = useShortcuts({
     // 退出样式刷模式
     if (store.styleBrush.active) {
       store.deactivateStyleBrush()
-      return
-    }
-    // 退出测量模式，清除所有痕迹
-    if (store.mode === 'measure' || store.mode === 'measure-two-point' || store.mode === 'measure-multi-point') {
-      store.measure.points = []
-      store.measure.totalMeters = 0
-      store.measure.mode = null
-      store.setMode('select')
-      store.statusText = '测量模式已退出'
       return
     }
     store.cancelPendingEdgeStart()
@@ -273,7 +298,6 @@ const { rebuildBindings } = useShortcuts({
   'tool.boxSelect': () => store.setMode('box-select'),
   'tool.anchorEdit': () => store.setMode('anchor-edit'),
   'tool.annotation': () => store.setMode('annotation'),
-  'tool.quickRename': () => store.setMode('quick-rename'),
 
   // 导航
   'nav.exit': () => {
@@ -384,8 +408,9 @@ onBeforeUnmount(() => {
     @close="shortcutSettingsVisible = false"
     @bindings-changed="rebuildBindings()"
   />
-  <StatisticsDialog :visible="statisticsVisible" @close="statisticsVisible = false" />
+  <StatisticsDialog :visible="statisticsVisible" @close="statisticsVisible = false" @show-reachability="onShowReachability" />
   <AboutDialog :visible="aboutVisible" @close="aboutVisible = false" />
+  <UpgradeDialog :visible="upgradeVisible" :message="upgradeMessage" @close="upgradeVisible = false" />
   <BatchNameEditDialog :visible="batchNameEditVisible" @close="batchNameEditVisible = false" />
   <StationTTSDialog ref="ttsDialogRef" :project="store.project" :visible="ttsDialogVisible" @close="ttsDialogVisible = false" />
   <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" @close="closeSearchDialog" @select="onSearchResultSelect" />

@@ -5,7 +5,6 @@ import {
   LAYER_STATIONS,
 } from '../components/map-editor/constants'
 import { findEdgePathBetweenStations } from '../components/map-editor/bfsPathFinder'
-import { haversineDistanceMeters } from '../lib/geo'
 
 const ANNOTATION_HIT_RADIUS = 24
 
@@ -67,17 +66,6 @@ export function useMapEventHandlers({
 
   function isLineDrawMode() {
     return store.mode === 'add-edge' || store.mode === 'route-draw'
-  }
-
-  function appendMultiMeasurePoint(lngLat, hintText) {
-    store.measure.points.push({ lngLat })
-    if (store.measure.points.length > 1) {
-      const lastPoint = store.measure.points[store.measure.points.length - 2]
-      const distance = haversineDistanceMeters(lastPoint.lngLat, lngLat)
-      store.measure.totalMeters += distance
-    }
-    const totalKm = (store.measure.totalMeters / 1000).toFixed(2)
-    store.statusText = `累计距离: ${totalKm} km (${store.measure.totalMeters.toFixed(0)} 米) | ${hintText}`
   }
 
   function handleStationClick(event) {
@@ -154,34 +142,6 @@ export function useMapEventHandlers({
       return
     }
 
-    // 两点测量模式
-    if (store.mode === 'measure-two-point') {
-      const lngLat = [event.lngLat.lng, event.lngLat.lat]
-      store.measure.points.push({ lngLat })
-
-      if (store.measure.points.length === 2) {
-        const [p1, p2] = store.measure.points
-        const distance = haversineDistanceMeters(p1.lngLat, p2.lngLat)
-        const km = (distance / 1000).toFixed(2)
-        store.statusText = `距离: ${km} km (${distance.toFixed(0)} 米)`
-        // 自动清除痕迹，退出模式
-        setTimeout(() => {
-          store.measure.points = []
-          store.measure.totalMeters = 0
-          store.measure.mode = null
-        }, 3000)
-      } else {
-        store.statusText = '请点击终点'
-      }
-      return
-    }
-
-    // 多点测量模式
-    if (store.mode === 'measure' || store.mode === 'measure-multi-point') {
-      const lngLat = [event.lngLat.lng, event.lngLat.lat]
-      appendMultiMeasurePoint(lngLat, '点击继续，按 ESC 退出')
-      return
-    }
     const mouseEvent = event.originalEvent
     const isShift = Boolean(mouseEvent?.shiftKey)
     const isMultiModifier = Boolean(isShift || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
@@ -347,33 +307,6 @@ export function useMapEventHandlers({
     if (store.mode === 'quick-link') {
       store.quickLinkStartStationId = null
       store.statusText = '快速连线已取消'
-      return
-    }
-    // 两点测量模式下，空白点击添加测量点
-    if (store.mode === 'measure-two-point') {
-      const lngLat = [event.lngLat.lng, event.lngLat.lat]
-      store.measure.points.push({ lngLat })
-
-      if (store.measure.points.length === 2) {
-        const [p1, p2] = store.measure.points
-        const distance = haversineDistanceMeters(p1.lngLat, p2.lngLat)
-        const km = (distance / 1000).toFixed(2)
-        store.statusText = `距离: ${km} km (${distance.toFixed(0)} 米)`
-        // 自动清除痕迹，退出模式
-        setTimeout(() => {
-          store.measure.points = []
-          store.measure.totalMeters = 0
-          store.measure.mode = null
-        }, 3000)
-      } else {
-        store.statusText = '请点击终点'
-      }
-      return
-    }
-    // 多点测量模式下，空白点击添加测量点
-    if (store.mode === 'measure' || store.mode === 'measure-multi-point') {
-      const lngLat = [event.lngLat.lng, event.lngLat.lat]
-      appendMultiMeasurePoint(lngLat, '右键或 ESC 退出')
       return
     }
     // 注释模式下，空白点击添加注释

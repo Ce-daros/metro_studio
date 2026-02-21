@@ -1,9 +1,18 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, inject } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
+import { isTrial } from '../../composables/useLicense'
 
 const store = useProjectStore()
+const showUpgradeDialog = inject('showUpgradeDialog', () => {})
+
+const TRIAL_EXPORT_MSG = '导出功能仅限正式版使用，请激活 License Key 以解除限制。'
+
+function guardedExport(fn) {
+  if (isTrial.value) { showUpgradeDialog(TRIAL_EXPORT_MSG); return }
+  fn()
+}
 
 const exportStationVisibilityMode = computed({
   get: () => store.exportStationVisibilityMode || 'all',
@@ -28,19 +37,19 @@ function getLineName(line, index) {
       <option value="all">显示所有车站</option>
     </select>
     <div class="toolbar__row">
-      <button class="toolbar__btn" @click="store.exportActualRoutePng()">导出实际走向图 PNG</button>
-      <button class="toolbar__btn" @click="store.exportOfficialSchematicPng()">导出官方风格图 PNG</button>
+      <button class="toolbar__btn" @click="guardedExport(() => store.exportActualRoutePng())">导出实际走向图 PNG</button>
+      <button class="toolbar__btn" @click="guardedExport(() => store.exportOfficialSchematicPng())">导出官方风格图 PNG</button>
     </div>
     <div class="toolbar__row">
       <div class="hud-menu">
         <button class="toolbar__btn">导出车辆 HUD 打包 ▾</button>
         <div class="hud-menu__dropdown">
-          <button class="hud-menu__item" @click="store.exportAllLineHudZip()">全部</button>
+          <button class="hud-menu__item" @click="guardedExport(() => store.exportAllLineHudZip())">全部</button>
           <button
             v-for="(line, index) in lines"
             :key="line.id"
             class="hud-menu__item"
-            @click="store.exportAllLineHudZip(line.id)"
+            @click="guardedExport(() => store.exportAllLineHudZip(line.id))"
           >{{ getLineName(line, index) }}</button>
         </div>
       </div>

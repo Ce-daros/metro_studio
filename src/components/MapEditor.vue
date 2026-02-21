@@ -29,6 +29,7 @@ import { useMapBoundary } from '../composables/useMapBoundary.js'
 import { useRouteDrawPreview } from '../composables/useRouteDrawPreview.js'
 import { useMapTimelinePlayer } from '../composables/useMapTimelinePlayer.js'
 import { useMapNavigation } from '../composables/useMapNavigation.js'
+import { useMapReachability } from '../composables/useMapReachability.js'
 import { useAnimationSettings } from '../composables/useAnimationSettings.js'
 import { DEFAULT_MAP_CENTER } from '../lib/constants'
 import { setMapGetter, setStoreGetter } from '../composables/useMapSearch.js'
@@ -37,7 +38,6 @@ import TimelineSlider from './TimelineSlider.vue'
 import LanduseLegend from './LanduseLegend.vue'
 import MapContextMenu from './map-editor/MapContextMenu.vue'
 import MapLineSelectionMenu from './map-editor/MapLineSelectionMenu.vue'
-import MapMeasureOverlay from './map-editor/MapMeasureOverlay.vue'
 import MapAnnotationMarkers from './map-editor/MapAnnotationMarkers.vue'
 import MapNavigationOverlay from './map-editor/MapNavigationOverlay.vue'
 import MapInterchangeMarkers from './map-editor/MapInterchangeMarkers.vue'
@@ -191,6 +191,11 @@ const {
   destroyNavigation,
 } = useMapNavigation({ store, getMap })
 
+const {
+  initReachability,
+  destroyReachability,
+} = useMapReachability({ store, getMap })
+
 // ── Map helpers ──
 
 function lockMapNorthUp() {
@@ -222,20 +227,10 @@ function formatNavDistance(meters) {
   return `${Math.round(meters)} m`
 }
 
-const measureMarkersKey = ref(0)
 const annotationMarkersKey = ref(0)
 const interchangeMarkersKey = ref(0)
 
 function getInterchangeMarkerStyle(lngLat) {
-  if (!map || !lngLat) return { display: 'none' }
-  const point = map.project(lngLat)
-  return {
-    left: `${point.x}px`,
-    top: `${point.y}px`,
-  }
-}
-
-function getMeasureMarkerStyle(lngLat) {
   if (!map || !lngLat) return { display: 'none' }
   const point = map.project(lngLat)
   return {
@@ -252,24 +247,6 @@ function getAnnotationMarkerStyle(lngLat) {
     top: `${point.y}px`,
   }
 }
-
-const measureLines = computed(() => {
-  // 依赖 measureMarkersKey 来触发重新计算
-  const _ = measureMarkersKey.value
-  if (!map || !store.measure.points || store.measure.points.length < 2) return []
-  const lines = []
-  for (let i = 0; i < store.measure.points.length - 1; i++) {
-    const p1 = map.project(store.measure.points[i].lngLat)
-    const p2 = map.project(store.measure.points[i + 1].lngLat)
-    lines.push({
-      x1: p1.x,
-      y1: p1.y,
-      x2: p2.x,
-      y2: p2.y,
-    })
-  }
-  return lines
-})
 
 const mapLegendLines = computed(() => {
   const lineById = new Map((store.project?.lines || []).map((line) => [line.id, line]))
@@ -294,8 +271,7 @@ const mapLegendLines = computed(() => {
   })
 })
 
-function updateMeasureAndAnnotationPositions() {
-  measureMarkersKey.value++
+function updateAnnotationPositions() {
   annotationMarkersKey.value++
   interchangeMarkersKey.value++
 }
@@ -515,6 +491,7 @@ onMounted(() => {
     map.on('mouseleave', LAYER_EDGE_ANCHORS_HIT, onInteractiveFeatureLeave)
 
     initNavigation(map)
+    initReachability(map)
   })
 
   map.on('click', handleMapClick)
@@ -524,10 +501,10 @@ onMounted(() => {
   map.on('mouseup', stopStationDrag)
   map.on('mouseleave', stopStationDrag)
   map.on('move', refreshRouteDrawPreviewProjectedPoints)
-  map.on('move', updateMeasureAndAnnotationPositions)
+  map.on('move', updateAnnotationPositions)
   map.on('move', refreshMapGridLayer)
   map.on('move', refreshViewportMeta)
-  map.on('zoom', updateMeasureAndAnnotationPositions)
+  map.on('zoom', updateAnnotationPositions)
   map.on('zoom', refreshMapGridLayer)
   map.on('zoom', refreshViewportMeta)
   window.addEventListener('resize', onWindowResize)
@@ -542,6 +519,7 @@ onBeforeUnmount(() => {
   closeContextMenu()
   destroyTimelinePlayer()
   destroyNavigation()
+  destroyReachability()
   scaleControl = null
   maplibregl.removeProtocol('pmtiles')
   removeLanduseLayer(map)
@@ -655,43 +633,6 @@ watch(
   )
 
   watch(
-    () => store.selectedStationId,
-    (stationId) => {
-      if (!stationId) return
-      if (!store.quickRename?.active) return
-      if (!store.quickRename?.stationOrder?.length) return
-
-      setTimeout(() => {
-        focusOnQuickRenameStation()
-      }, 100)
-    },
-  )
-
-  function focusOnQuickRenameStation() {
-    if (!map || !map.isStyleLoaded()) return
-    if (!store.quickRename?.active) return
-
-    const currentIndex = store.quickRename.currentIndex
-    const stationOrder = store.quickRename.stationOrder
-
-    if (currentIndex < 0 || currentIndex >= stationOrder.length) return
-
-    const stationId = stationOrder[currentIndex]
-    const station = store.project?.stations?.find(s => s.id === stationId)
-    if (!station || !station.lngLat) return
-
-    const [lng, lat] = station.lngLat
-    const currentZoom = map.getZoom()
-    const targetZoom = Math.max(14, Math.min(16, currentZoom))
-
-    map.easeTo({
-      center: [lng, lat],
-      zoom: targetZoom,
-      duration: 300,
-    })
-  }
-
-  watch(
     () => store.mapTileType,
     (newTileType) => {
       if (!map) return
@@ -795,12 +736,6 @@ watch(
         @close="closeLineSelectionMenu"
       />
 
-      <MapMeasureOverlay
-        :measure-lines="measureLines"
-        :measure-markers-key="measureMarkersKey"
-        :measure-points="store.measure.points"
-        :get-marker-style="getMeasureMarkerStyle"
-      />
 
       <MapAnnotationMarkers
         :annotations="store.project?.annotations || []"
