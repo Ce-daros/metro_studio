@@ -20,6 +20,8 @@ import {
   removeLanduseLayer,
   setStationHighlightVisibility,
   updateMapDisplayVisibility,
+  startSelectionBlink,
+  stopSelectionBlink,
 } from './map-editor/mapLayers'
 import { useMapContextMenu } from '../composables/useMapContextMenu.js'
 import { useMapLineSelectionMenu } from '../composables/useMapLineSelectionMenu.js'
@@ -466,6 +468,7 @@ onMounted(() => {
     lockMapNorthUp()
     ensureSources(map, store)
     ensureMapLayers(map, store)
+    startSelectionBlink(map)
     updateMapData(map, store)
     refreshMapGridLayer()
     setGridVisibility(store.showMapGrid)
@@ -512,6 +515,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopSelectionBlink()
   setMapNotReady()
   store.unregisterActualRoutePngExporter(exportActualRoutePngFromMap)
   window.removeEventListener('resize', onWindowResize)

@@ -114,14 +114,8 @@ export function ensureSources(map, store) {
   }
 }
 
-function updateSelectedEdgeFilter(map, store) {
-  if (!map || !map.getLayer(LAYER_EDGES_SELECTED)) return
-  const selectedIds = Array.isArray(store.selectedEdgeIds) ? store.selectedEdgeIds : []
-  if (!selectedIds.length) {
-    map.setFilter(LAYER_EDGES_SELECTED, ['==', ['get', 'id'], '__none__'])
-    return
-  }
-  map.setFilter(LAYER_EDGES_SELECTED, ['in', ['get', 'id'], ['literal', selectedIds]])
+function updateSelectedEdgeFilter() {
+  // No longer needed - selection handled via opacity blink
 }
 
 function getStationIdsForSelectedEdges(store) {
@@ -207,41 +201,6 @@ export function ensureMapLayers(map, store) {
         'line-join': 'round',
       },
     })
-  }
-
-  if (!map.getLayer(LAYER_EDGES_SELECTED)) {
-    const selectedLayerConfig = {
-      id: LAYER_EDGES_SELECTED,
-      type: 'line',
-      source: SOURCE_EDGES,
-      filter: ['==', ['get', 'id'], ''],
-      paint: {
-        'line-color': ['coalesce', ['get', 'color'], '#2563EB'],
-        'line-width': [
-          'case',
-          ['in', ['get', 'lineStyle'], ['literal', doubleLineStyleIds]],
-          18,
-          15,
-        ],
-        'line-gap-width': [
-          'case',
-          ['in', ['get', 'lineStyle'], ['literal', doubleLineStyleIds]],
-          buildLineStyleNumericExpression('lineGapWidth'),
-          0,
-        ],
-        'line-opacity': 0.88,
-        'line-dasharray': buildLineDasharrayExpression(),
-      },
-      layout: {
-        'line-cap': 'butt',
-        'line-join': 'round',
-      },
-    }
-    if (map.getLayer(LAYER_EDGES)) {
-      map.addLayer(selectedLayerConfig, LAYER_EDGES)
-    } else {
-      map.addLayer(selectedLayerConfig)
-    }
   }
 
   const edgePaint = {
@@ -417,7 +376,12 @@ export function ensureMapLayers(map, store) {
         ],
         'text-font': ['Noto Sans CJK SC Regular', 'Noto Sans Regular'],
         'text-size': 12,
-        'text-offset': [0.8, 0.2],
+        'text-offset': [
+          'case',
+          ['==', ['get', 'isInterchange'], true],
+          ['literal', [1.4, 0.2]],
+          ['literal', [0.8, 0.2]],
+        ],
         'text-anchor': 'left',
       },
       paint: {
@@ -517,3 +481,24 @@ export function updateLanduseVisibility(map, visible) {
 }
 
 export { COMMON_LANDUSE_TYPES, LANDUSE_COLORS }
+
+let _blinkTimer = 0
+export function startSelectionBlink(map) {
+  stopSelectionBlink()
+  let phase = 0
+  const tick = () => {
+    phase = (phase + 1) % 270
+    const sel = 0.15 + 0.73 * (0.5 + 0.5 * Math.sin(phase / 270 * Math.PI * 2))
+    const expr = ['case', ['==', ['get', 'isSelected'], true], sel, 0.88]
+    for (const id of [LAYER_EDGES, LAYER_EDGES_SQUARE]) {
+      if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', expr)
+    }
+    _blinkTimer = requestAnimationFrame(tick)
+  }
+  _blinkTimer = requestAnimationFrame(tick)
+}
+
+export function stopSelectionBlink() {
+  if (_blinkTimer) cancelAnimationFrame(_blinkTimer)
+  _blinkTimer = 0
+}

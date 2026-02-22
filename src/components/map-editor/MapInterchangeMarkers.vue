@@ -31,23 +31,20 @@ const interchangeStations = computed(() => {
     // 如果没有获取到线路颜色，默认给一些占位色
     const colors = uniqueLineColors.length > 0 ? uniqueLineColors : ['#bc1fff', '#38bdf8']
 
-    const ringCount = colors.length
-    const maxDiameter = 20 * zoomScale
-    const minDiameter = 8 * zoomScale
-    const diameterStep = ringCount > 1 ? (maxDiameter - minDiameter) / (ringCount - 1) : 0
-    const borderWidth = (ringCount >= 5 ? 1.8 : 2.4) * zoomScale
-    const rings = colors.map((color, index) => ({
-      color,
-      size: Number((maxDiameter - diameterStep * index).toFixed(2)),
-      borderWidth,
-      zIndex: 20 - index,
-    }))
-    const containerSize = Math.max(10, maxDiameter + borderWidth * 2 + 4)
-    
-    return { 
-      ...s, 
+    const count = colors.length
+    const dotSize = Math.max(5, 6.4 * zoomScale)
+    const gap = Math.max(1, 1.6 * zoomScale)
+    const borderWidth = Math.max(1.2, 1.6 * zoomScale)
+    const innerWidth = count * dotSize + (count - 1) * gap
+    const containerSize = innerWidth + borderWidth * 2 + gap * 2
+
+    return {
+      ...s,
       containerSize: Number(containerSize.toFixed(2)),
-      rings,
+      dotSize,
+      gap,
+      borderWidth,
+      colors,
     }
   })
 })
@@ -68,22 +65,21 @@ const interchangeStations = computed(() => {
       ]"
     >
       <div
-        class="nested-rings-container"
+        class="interchange-outer"
         :style="{
-          width: `${station.containerSize}px`,
-          height: `${station.containerSize}px`,
+          borderWidth: `${station.borderWidth}px`,
+          padding: `${station.gap}px`,
+          gap: `${station.gap}px`,
         }"
       >
         <div
-          v-for="(ring, i) in station.rings"
+          v-for="(color, i) in station.colors"
           :key="i"
-          class="nested-inner-ring"
+          class="interchange-dot"
           :style="{
-            width: `${ring.size}px`,
-            height: `${ring.size}px`,
-            borderColor: ring.color,
-            borderWidth: `${ring.borderWidth}px`,
-            zIndex: ring.zIndex
+            width: `${station.dotSize}px`,
+            height: `${station.dotSize}px`,
+            backgroundColor: color,
           }"
         ></div>
       </div>
@@ -107,22 +103,17 @@ const interchangeStations = computed(() => {
   justify-content: center;
 }
 
-.nested-rings-container {
-  position: relative;
+.interchange-outer {
   display: flex;
   align-items: center;
-  justify-content: center;
+  border: solid #000;
+  border-radius: 9999px;
+  background: #fff;
+  box-sizing: border-box;
 }
 
-/* 内部多重线路环（静态，不旋转） */
-.nested-inner-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border-style: solid;
-  border-radius: 9999px;
-  background: transparent;
-  box-sizing: border-box;
+.interchange-dot {
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 </style>
