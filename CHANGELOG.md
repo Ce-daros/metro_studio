@@ -1,5 +1,17 @@
 # 更新日志
 
+## 2026-02-22 (v0.47.0-rc.4)
+
+### 改进优化
+- StatusBar 添加导入进度条显示和状态反馈
+- genericImporter 和 importLayout 添加导入进度回调机制
+- useMenuBarActions 激活码菜单仅对试用版显示
+- MapEditor 改进地图更新逻辑，添加 isStyleLoaded 检查
+- useShortcuts 优化快捷键处理逻辑
+- vite.config.js 添加构建优化配置（移除 console、压缩代码等）
+
+---
+
 ## 2026-02-22 (v0.47.0-rc.3)
 
 ### 新功能
