@@ -10,8 +10,8 @@ const OVERPASS_ENDPOINTS = import.meta.env.DEV
   : [...PUBLIC_ENDPOINTS]
 
 const OVERPASS_REQUEST_TIMEOUT_MS = 65000
-const OVERPASS_MAX_CONCURRENCY = normalizePositiveInteger(import.meta.env.VITE_OVERPASS_MAX_CONCURRENCY, 2)
-const OVERPASS_MIN_INTERVAL_MS = normalizeNonNegativeInteger(import.meta.env.VITE_OVERPASS_MIN_INTERVAL_MS, 1500)
+const OVERPASS_MAX_CONCURRENCY = normalizePositiveInteger(import.meta.env.VITE_OVERPASS_MAX_CONCURRENCY, 6)
+const OVERPASS_MIN_INTERVAL_MS = normalizeNonNegativeInteger(import.meta.env.VITE_OVERPASS_MIN_INTERVAL_MS, 300)
 const OVERPASS_MAX_RETRIES = normalizeNonNegativeInteger(import.meta.env.VITE_OVERPASS_MAX_RETRIES, 4)
 const OVERPASS_RETRY_BASE_DELAY_MS = normalizeNonNegativeInteger(import.meta.env.VITE_OVERPASS_RETRY_BASE_DELAY_MS, 3000)
 const OVERPASS_ENDPOINT_COOLDOWN_MS = normalizeNonNegativeInteger(import.meta.env.VITE_OVERPASS_ENDPOINT_COOLDOWN_MS, 30000)

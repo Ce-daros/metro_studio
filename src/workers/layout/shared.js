@@ -319,6 +319,29 @@ function directionIndexToAngle(index) {
 }
 
 
+function buildEdgeSpatialGrid(positions, edgeRecords, cellSize) {
+  const safeCellSize = Math.max(Math.abs(toFiniteNumber(cellSize, 1)), 1e-6)
+  const grid = new Map()
+  for (let i = 0; i < edgeRecords.length; i += 1) {
+    const e = edgeRecords[i]
+    const a = positions[e.fromIndex]
+    const b = positions[e.toIndex]
+    if (!a || !b) continue
+    const minCX = Math.floor(Math.min(a[0], b[0]) / safeCellSize)
+    const maxCX = Math.floor(Math.max(a[0], b[0]) / safeCellSize)
+    const minCY = Math.floor(Math.min(a[1], b[1]) / safeCellSize)
+    const maxCY = Math.floor(Math.max(a[1], b[1]) / safeCellSize)
+    for (let cx = minCX; cx <= maxCX; cx += 1) {
+      for (let cy = minCY; cy <= maxCY; cy += 1) {
+        const key = gridCellKey(cx, cy)
+        if (!grid.has(key)) grid.set(key, [])
+        grid.get(key).push(i)
+      }
+    }
+  }
+  return { grid, cellSize: safeCellSize }
+}
+
 export {
   toFiniteNumber,
   GRID_NEIGHBOR_OFFSETS,
@@ -332,6 +355,7 @@ export {
   toGridCellCoord,
   gridCellKey,
   buildSpatialGrid,
+  buildEdgeSpatialGrid,
   forEachNeighborBucket,
   segmentBox,
   boxesOverlap,

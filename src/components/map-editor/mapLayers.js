@@ -292,9 +292,8 @@ export function ensureMapLayers(map, store) {
       paint: {
         'circle-radius': [
           'case',
-          ['==', ['get', 'isSelected'], true],
-          ['interpolate', ['linear'], ['zoom'], 10, 8, 14, 10],
-          ['interpolate', ['linear'], ['zoom'], 10, 4.2, 14, 5.8],
+          ['==', ['get', 'isSelected'], true], 8,
+          5,
         ],
         'circle-color': [
           'case',
@@ -340,7 +339,7 @@ export function ensureMapLayers(map, store) {
     })
   }
 
-  if (!map.getLayer(LAYER_PULSES)) {
+  if (!map.getLayer(LAYER_PULSES) && map.getSource(SOURCE_PULSES)) {
     map.addLayer({
       id: LAYER_PULSES,
       type: 'circle',

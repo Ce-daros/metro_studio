@@ -27,6 +27,30 @@ function buildRelationAdjacency(relation, ways, nodes) {
   return adjacency
 }
 
+function buildGlobalAdjacency(relations, ways, nodes) {
+  const adjacency = new Map()
+  const visitedWays = new Set()
+  for (const relation of relations) {
+    for (const member of relation.members || []) {
+      if (member.type !== 'way' || visitedWays.has(member.ref)) continue
+      visitedWays.add(member.ref)
+      const way = ways.get(member.ref)
+      if (!way?.nodes || way.nodes.length < 2) continue
+      for (let i = 0; i < way.nodes.length - 1; i += 1) {
+        const fromNode = nodes.get(way.nodes[i])
+        const toNode = nodes.get(way.nodes[i + 1])
+        if (!fromNode || !toNode) continue
+        const from = toNodeLngLat(fromNode)
+        const to = toNodeLngLat(toNode)
+        const weight = haversineDistanceMeters(from, to)
+        addAdjacency(adjacency, way.nodes[i], way.nodes[i + 1], weight)
+        addAdjacency(adjacency, way.nodes[i + 1], way.nodes[i], weight)
+      }
+    }
+  }
+  return adjacency
+}
+
 class MinHeap {
   constructor() {
     this.values = []
@@ -236,6 +260,7 @@ export {
   shortestPath,
   addAdjacency,
   buildRelationAdjacency,
+  buildGlobalAdjacency,
   hasSharedLine,
   sumPathLength,
   distanceSquared,

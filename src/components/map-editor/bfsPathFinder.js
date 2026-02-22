@@ -3,19 +3,31 @@
  * Tries same-line-only first; falls back to unrestricted BFS.
  */
 
+function reconstructPath(prev, goalId) {
+  const path = []
+  let cur = goalId
+  while (prev.has(cur)) {
+    const { edgeId, parent } = prev.get(cur)
+    path.push(edgeId)
+    cur = parent
+  }
+  return path.reverse()
+}
+
 function bfsOnLine(adj, fromId, toId, lineId) {
   const visited = new Set([fromId])
-  const queue = [{ stationId: fromId, edgePath: [] }]
+  const prev = new Map()
+  const queue = [fromId]
   let head = 0
   while (head < queue.length) {
-    const cur = queue[head++]
-    for (const link of adj.get(cur.stationId) || []) {
+    const curId = queue[head++]
+    for (const link of adj.get(curId) || []) {
       if (visited.has(link.neighbor)) continue
       if (!link.lineIds.includes(lineId)) continue
-      const newPath = [...cur.edgePath, link.edgeId]
-      if (link.neighbor === toId) return newPath
+      prev.set(link.neighbor, { edgeId: link.edgeId, parent: curId })
+      if (link.neighbor === toId) return reconstructPath(prev, toId)
       visited.add(link.neighbor)
-      queue.push({ stationId: link.neighbor, edgePath: newPath })
+      queue.push(link.neighbor)
     }
   }
   return []
@@ -23,16 +35,17 @@ function bfsOnLine(adj, fromId, toId, lineId) {
 
 function bfsUnrestricted(adj, fromId, toId) {
   const visited = new Set([fromId])
-  const queue = [{ stationId: fromId, edgePath: [] }]
+  const prev = new Map()
+  const queue = [fromId]
   let head = 0
   while (head < queue.length) {
-    const cur = queue[head++]
-    for (const link of adj.get(cur.stationId) || []) {
+    const curId = queue[head++]
+    for (const link of adj.get(curId) || []) {
       if (visited.has(link.neighbor)) continue
-      const newPath = [...cur.edgePath, link.edgeId]
-      if (link.neighbor === toId) return newPath
+      prev.set(link.neighbor, { edgeId: link.edgeId, parent: curId })
+      if (link.neighbor === toId) return reconstructPath(prev, toId)
       visited.add(link.neighbor)
-      queue.push({ stationId: link.neighbor, edgePath: newPath })
+      queue.push(link.neighbor)
     }
   }
   return []

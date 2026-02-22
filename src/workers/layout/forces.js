@@ -1,10 +1,12 @@
 import {
+  buildEdgeSpatialGrid,
   buildSpatialGrid,
   clamp,
   boxesOverlap,
   distance,
   edgesShareEndpoint,
   forEachNeighborBucket,
+  gridCellKey,
   interpolateAngles,
   lerp,
   normalizePositiveAngle,
@@ -54,13 +56,7 @@ function estimateDesiredEdgeLength(baseLength, config) {
 }
 
 function applyAnchorForce(forces, positions, original, config) {
-  if (!positions || !original || positions.length !== original.length) {
-    console.error('[FORCE] applyAnchorForce: invalid input arrays', {
-      positionsLength: positions?.length,
-      originalLength: original?.length
-    })
-    return
-  }
+  if (!positions || !original || positions.length !== original.length) return
   for (let i = 0; i < positions.length; i += 1) {
     const dx = original[i][0] - positions[i][0]
     const dy = original[i][1] - positions[i][1]
@@ -74,16 +70,7 @@ function applySpringAndAngleForce(forces, positions, original, edgeRecords, conf
     const a = positions[edge.fromIndex]
     const b = positions[edge.toIndex]
 
-    if (!a || !b || edge.fromIndex == null || edge.toIndex == null) {
-      console.error('[FORCE] applySpringAndAngleForce: invalid edge or positions', {
-        edgeId: edge.id,
-        fromIndex: edge.fromIndex,
-        toIndex: edge.toIndex,
-        aExists: !!a,
-        bExists: !!b
-      })
-      continue
-    }
+    if (!a || !b || edge.fromIndex == null || edge.toIndex == null) continue
 
     const dx = b[0] - a[0]
     const dy = b[1] - a[1]
@@ -161,18 +148,12 @@ function applyJunctionSpread(forces, positions, adjacency, nodeDegrees, config) 
     if (!neighbors || neighbors.length < 3) continue
 
     const centerPoint = positions[center]
-    if (!centerPoint) {
-      console.error('[FORCE] applyJunctionSpread: missing center point at index', center)
-      continue
-    }
+    if (!centerPoint) continue
 
     const vectors = neighbors
       .map((neighbor) => {
         const p = positions[neighbor]
-        if (!p) {
-          console.error('[FORCE] applyJunctionSpread: missing neighbor point at index', neighbor, 'for center', center)
-          return null
-        }
+        if (!p) return null
         const dx = p[0] - centerPoint[0]
         const dy = p[1] - centerPoint[1]
         const length = Math.max(Math.hypot(dx, dy), 0.00001)
@@ -211,52 +192,47 @@ function applyJunctionSpread(forces, positions, adjacency, nodeDegrees, config) 
 }
 
 function applyCrossingRepel(forces, positions, edgeRecords, config) {
+  const cellSize = (config.maxEdgeLength || 80) * 1.5
+  const { grid } = buildEdgeSpatialGrid(positions, edgeRecords, cellSize)
+  const checked = new Set()
+
   for (let i = 0; i < edgeRecords.length; i += 1) {
     const e1 = edgeRecords[i]
     const a1 = positions[e1.fromIndex]
     const a2 = positions[e1.toIndex]
-    if (!a1 || !a2) {
-      console.error('[FORCES] applyCrossingRepel: missing positions for edge', {
-        edgeId: e1.id,
-        fromIndex: e1.fromIndex,
-        toIndex: e1.toIndex,
-        a1Exists: !!a1,
-        a2Exists: !!a2
-      })
-      continue
-    }
+    if (!a1 || !a2) continue
     const aBox = segmentBox(a1, a2)
 
-    for (let j = i + 1; j < edgeRecords.length; j += 1) {
-      const e2 = edgeRecords[j]
-      if (edgesShareEndpoint(e1, e2)) continue
-      const b1 = positions[e2.fromIndex]
-      const b2 = positions[e2.toIndex]
-      if (!b1 || !b2) {
-        console.error('[FORCES] applyCrossingRepel: missing positions for edge in inner loop', {
-          edgeId: e2.id,
-          fromIndex: e2.fromIndex,
-          toIndex: e2.toIndex,
-          b1Exists: !!b1,
-          b2Exists: !!b2
-        })
-        continue
-      }
-      const bBox = segmentBox(b1, b2)
-      if (!boxesOverlap(aBox, bBox)) continue
-      if (!segmentsIntersect(a1, a2, b1, b2)) continue
+    const minCX = Math.floor(Math.min(a1[0], a2[0]) / cellSize)
+    const maxCX = Math.floor(Math.max(a1[0], a2[0]) / cellSize)
+    const minCY = Math.floor(Math.min(a1[1], a2[1]) / cellSize)
+    const maxCY = Math.floor(Math.max(a1[1], a2[1]) / cellSize)
 
-      const cx1 = (a1[0] + a2[0]) * 0.5
-      const cy1 = (a1[1] + a2[1]) * 0.5
-      const cx2 = (b1[0] + b2[0]) * 0.5
-      const cy2 = (b1[1] + b2[1]) * 0.5
-      const dx = cx2 - cx1
-      const dy = cy2 - cy1
-      const d = Math.max(Math.hypot(dx, dy), 0.00001)
-      const ux = dx / d
-      const uy = dy / d
-      const push = config.crossingRepelWeight * 0.032
-      applyCrossingPush(forces || positions, e1, e2, ux, uy, forces ? push : push * 0.2)
+    for (let cx = minCX; cx <= maxCX; cx += 1) {
+      for (let cy = minCY; cy <= maxCY; cy += 1) {
+        const bucket = grid.get(gridCellKey(cx, cy))
+        if (!bucket) continue
+        for (const j of bucket) {
+          if (j <= i) continue
+          const pairKey = i * edgeRecords.length + j
+          if (checked.has(pairKey)) continue
+          checked.add(pairKey)
+
+          const e2 = edgeRecords[j]
+          if (edgesShareEndpoint(e1, e2)) continue
+          const b1 = positions[e2.fromIndex]
+          const b2 = positions[e2.toIndex]
+          if (!b1 || !b2) continue
+          if (!boxesOverlap(aBox, segmentBox(b1, b2))) continue
+          if (!segmentsIntersect(a1, a2, b1, b2)) continue
+
+          const dx = (b1[0] + b2[0]) * 0.5 - (a1[0] + a2[0]) * 0.5
+          const dy = (b1[1] + b2[1]) * 0.5 - (a1[1] + a2[1]) * 0.5
+          const d = Math.max(Math.hypot(dx, dy), 0.00001)
+          const push = config.crossingRepelWeight * 0.032
+          applyCrossingPush(forces || positions, e1, e2, dx / d, dy / d, forces ? push : push * 0.2)
+        }
+      }
     }
   }
 }
@@ -269,14 +245,7 @@ function applyCrossingPush(target, edgeA, edgeB, ux, uy, amount) {
 }
 
 function shiftNode(target, index, deltaX, deltaY) {
-  if (!target || !target[index]) {
-    console.error('[FORCES] shiftNode - invalid target or target[index]', {
-      targetExists: !!target,
-      index,
-      targetIndexExists: target ? !!target[index] : false
-    })
-    return
-  }
+  if (!target || !target[index]) return
   target[index][0] += deltaX
   target[index][1] += deltaY
 }
@@ -284,14 +253,7 @@ function shiftNode(target, index, deltaX, deltaY) {
 function clampDisplacement(positions, original, maxDisplacement) {
   if (!Number.isFinite(maxDisplacement) || maxDisplacement <= 0) return
   for (let i = 0; i < positions.length; i += 1) {
-    if (!positions[i] || !original[i]) {
-      console.error('[FORCES] clampDisplacement - missing position or original', {
-        index: i,
-        positionExists: !!positions[i],
-        originalExists: !!original[i]
-      })
-      continue
-    }
+    if (!positions[i] || !original[i]) continue
     const dx = positions[i][0] - original[i][0]
     const dy = positions[i][1] - original[i][1]
     const d = Math.hypot(dx, dy)
@@ -307,16 +269,7 @@ function snapEdgesToEightDirections(positions, edgeRecords, ratio) {
     const from = positions[edge.fromIndex]
     const to = positions[edge.toIndex]
 
-    if (!from || !to) {
-      console.error('[FORCE] snapEdgesToEightDirections: missing positions', {
-        edgeId: edge.id,
-        fromIndex: edge.fromIndex,
-        toIndex: edge.toIndex,
-        fromExists: !!from,
-        toExists: !!to
-      })
-      continue
-    }
+    if (!from || !to) continue
 
     const dx = to[0] - from[0]
     const dy = to[1] - from[1]
@@ -432,50 +385,58 @@ function segmentDistance(a1, a2, b1, b2) {
 function applyProximityRepel(forces, positions, edgeRecords, config) {
   const maxDistance = config.proximityRepelMaxDistance || 22
   const target = forces || positions
-  
+  const cellSize = maxDistance * 3
+  const { grid } = buildEdgeSpatialGrid(positions, edgeRecords, cellSize)
+  const checked = new Set()
+
   for (let i = 0; i < edgeRecords.length; i++) {
     const e1 = edgeRecords[i]
     const a1 = positions[e1.fromIndex]
     const a2 = positions[e1.toIndex]
-    
     if (!a1 || !a2) continue
-    
-    for (let j = i + 1; j < edgeRecords.length; j++) {
-      const e2 = edgeRecords[j]
-      if (edgesShareEndpoint(e1, e2)) continue
-      
-      const b1 = positions[e2.fromIndex]
-      const b2 = positions[e2.toIndex]
-      
-      if (!b1 || !b2) continue
-      
-      const minDist = segmentDistance(a1, a2, b1, b2)
-      
-      if (minDist >= maxDistance) continue
-      
-      const cx1 = (a1[0] + a2[0]) * 0.5
-      const cy1 = (a1[1] + a2[1]) * 0.5
-      const cx2 = (b1[0] + b2[0]) * 0.5
-      const cy2 = (b1[1] + b2[1]) * 0.5
-      
-      const dx = cx2 - cx1
-      const dy = cy2 - cy1
-      const d = Math.max(Math.hypot(dx, dy), 0.00001)
-      
-      const force = (maxDistance - minDist) * config.proximityRepelWeight
-      const scaledForce = forces ? force : force * 0.2
-      const ux = dx / d
-      const uy = dy / d
-      
-      target[e1.fromIndex][0] -= ux * scaledForce * 0.5
-      target[e1.fromIndex][1] -= uy * scaledForce * 0.5
-      target[e1.toIndex][0] -= ux * scaledForce * 0.5
-      target[e1.toIndex][1] -= uy * scaledForce * 0.5
-      
-      target[e2.fromIndex][0] += ux * scaledForce * 0.5
-      target[e2.fromIndex][1] += uy * scaledForce * 0.5
-      target[e2.toIndex][0] += ux * scaledForce * 0.5
-      target[e2.toIndex][1] += uy * scaledForce * 0.5
+
+    const minCX = Math.floor(Math.min(a1[0], a2[0]) / cellSize)
+    const maxCX = Math.floor(Math.max(a1[0], a2[0]) / cellSize)
+    const minCY = Math.floor(Math.min(a1[1], a2[1]) / cellSize)
+    const maxCY = Math.floor(Math.max(a1[1], a2[1]) / cellSize)
+
+    for (let cx = minCX; cx <= maxCX; cx += 1) {
+      for (let cy = minCY; cy <= maxCY; cy += 1) {
+        const bucket = grid.get(gridCellKey(cx, cy))
+        if (!bucket) continue
+        for (const j of bucket) {
+          if (j <= i) continue
+          const pairKey = i * edgeRecords.length + j
+          if (checked.has(pairKey)) continue
+          checked.add(pairKey)
+
+          const e2 = edgeRecords[j]
+          if (edgesShareEndpoint(e1, e2)) continue
+          const b1 = positions[e2.fromIndex]
+          const b2 = positions[e2.toIndex]
+          if (!b1 || !b2) continue
+
+          const minDist = segmentDistance(a1, a2, b1, b2)
+          if (minDist >= maxDistance) continue
+
+          const dx = (b1[0] + b2[0]) * 0.5 - (a1[0] + a2[0]) * 0.5
+          const dy = (b1[1] + b2[1]) * 0.5 - (a1[1] + a2[1]) * 0.5
+          const d = Math.max(Math.hypot(dx, dy), 0.00001)
+          const force = (maxDistance - minDist) * config.proximityRepelWeight
+          const scaledForce = forces ? force : force * 0.2
+          const ux = dx / d
+          const uy = dy / d
+
+          target[e1.fromIndex][0] -= ux * scaledForce * 0.5
+          target[e1.fromIndex][1] -= uy * scaledForce * 0.5
+          target[e1.toIndex][0] -= ux * scaledForce * 0.5
+          target[e1.toIndex][1] -= uy * scaledForce * 0.5
+          target[e2.fromIndex][0] += ux * scaledForce * 0.5
+          target[e2.fromIndex][1] += uy * scaledForce * 0.5
+          target[e2.toIndex][0] += ux * scaledForce * 0.5
+          target[e2.toIndex][1] += uy * scaledForce * 0.5
+        }
+      }
     }
   }
 }

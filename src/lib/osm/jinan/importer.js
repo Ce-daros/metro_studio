@@ -20,7 +20,7 @@ import {
   shouldIncludeStatus,
 } from './status'
 import {
-  buildRelationAdjacency,
+  buildGlobalAdjacency,
   getOrderedStopNodeRefs,
   indexElements,
   mergeElements,
@@ -66,15 +66,19 @@ async function importJinanMetroFromOsm(options, signal) {
 
   let lineColorIndex = 0
 
+  // Build global adjacency graph once instead of per-relation
+  const routeRelations = []
   for (const relation of relations) {
     const tags = relation.tags || {}
     if (tags.type !== 'route') continue
-
     const status = classifyRelationStatus(tags)
-    if (!shouldIncludeStatus(status, includeConstruction, includeProposed)) {
-      continue
-    }
+    if (!shouldIncludeStatus(status, includeConstruction, includeProposed)) continue
+    routeRelations.push({ relation, status })
+  }
 
+  const globalAdjacency = buildGlobalAdjacency(routeRelations.map((r) => r.relation), ways, nodes)
+
+  for (const { relation, status } of routeRelations) {
     const lineKey = toLineKey(relation)
     if (!lineByKey.has(lineKey)) {
       lineByKey.set(lineKey, createLineFromRelation(relation, lineColorIndex, status))
@@ -87,7 +91,6 @@ async function importJinanMetroFromOsm(options, signal) {
     const line = lineByKey.get(lineKey)
     lineStatusById.set(line.id, line.status)
 
-    const relationAdjacency = buildRelationAdjacency(relation, ways, nodes)
     const stopNodeRefs = getOrderedStopNodeRefs(relation, ways, nodes)
       .map((ref) => Number(ref))
       .filter((ref) => nodes.has(ref))
@@ -138,7 +141,7 @@ async function importJinanMetroFromOsm(options, signal) {
         fromStationId < toStationId ? `${fromStationId}__${toStationId}` : `${toStationId}__${fromStationId}`
 
       if (!edgeByPairKey.has(pairKey)) {
-        const nodePath = shortestPath(relationAdjacency, fromNodeId, toNodeId)
+        const nodePath = shortestPath(globalAdjacency, fromNodeId, toNodeId)
         const waypoints = []
         for (const nodeId of nodePath) {
           const node = nodes.get(nodeId)

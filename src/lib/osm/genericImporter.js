@@ -14,7 +14,7 @@ import {
   shouldIncludeStatus,
 } from './jinan/status'
 import {
-  buildRelationAdjacency,
+  buildGlobalAdjacency,
   getOrderedStopNodeRefs,
   indexElements,
   mergeElements,
@@ -28,68 +28,65 @@ const STOP_ROLE_REGEX = /(stop|platform|station)/i
 
 // ── Overpass query builders ─────────────────────────────────
 
-function buildOpenRouteQuery(areaId) {
-  return `
-[out:json][timeout:120];
-area(${areaId})->.a;
-relation(area.a)["type"="route"]["route"~"subway|light_rail"];
-out body;
->;
-out body qt;
-`.trim()
+function bboxToOverpass(bbox) {
+  // Overpass bbox format: south,west,north,east
+  return `${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]}`
 }
 
-function buildConstructionRouteQuery(areaId) {
-  return `
-[out:json][timeout:120];
-area(${areaId})->.a;
-(
-  relation(area.a)["type"="route"]["route"="construction"];
-  relation(area.a)["type"="route"]["construction"~"subway|light_rail"];
-  relation(area.a)["type"="route"]["state"="construction"];
-);
-out body;
->;
-out body qt;
-`.trim()
-}
-
-function buildProposedRouteQuery(areaId) {
-  return `
-[out:json][timeout:120];
-area(${areaId})->.a;
-(
-  relation(area.a)["type"="route"]["state"="proposed"];
-  relation(area.a)["type"="route"]["proposed"~"subway|light_rail"];
-);
-out body;
->;
-out body qt;
-`.trim()
-}
-
-function buildStandaloneStationQuery(areaId, includeConstruction, includeProposed) {
-  const clauses = []
-
+function buildRelationsOnlyQuery(bbox, includeConstruction, includeProposed) {
+  const bb = bboxToOverpass(bbox)
+  const clauses = [
+    `relation(${bb})["type"="route"]["route"~"subway|light_rail"];`,
+  ]
   if (includeConstruction) {
-    clauses.push(`node(area.a)["construction:railway"~"station|subway|light_rail"];`)
-    clauses.push(`node(area.a)["railway"="construction"]["station"~"subway|light_rail"];`)
-    clauses.push(`node(area.a)["railway"="station"]["station"~"subway|light_rail"]["state"="construction"];`)
-    clauses.push(`node(area.a)["railway"="station"]["station"~"subway|light_rail"]["construction"];`)
+    clauses.push(`relation(${bb})["type"="route"]["route"="construction"];`)
+    clauses.push(`relation(${bb})["type"="route"]["construction"~"subway|light_rail"];`)
+    clauses.push(`relation(${bb})["type"="route"]["state"="construction"];`)
   }
-
   if (includeProposed) {
-    clauses.push(`node(area.a)["proposed:railway"~"station|subway|light_rail"];`)
-    clauses.push(`node(area.a)["railway"="proposed"]["station"~"subway|light_rail"];`)
-    clauses.push(`node(area.a)["railway"="station"]["station"~"subway|light_rail"]["state"="proposed"];`)
-    clauses.push(`node(area.a)["railway"="station"]["station"~"subway|light_rail"]["proposed"];`)
+    clauses.push(`relation(${bb})["type"="route"]["state"="proposed"];`)
+    clauses.push(`relation(${bb})["type"="route"]["proposed"~"subway|light_rail"];`)
   }
+  return `
+[out:json][timeout:30];
+(
+  ${clauses.join('\n  ')}
+);
+out body;
+`.trim()
+}
 
-  if (!clauses.length) return null
-
+function buildWayNodesQuery(wayIds) {
+  if (!wayIds.length) return null
   return `
 [out:json][timeout:120];
-area(${areaId})->.a;
+(
+  ${wayIds.map((id) => `way(${id});`).join('\n  ')}
+);
+out body qt;
+>;
+out skel qt;
+`.trim()
+}
+
+function buildStandaloneStationQuery(bbox, includeConstruction, includeProposed) {
+  const bb = bboxToOverpass(bbox)
+  const clauses = []
+  if (includeConstruction) {
+    clauses.push(`node(${bb})["construction:railway"~"station|subway|light_rail"];`)
+    clauses.push(`node(${bb})["railway"="construction"]["station"~"subway|light_rail"];`)
+    clauses.push(`node(${bb})["railway"="station"]["station"~"subway|light_rail"]["state"="construction"];`)
+    clauses.push(`node(${bb})["railway"="station"]["station"~"subway|light_rail"]["construction"];`)
+  }
+  if (includeProposed) {
+    clauses.push(`node(${bb})["proposed:railway"~"station|subway|light_rail"];`)
+    clauses.push(`node(${bb})["railway"="proposed"]["station"~"subway|light_rail"];`)
+    clauses.push(`node(${bb})["railway"="station"]["station"~"subway|light_rail"]["state"="proposed"];`)
+    clauses.push(`node(${bb})["railway"="station"]["station"~"subway|light_rail"]["proposed"];`)
+  }
+  if (!clauses.length) return null
+  return `
+[out:json][timeout:30];
 (
   ${clauses.join('\n  ')}
 );
@@ -270,42 +267,49 @@ export async function importCityMetroNetwork(relationId, options = {}, signal, o
   const includeConstruction = Boolean(options.includeConstruction)
   const includeProposed = Boolean(options.includeProposed)
 
-  const areaId = 3600000000 + relationId
   const report = onProgress || (() => {})
 
-  // 1. Fetch boundary geometry (or use pre-supplied)
+  // 1. Fetch boundary first to get bbox (bbox queries are 10-100x faster than area() on Overpass)
   report(5, '获取行政边界...')
   let boundaryGeometry = options.boundaryGeoJson || null
   if (!boundaryGeometry) {
     const boundaryPayload = await postOverpassQuery(buildBoundaryQuery(relationId), signal)
     boundaryGeometry = extractBoundaryGeometry(boundaryPayload.elements)
   }
-  report(15, '边界获取完成')
-
   const bbox = boundaryGeometry ? bboxFromGeometry(boundaryGeometry) : null
+  if (!bbox) throw new Error('无法获取城市边界')
 
-  // 2. Build and execute route queries
-  const queries = [buildOpenRouteQuery(areaId)]
-  if (includeConstruction) {
-    queries.push(buildConstructionRouteQuery(areaId))
+  // 2. Fetch relations using bbox (fast) instead of area() (slow)
+  report(15, '查询线路关系...')
+  const relationsPayload = await postOverpassQuery(
+    buildRelationsOnlyQuery(bbox, includeConstruction, includeProposed), signal,
+  )
+
+  // 3. Collect way IDs from relations, fetch only those ways + nodes
+  const wayIdSet = new Set()
+  for (const el of relationsPayload.elements) {
+    if (el.type !== 'relation') continue
+    for (const m of el.members || []) {
+      if (m.type === 'way') wayIdSet.add(m.ref)
+    }
   }
-  if (includeProposed) {
-    queries.push(buildProposedRouteQuery(areaId))
+
+  report(25, '查询轨道几何数据...')
+  const wayIds = [...wayIdSet]
+  const WAY_BATCH_SIZE = 500
+  const fetchPromises = []
+  for (let i = 0; i < wayIds.length; i += WAY_BATCH_SIZE) {
+    const q = buildWayNodesQuery(wayIds.slice(i, i + WAY_BATCH_SIZE))
+    if (q) fetchPromises.push(postOverpassQuery(q, signal))
   }
-  const standaloneQuery = buildStandaloneStationQuery(areaId, includeConstruction, includeProposed)
+  const standaloneQuery = buildStandaloneStationQuery(bbox, includeConstruction, includeProposed)
   if (standaloneQuery) {
-    queries.push(standaloneQuery)
+    fetchPromises.push(postOverpassQuery(standaloneQuery, signal))
   }
+  const fetchResults = await Promise.all(fetchPromises)
 
-  report(20, '查询线路数据...')
-  const payloads = []
-  for (const query of queries) {
-    payloads.push(postOverpassQuery(query, signal))
-  }
-
-  const results = await Promise.all(payloads)
   report(55, '解析线路数据...')
-  const elements = mergeElements(results)
+  const elements = mergeElements([relationsPayload, ...fetchResults])
   const { nodes, ways, relations } = indexElements(elements)
 
   // 3. Process route relations into lines, stations, edges
@@ -314,19 +318,25 @@ export async function importCityMetroNetwork(relationId, options = {}, signal, o
   const nodeIdByStationId = new Map()
   const lineByKey = new Map()
   const edgeByPairKey = new Map()
+  const edgeLineIdSets = new Map()
+  const lineEdgeIdSets = new Map()
   const lineStatusById = new Map()
 
   let lineColorIndex = 0
 
+  // Build global adjacency graph once from all route relations
+  const routeRelations = []
   for (const relation of relations) {
     const tags = relation.tags || {}
     if (tags.type !== 'route') continue
-
     const status = classifyRelationStatus(tags)
-    if (!shouldIncludeStatus(status, includeConstruction, includeProposed)) {
-      continue
-    }
+    if (!shouldIncludeStatus(status, includeConstruction, includeProposed)) continue
+    routeRelations.push({ relation, status })
+  }
 
+  const globalAdjacency = buildGlobalAdjacency(routeRelations.map((r) => r.relation), ways, nodes)
+
+  for (const { relation, status } of routeRelations) {
     const lineKey = toLineKey(relation)
     if (!lineByKey.has(lineKey)) {
       lineByKey.set(lineKey, createLineFromRelation(relation, lineColorIndex, status))
@@ -339,7 +349,6 @@ export async function importCityMetroNetwork(relationId, options = {}, signal, o
     const line = lineByKey.get(lineKey)
     lineStatusById.set(line.id, line.status)
 
-    const relationAdjacency = buildRelationAdjacency(relation, ways, nodes)
     const stopNodeRefs = getOrderedStopNodeRefs(relation, ways, nodes)
       .map((ref) => Number(ref))
       .filter((ref) => nodes.has(ref))
@@ -393,7 +402,7 @@ export async function importCityMetroNetwork(relationId, options = {}, signal, o
         fromStationId < toStationId ? `${fromStationId}__${toStationId}` : `${toStationId}__${fromStationId}`
 
       if (!edgeByPairKey.has(pairKey)) {
-        const nodePath = shortestPath(relationAdjacency, fromNodeId, toNodeId)
+        const nodePath = shortestPath(globalAdjacency, fromNodeId, toNodeId)
         const waypoints = []
         for (const nodeId of nodePath) {
           const node = nodes.get(nodeId)
@@ -415,15 +424,21 @@ export async function importCityMetroNetwork(relationId, options = {}, signal, o
           lengthMeters: sumPathLength(finalWaypoints),
           isCurved: false,
         })
+        edgeLineIdSets.set(pairKey, new Set([line.id]))
       } else {
         const edge = edgeByPairKey.get(pairKey)
-        if (!edge.sharedByLineIds.includes(line.id)) {
+        const lineIdSet = edgeLineIdSets.get(pairKey)
+        if (!lineIdSet.has(line.id)) {
+          lineIdSet.add(line.id)
           edge.sharedByLineIds.push(line.id)
         }
       }
 
       const edge = edgeByPairKey.get(pairKey)
-      if (!line.edgeIds.includes(edge.id)) {
+      if (!lineEdgeIdSets.has(line.id)) lineEdgeIdSets.set(line.id, new Set())
+      const edgeIdSet = lineEdgeIdSets.get(line.id)
+      if (!edgeIdSet.has(edge.id)) {
+        edgeIdSet.add(edge.id)
         line.edgeIds.push(edge.id)
       }
     }

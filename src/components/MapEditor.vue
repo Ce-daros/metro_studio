@@ -57,6 +57,7 @@ const mapZoomText = ref('--')
 const mapZoomLevel = ref(4)
 let map = null
 let scaleControl = null
+let deferredProjectSyncStyleListener = null
 const GRID_SOURCE_ID = 'railmap-grid-source'
 const GRID_MINOR_LAYER_ID = 'railmap-grid-minor'
 const GRID_MAJOR_LAYER_ID = 'railmap-grid-major'
@@ -520,6 +521,10 @@ onBeforeUnmount(() => {
   store.unregisterActualRoutePngExporter(exportActualRoutePngFromMap)
   window.removeEventListener('resize', onWindowResize)
   if (unregisterEscapeCallback) unregisterEscapeCallback(escapeHandler)
+  if (map && deferredProjectSyncStyleListener) {
+    map.off('styledata', deferredProjectSyncStyleListener)
+    deferredProjectSyncStyleListener = null
+  }
   closeContextMenu()
   destroyTimelinePlayer()
   destroyNavigation()
@@ -588,9 +593,21 @@ watch(
       updateMapData(map, store)
     }
     if (map.isStyleLoaded()) {
+      if (deferredProjectSyncStyleListener) {
+        map.off('styledata', deferredProjectSyncStyleListener)
+        deferredProjectSyncStyleListener = null
+      }
       doUpdate()
     } else {
-      map.once('styledata', () => { if (map.isStyleLoaded()) doUpdate() })
+      if (!deferredProjectSyncStyleListener) {
+        deferredProjectSyncStyleListener = () => {
+          if (!map || !map.isStyleLoaded()) return
+          map.off('styledata', deferredProjectSyncStyleListener)
+          deferredProjectSyncStyleListener = null
+          doUpdate()
+        }
+        map.on('styledata', deferredProjectSyncStyleListener)
+      }
     }
   },
   { deep: true },

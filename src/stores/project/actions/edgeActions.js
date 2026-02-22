@@ -11,7 +11,7 @@ import {
 export const edgeActions = {
   selectEdge(edgeId, options = {}) {
     if (!this.project) return
-    const target = this.project.edges.find((edge) => edge.id === edgeId)
+    const target = this.edgeById.get(edgeId)
     if (!target) return
     const multi = Boolean(options.multi || options.toggle)
     const toggle = Boolean(options.toggle)
@@ -36,7 +36,7 @@ export const edgeActions = {
 
   selectEdgeAnchor(edgeId, anchorIndex) {
     if (!this.project) return
-    const edge = this.project.edges.find((item) => item.id === edgeId)
+    const edge = this.edgeById.get(edgeId)
     if (!edge) return
     const waypoints = this.resolveEditableEdgeWaypoints(edge)
     if (!waypoints || waypoints.length < 3) return
@@ -55,15 +55,15 @@ export const edgeActions = {
 
   resolveEditableEdgeWaypoints(edge) {
     if (!this.project || !edge) return null
-    const fromStation = this.project.stations.find((station) => station.id === edge.fromStationId)
-    const toStation = this.project.stations.find((station) => station.id === edge.toStationId)
+    const fromStation = this.stationById.get(edge.fromStationId)
+    const toStation = this.stationById.get(edge.toStationId)
     if (!fromStation || !toStation) return null
     return buildEditableEdgeWaypoints(edge, fromStation.lngLat, toStation.lngLat)
   },
 
   addEdgeAnchor(edgeId, lngLat, options = {}) {
     if (!this.project) return null
-    const edge = this.project.edges.find((item) => item.id === edgeId)
+    const edge = this.edgeById.get(edgeId)
     if (!edge) return null
     const point = cloneLngLat(lngLat)
     if (!point) return null
@@ -92,7 +92,7 @@ export const edgeActions = {
 
   updateEdgeAnchor(edgeId, anchorIndex, lngLat) {
     if (!this.project) return false
-    const edge = this.project.edges.find((item) => item.id === edgeId)
+    const edge = this.edgeById.get(edgeId)
     if (!edge) return false
     const point = cloneLngLat(lngLat)
     if (!point) return false
@@ -116,7 +116,7 @@ export const edgeActions = {
 
   removeEdgeAnchor(edgeId, anchorIndex) {
     if (!this.project) return false
-    const edge = this.project.edges.find((item) => item.id === edgeId)
+    const edge = this.edgeById.get(edgeId)
     if (!edge) return false
     const waypoints = this.resolveEditableEdgeWaypoints(edge)
     if (!waypoints || waypoints.length < 3) return false
@@ -143,7 +143,7 @@ export const edgeActions = {
 
   clearEdgeAnchors(edgeId) {
     if (!this.project) return false
-    const edge = this.project.edges.find((item) => item.id === edgeId)
+    const edge = this.edgeById.get(edgeId)
     if (!edge) return false
     const waypoints = this.resolveEditableEdgeWaypoints(edge)
     if (!waypoints || waypoints.length < 2) return false
@@ -164,8 +164,8 @@ export const edgeActions = {
   addEdgeBetweenStations(fromStationId, toStationId) {
     if (!this.project || fromStationId === toStationId) return null
 
-    const fromStation = this.project.stations.find((station) => station.id === fromStationId)
-    const toStation = this.project.stations.find((station) => station.id === toStationId)
+    const fromStation = this.stationById.get(fromStationId)
+    const toStation = this.stationById.get(toStationId)
     if (!fromStation || !toStation) return null
 
     const line = this.findOrCreateActiveLine()
@@ -176,13 +176,7 @@ export const edgeActions = {
         ? `${fromStationId}__${toStationId}`
         : `${toStationId}__${fromStationId}`
 
-    let edge = this.project.edges.find((item) => {
-      const key =
-        item.fromStationId < item.toStationId
-          ? `${item.fromStationId}__${item.toStationId}`
-          : `${item.toStationId}__${item.fromStationId}`
-      return key === pairKey
-    })
+    let edge = this.edgeByPairKey.get(pairKey)
 
     if (!edge) {
       edge = {
@@ -405,7 +399,7 @@ export const edgeActions = {
 
   reassignSelectedEdgesToLine(toLineId, options = {}) {
     if (!this.project) return false
-    const targetLine = this.project.lines.find((item) => item.id === toLineId)
+    const targetLine = this.lineById.get(toLineId)
     if (!targetLine) return false
 
     const selectedEdgeIds = Array.isArray(options.edgeIds)
@@ -461,11 +455,11 @@ export const edgeActions = {
 
   splitEdgeAtPoint(edgeId, lngLat) {
     if (!this.project || !Array.isArray(lngLat) || lngLat.length !== 2) return null
-    const edge = this.project.edges.find((item) => item.id === edgeId)
+    const edge = this.edgeById.get(edgeId)
     if (!edge) return null
 
-    const fromStation = this.project.stations.find((station) => station.id === edge.fromStationId)
-    const toStation = this.project.stations.find((station) => station.id === edge.toStationId)
+    const fromStation = this.stationById.get(edge.fromStationId)
+    const toStation = this.stationById.get(edge.toStationId)
     if (!fromStation || !toStation) return null
 
     const point = cloneLngLat(lngLat)
@@ -550,7 +544,7 @@ export const edgeActions = {
 
   canMergeEdgesAtStation(stationId) {
     if (!this.project) return false
-    const station = this.project.stations.find((s) => s.id === stationId)
+    const station = this.stationById.get(stationId)
     if (!station) return false
 
     const connectedEdges = (this.project.edges || []).filter(
@@ -572,7 +566,7 @@ export const edgeActions = {
 
   mergeEdgesAtStation(stationId) {
     if (!this.project) return false
-    const station = this.project.stations.find((s) => s.id === stationId)
+    const station = this.stationById.get(stationId)
     if (!station) return false
 
     const connectedEdges = (this.project.edges || []).filter(
@@ -609,8 +603,8 @@ export const edgeActions = {
       secondStationId = edgeA.toStationId
     }
 
-    const firstStation = this.project.stations.find((s) => s.id === firstStationId)
-    const secondStation = this.project.stations.find((s) => s.id === secondStationId)
+    const firstStation = this.stationById.get(firstStationId)
+    const secondStation = this.stationById.get(secondStationId)
     if (!firstStation || !secondStation) return false
 
     const firstWaypoints = this.resolveEditableEdgeWaypoints(firstEdge)

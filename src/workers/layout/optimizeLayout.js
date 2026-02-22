@@ -28,12 +28,6 @@ function optimizeLayout(payload) {
   const lines = payload?.lines || []
   const config = { ...DEFAULT_CONFIG, ...(payload?.config || {}) }
 
-  console.log('[LAYOUT] Input data:', {
-    stationCount: stations.length,
-    edgeCount: edges.length,
-    lineCount: lines.length,
-  })
-
   if (!stations.length || !edges.length) {
     return {
       stations,
@@ -54,32 +48,17 @@ function optimizeLayout(payload) {
 
   const stationIndex = new Map()
   stations.forEach((station, index) => {
-    if (!station?.id) {
-      console.warn(`[LAYOUT] Station at index ${index} missing id, skipping`)
-      return
-    }
+    if (!station?.id) return
     stationIndex.set(station.id, index)
   })
-  console.log('[LAYOUT] Station index built, mapping count:', stationIndex.size, '/', stations.length)
 
   const original = normalizeSeedPositions(stations, config.normalizeTargetSpan, config.geoSeedScale)
-  console.log('[LAYOUT] Normalized positions created, count:', original.length)
 
   const edgeRecords = []
-  let invalidEdgeCount = 0
   for (const edge of edges) {
     const fromIndex = stationIndex.get(edge.fromStationId)
     const toIndex = stationIndex.get(edge.toStationId)
     if (fromIndex == null || toIndex == null || fromIndex === toIndex) {
-      invalidEdgeCount++
-      console.warn('[LAYOUT] Invalid edge:', {
-        edgeId: edge.id,
-        fromStationId: edge.fromStationId,
-        toStationId: edge.toStationId,
-        fromIndex,
-        toIndex,
-        reason: fromIndex == null ? 'fromStationId not found' : toIndex == null ? 'toStationId not found' : 'self-loop'
-      })
       continue
     }
 
@@ -93,56 +72,36 @@ function optimizeLayout(payload) {
       desiredLength,
     })
   }
-  console.log('[LAYOUT] Edge records built, valid:', edgeRecords.length, '/', edges.length, 'invalid:', invalidEdgeCount)
   const edgeById = new Map(edgeRecords.map((edge) => [edge.id, edge]))
   const nodeDegrees = buildNodeDegrees(stations.length, edgeRecords)
   const lineChains = buildLineChains(lines, edgeById)
   const adjacency = buildAdjacency(stations.length, edgeRecords)
 
-  console.log('[LAYOUT] Data structures built:', {
-    nodeDegrees: nodeDegrees.length,
-    adjacency: adjacency.length,
-    lineChains: lineChains?.length || 0
-  })
-
   const positions = original.map((xy) => {
-    if (!xy || !Array.isArray(xy)) {
-      console.warn('[LAYOUT] Invalid position in original array, using [0,0]')
-      return [0, 0]
-    }
+    if (!xy || !Array.isArray(xy)) return [0, 0]
     return [...xy]
   })
-  console.log('[LAYOUT] Positions initialized, count:', positions.length)
 
   let temperature = config.initialTemperature
-
-  console.log('[LAYOUT] Starting force-directed iteration, maxIterations:', config.maxIterations)
 
   for (let iteration = 0; iteration < config.maxIterations; iteration += 1) {
     const forces = positions.map(() => [0, 0])
 
-    try {
-      applyAnchorForce(forces, positions, original, config)
-      applySpringAndAngleForce(forces, positions, original, edgeRecords, config)
-      applyRepulsionForce(forces, positions, config)
-      applyJunctionSpread(forces, positions, adjacency, nodeDegrees, config)
-      applyProximityRepel(forces, positions, edgeRecords, config)
-      if ((iteration + 1) % 14 === 0) {
-        applyCrossingRepel(forces, positions, edgeRecords, config)
-      }
-    } catch (error) {
-      console.error('[LAYOUT] Error in force application at iteration', iteration, ':', error)
-      throw error
+    applyAnchorForce(forces, positions, original, config)
+    applySpringAndAngleForce(forces, positions, original, edgeRecords, config)
+    applyRepulsionForce(forces, positions, config)
+    applyJunctionSpread(forces, positions, adjacency, nodeDegrees, config)
+    applyProximityRepel(forces, positions, edgeRecords, config)
+    if ((iteration + 1) % 14 === 0) {
+      applyCrossingRepel(forces, positions, edgeRecords, config)
     }
 
     const step = 0.12 * temperature
     for (let i = 0; i < positions.length; i += 1) {
       if (!positions[i] || !Array.isArray(positions[i]) || positions[i].length < 2) {
-        console.error('[LAYOUT] Invalid position at index', i, ':', positions[i])
         positions[i] = [0, 0]
       }
       if (!original[i] || !Array.isArray(original[i]) || original[i].length < 2) {
-        console.error('[LAYOUT] Invalid original at index', i, ':', original[i])
         original[i] = [0, 0]
       }
       positions[i][0] += forces[i][0] * step
@@ -153,33 +112,20 @@ function optimizeLayout(payload) {
     temperature *= config.cooling
   }
 
-  console.log('[LAYOUT] Applying post-processing steps')
-  try {
-    snapEdgesToEightDirections(positions, edgeRecords, 0.18)
-    straightenNearLinearSegments(positions, edgeRecords, lines, stations, config)
-    compactLongEdges(positions, edgeRecords, config.maxEdgeLength * 1.12)
-    snapEdgesToEightDirections(positions, edgeRecords, 0.24)
-    enforceOctilinearHardConstraints(positions, edgeRecords, stations, config)
-    clampDisplacement(positions, original, config.displacementLimit)
-  } catch (error) {
-    console.error('[LAYOUT] Error during post-processing:', error)
-    throw error
-  }
+  snapEdgesToEightDirections(positions, edgeRecords, 0.18)
+  straightenNearLinearSegments(positions, edgeRecords, lines, stations, config)
+  compactLongEdges(positions, edgeRecords, config.maxEdgeLength * 1.12)
+  snapEdgesToEightDirections(positions, edgeRecords, 0.24)
+  enforceOctilinearHardConstraints(positions, edgeRecords, stations, config)
+  clampDisplacement(positions, original, config.displacementLimit)
 
-  console.log('[LAYOUT] Applying refinement passes')
   for (let i = 0; i < positions.length; i += 1) {
     if (!positions[i] || !Array.isArray(positions[i]) || positions[i].length < 2) {
-      console.error('[LAYOUT] Invalid position before refinement pass at index', i, ':', positions[i])
       positions[i] = [0, 0]
     }
   }
-  try {
-    applyCrossingRepel(null, positions, edgeRecords, config)
-    clampDisplacement(positions, original, config.displacementLimit)
-  } catch (error) {
-    console.error('[LAYOUT] Error during refinement:', error)
-    throw error
-  }
+  applyCrossingRepel(null, positions, edgeRecords, config)
+  clampDisplacement(positions, original, config.displacementLimit)
   const proximityRepelPasses = Math.max(1, Math.floor(config.proximityRepelPasses || 2))
   for (let pass = 0; pass < proximityRepelPasses; pass += 1) {
     applyProximityRepel(null, positions, edgeRecords, config)

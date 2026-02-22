@@ -9,6 +9,7 @@ import { normalizeStationName } from './naming'
 import {
   UnionFind,
   buildRelationAdjacency,
+  buildGlobalAdjacency,
   shortestPath,
   hasSharedLine,
   sumPathLength,
@@ -262,12 +263,14 @@ function mergeStationsAndTopology({ stations, edges, lines, lineStatusById }) {
     const lengthMeters = sumPathLength(waypoints)
 
     if (!edgeByPair.has(pairKey)) {
+      const lineIdSet = new Set(edge.sharedByLineIds || [])
       const mergedEdge = {
         id: edge.id,
         fromStationId,
         toStationId,
         waypoints,
-        sharedByLineIds: [...new Set(edge.sharedByLineIds || [])],
+        _lineIdSet: lineIdSet,
+        sharedByLineIds: [...lineIdSet],
         lengthMeters,
         isCurved: false,
       }
@@ -276,7 +279,8 @@ function mergeStationsAndTopology({ stations, edges, lines, lineStatusById }) {
     } else {
       const mergedEdge = edgeByPair.get(pairKey)
       for (const lineId of edge.sharedByLineIds || []) {
-        if (!mergedEdge.sharedByLineIds.includes(lineId)) {
+        if (!mergedEdge._lineIdSet.has(lineId)) {
+          mergedEdge._lineIdSet.add(lineId)
           mergedEdge.sharedByLineIds.push(lineId)
         }
       }
@@ -289,6 +293,7 @@ function mergeStationsAndTopology({ stations, edges, lines, lineStatusById }) {
   }
 
   const mergedEdges = [...edgeByPair.values()]
+  for (const edge of mergedEdges) delete edge._lineIdSet
 
   const mergedLines = lines
     .map((line) => {
@@ -341,6 +346,7 @@ export {
   toNodeLngLat,
   getOrderedStopNodeRefs,
   buildRelationAdjacency,
+  buildGlobalAdjacency,
   shortestPath,
   sumPathLength,
   mergeStationsAndTopology,

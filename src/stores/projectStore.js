@@ -132,6 +132,17 @@ export const useProjectStore = defineStore('project', {
       }
       return map
     },
+    /** @returns {Map<string, import('../lib/projectModel').RailEdge>} */
+    edgeByPairKey(state) {
+      const map = new Map()
+      for (const edge of state.project?.edges || []) {
+        const key = edge.fromStationId < edge.toStationId
+          ? `${edge.fromStationId}__${edge.toStationId}`
+          : `${edge.toStationId}__${edge.fromStationId}`
+        map.set(key, edge)
+      }
+      return map
+    },
     /** @returns {import('../lib/projectModel').RailStation[]} */
     selectedStations(state) {
       if (!state.project) return []
