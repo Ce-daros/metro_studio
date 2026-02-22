@@ -14,12 +14,6 @@ import { snapEdgesToEightDirections } from './forces'
 function enforceOctilinearHardConstraints(positions, edgeRecords, stations, config) {
   if (!edgeRecords.length) return
 
-  console.log('[CONSTRAINT] enforceOctilinearHardConstraints starting:', {
-    positionsLength: positions.length,
-    edgeRecordsLength: edgeRecords.length,
-    stationsLength: stations.length
-  })
-
   const degree = new Array(positions.length).fill(0)
   for (const edge of edgeRecords) {
     degree[edge.fromIndex] += 1
@@ -130,14 +124,6 @@ function enforceMinStationSpacing(positions, stations, edgeRecords, nodeDegrees,
   const spacingStep = clamp(toFiniteNumber(config.stationSpacingStep, 0.58), 0.05, 1)
   const tolerance = Math.max(0, toFiniteNumber(config.stationSpacingTolerance, 0.06))
   const adjacentPairs = buildAdjacentPairSet(edgeRecords)
-
-  console.log('[CONSTRAINT] enforceMinStationSpacing starting:', {
-    positionsLength: positions.length,
-    stationsLength: stations.length,
-    spacingPasses,
-    minDistance,
-    minEdgeLength
-  })
 
   for (let pass = 0; pass < spacingPasses; pass += 1) {
     const { grid, cellSize } = buildSpatialGrid(positions, minDistance)

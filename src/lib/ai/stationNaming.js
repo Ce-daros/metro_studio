@@ -91,7 +91,6 @@ const ENGLISH_NAME_RESPONSE_SCHEMA = {
 
 /** @param {{nameZh: string, model: string, signal?: AbortSignal}} options @returns {Promise<string>} */
 export async function translateToEnglish({ nameZh, model, signal }) {
-  console.log('[stationNaming] translateToEnglish start', { nameZh, model })
   const payload = {
     model,
     stream: false,
@@ -109,18 +108,15 @@ export async function translateToEnglish({ nameZh, model, signal }) {
   }
 
   const response = await postWithFallback(payload, signal)
-  console.log('[stationNaming] translateToEnglish raw response:', extractContentText(response))
   const parsed = parseJsonResponse(response)
   const nameEn = String(parsed?.nameEn || '').trim()
   if (!nameEn) throw new Error('AI 未返回有效英文站名')
-  console.log('[stationNaming] translateToEnglish result:', nameEn)
   return nameEn
 }
 
 /** @param {{stations: Array<{stationId: string, nameZh: string}>, model: string, signal?: AbortSignal}} options @returns {Promise<Map<string, string>>} */
 export async function translateToEnglishBatch({ stations, model, signal }) {
   if (!stations || !stations.length) return new Map()
-  console.log('[stationNaming] translateToEnglishBatch start', { count: stations.length, model })
 
   const stationDescriptions = stations.map((item) => `【${item.stationId}】${item.nameZh}`).join('\n')
 
@@ -137,10 +133,8 @@ export async function translateToEnglishBatch({ stations, model, signal }) {
   }
 
   const response = await postWithFallback(payload, signal)
-  console.log('[stationNaming] translateToEnglishBatch raw response:', extractContentText(response))
   const parsed = parseJsonResponse(response)
   const translations = Array.isArray(parsed?.translations) ? parsed.translations : []
-  console.log('[stationNaming] translateToEnglishBatch parsed translations:', translations.length)
 
   const enMap = new Map()
   for (const t of translations) {
@@ -151,7 +145,6 @@ export async function translateToEnglishBatch({ stations, model, signal }) {
     enMap.set(id, nameEn)
   }
 
-  console.log('[stationNaming] translateToEnglishBatch result map size:', enMap.size)
   return enMap
 }
 
