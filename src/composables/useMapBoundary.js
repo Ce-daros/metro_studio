@@ -113,7 +113,7 @@ export function useMapBoundary({ store, getMap }) {
             [bbox.maxLng, bbox.maxLat],
           ],
           {
-            padding: { top: 80, bottom: 80, left: 80, right: 80 },
+            padding: { top: 40, bottom: 40, left: 40, right: 40 },
             maxZoom: 14,
             bearing: 0,
             pitch: 0,

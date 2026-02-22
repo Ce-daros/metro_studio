@@ -153,8 +153,8 @@ export function renderStations(ctx, stationIds, camera, width, height, stationMa
       ctx.textAlign = 'left'
       ctx.textBaseline = 'top'
       // White halo
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.92)'
-      ctx.lineWidth = Math.max(2.5, fontSize * 0.28)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)'
+      ctx.lineWidth = Math.max(2, fontSize * 0.22)
       ctx.lineJoin = 'round'
       ctx.strokeText(zhText, labelX, py - fontSize * 0.3)
       ctx.fillStyle = '#1a1a2e'
@@ -163,8 +163,8 @@ export function renderStations(ctx, stationIds, camera, width, height, stationMa
       if (station.nameEn && zoom >= 12.5) {
         const enFont = `500 ${fontSize * 0.78}px "Roboto Condensed", "Arial Narrow", sans-serif`
         ctx.font = enFont
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)'
-        ctx.lineWidth = Math.max(2, fontSize * 0.22)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.68)'
+        ctx.lineWidth = Math.max(1.5, fontSize * 0.18)
         ctx.strokeText(station.nameEn, labelX, py + fontSize * 0.65)
         ctx.fillStyle = '#7b8794'
         ctx.fillText(station.nameEn, labelX, py + fontSize * 0.65)
@@ -238,8 +238,8 @@ export function renderAnimatedStations(ctx, yearPlan, drawProgress, camera, widt
 
         if (station.nameEn && zoom >= 12.5) {
           ctx.font = `500 ${fontSize * 0.78}px "Roboto Condensed", "Arial Narrow", sans-serif`
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)'
-          ctx.lineWidth = Math.max(2, fontSize * 0.22)
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.68)'
+          ctx.lineWidth = Math.max(1.5, fontSize * 0.18)
           ctx.strokeText(station.nameEn, labelX, py + fontSize * 0.65)
           ctx.fillStyle = '#7b8794'
           ctx.fillText(station.nameEn, labelX, py + fontSize * 0.65)

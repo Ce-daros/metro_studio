@@ -343,6 +343,7 @@ onBeforeUnmount(() => {
         @show-ai-config="aiConfigVisible = true"
         @show-tts-dialog="ttsDialogVisible = true; nextTick(() => ttsDialogRef?.onOpen())"
         @show-shortcut-settings="shortcutSettingsVisible = true"
+        @show-activation-code="showUpgradeDialog('请输入激活码以激活正式版。')"
         @show-statistics="statisticsVisible = true"
         @show-about="aboutVisible = true"
         @show-batch-name-edit="batchNameEditVisible = true"
