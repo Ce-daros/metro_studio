@@ -31,7 +31,6 @@ const selectedStation = computed(() => {
 })
 
 const panelType = computed(() => {
-  console.log('[panel] selectedAnnotationId:', store.selectedAnnotationId, 'anchor:', store.selectedEdgeAnchor, 'edges:', selectedEdgeCount.value, 'stations:', selectedStationCount.value)
   if (store.selectedAnnotationId) return 'annotation'
   if (store.selectedEdgeAnchor) return 'anchor'
   if (selectedEdgeCount.value > 1) return 'edge-multi'

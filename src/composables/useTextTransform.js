@@ -22,7 +22,7 @@ export function useTextTransform() {
     const from = currentScript.value === 'traditional' ? 'cn' : 'tw'
     const to = currentScript.value === 'traditional' ? 'tw' : 'cn'
 
-    const factory = await Converter(from, to)
+    const factory = await Converter({ from, to })
     converter.value = factory
     return converter.value
   }
@@ -43,7 +43,7 @@ export function useTextTransform() {
 
     let conv = converter.value
     if (!conv || currentScript.value !== script) {
-      conv = await Converter(from, to)
+      conv = await Converter({ from, to })
       if (script === currentScript.value) {
         converter.value = conv
       }

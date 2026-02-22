@@ -1,13 +1,16 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { NModal } from 'naive-ui'
 import IconBase from './IconBase.vue'
 import { searchLocation } from '../lib/osm/nominatimSearch'
+import { pinyin } from 'pinyin-pro'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
   viewbox: { type: Array, default: null },
   targetProvince: { type: String, default: null },
+  stations: { type: Array, default: () => [] },
+  lines: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits(['close', 'select'])
@@ -18,6 +21,45 @@ const searchResults = ref([])
 const isSearching = ref(false)
 const searchError = ref(null)
 const selectedIndex = ref(-1)
+const activeTab = ref('location')
+
+// Precompute pinyin cache when stations change
+const stationPinyinCache = computed(() => {
+  const map = new Map()
+  for (const s of props.stations) {
+    const zh = s.nameZh || ''
+    if (zh) {
+      map.set(s.id, {
+        full: pinyin(zh, { toneType: 'none', type: 'array' }).join(''),
+        initials: pinyin(zh, { pattern: 'first', toneType: 'none', type: 'array' }).join(''),
+      })
+    }
+  }
+  return map
+})
+
+const lineMap = computed(() => new Map((props.lines || []).map(l => [l.id, l])))
+
+const stationResults = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return []
+  return props.stations.filter(s => {
+    const zh = (s.nameZh || '').toLowerCase()
+    const en = (s.nameEn || '').toLowerCase()
+    if (zh.includes(q) || en.includes(q)) return true
+    const py = stationPinyinCache.value.get(s.id)
+    return py && (py.full.includes(q) || py.initials.includes(q))
+  }).slice(0, 20)
+})
+
+function getStationLines(station) {
+  if (!station.lineIds) return []
+  return station.lineIds.map(id => lineMap.value.get(id)).filter(Boolean)
+}
+
+const currentResults = computed(() =>
+  activeTab.value === 'station' ? stationResults.value : searchResults.value
+)
 
 watch(() => props.visible, async (visible) => {
   if (visible) {
@@ -70,6 +112,10 @@ async function performSearch() {
 let searchDebounceTimer = null
 
 function onSearchInput() {
+  if (activeTab.value === 'station') {
+    selectedIndex.value = -1
+    return
+  }
   clearTimeout(searchDebounceTimer)
   searchDebounceTimer = setTimeout(() => {
     performSearch()
@@ -77,29 +123,47 @@ function onSearchInput() {
 }
 
 function handleKeyDown(event) {
-  if (searchResults.value.length === 0) return
+  const results = currentResults.value
+  if (event.key === 'Escape') { event.preventDefault(); emit('close'); return }
+  if (!results.length) return
 
   if (event.key === 'ArrowDown') {
     event.preventDefault()
-    selectedIndex.value = (selectedIndex.value + 1) % searchResults.value.length
+    selectedIndex.value = (selectedIndex.value + 1) % results.length
   } else if (event.key === 'ArrowUp') {
     event.preventDefault()
-    selectedIndex.value = selectedIndex.value <= 0 ? searchResults.value.length - 1 : selectedIndex.value - 1
+    selectedIndex.value = selectedIndex.value <= 0 ? results.length - 1 : selectedIndex.value - 1
   } else if (event.key === 'Enter' && selectedIndex.value >= 0) {
     event.preventDefault()
-    onSelectResult(searchResults.value[selectedIndex.value])
-  } else if (event.key === 'Escape') {
-    event.preventDefault()
-    emit('close')
+    if (activeTab.value === 'station') onSelectStation(results[selectedIndex.value])
+    else onSelectResult(results[selectedIndex.value])
   }
 }
 
 function onSelectResult(result) {
   emit('select', {
+    type: 'location',
     lngLat: [result.lon, result.lat],
     name: result.name || result.displayName.split(',')[0],
   })
   emit('close')
+}
+
+function onSelectStation(station) {
+  emit('select', {
+    type: 'station',
+    stationId: station.id,
+    lngLat: station.lngLat,
+    name: station.nameZh || station.nameEn,
+  })
+  emit('close')
+}
+
+function switchTab(tab) {
+  activeTab.value = tab
+  selectedIndex.value = -1
+  searchResults.value = []
+  searchError.value = null
 }
 
 function formatResultType(result) {
@@ -121,18 +185,23 @@ function formatResultType(result) {
 </script>
 
 <template>
-  <NModal :show="visible" preset="card" title="搜索地点" style="width:480px;max-width:calc(100vw - 32px)" @close="emit('close')" @mask-click="emit('close')">
+  <NModal :show="visible" preset="card" title="搜索" style="width:480px;max-width:calc(100vw - 32px)" @close="emit('close')" @mask-click="emit('close')">
+    <div class="map-search-dialog__tabs">
+      <button :class="['map-search-dialog__tab', { 'map-search-dialog__tab--active': activeTab === 'location' }]" @click="switchTab('location')">搜索地标</button>
+      <button :class="['map-search-dialog__tab', { 'map-search-dialog__tab--active': activeTab === 'station' }]" @click="switchTab('station')">搜索站点</button>
+    </div>
+
     <div class="map-search-dialog__search">
       <input
         ref="searchInputRef"
         v-model="searchQuery"
         type="text"
         class="map-search-dialog__input"
-        placeholder="输入地名、街道、地标..."
+        :placeholder="activeTab === 'station' ? '输入站名、拼音...' : '输入地名、街道、地标...'"
         @input="onSearchInput"
         @keydown="handleKeyDown"
       />
-      <div class="map-search-dialog__status">
+      <div v-if="activeTab === 'location'" class="map-search-dialog__status">
         <span v-if="isSearching" class="map-search-dialog__loading">搜索中...</span>
         <span v-else-if="searchError" class="map-search-dialog__error">{{ searchError }}</span>
         <span v-else-if="searchQuery && !isSearching && searchResults.length === 0" class="map-search-dialog__hint">
@@ -145,42 +214,105 @@ function formatResultType(result) {
     </div>
 
     <div class="map-search-dialog__results">
-      <div
-        v-for="(result, index) in searchResults"
-        :key="result.id"
-        class="map-search-dialog__result"
-        :class="{ 'map-search-dialog__result--selected': index === selectedIndex }"
-        @click="onSelectResult(result)"
-        @mouseenter="selectedIndex = index"
-      >
-        <div class="map-search-dialog__result-icon">
-          <IconBase name="map-pin" :size="16" />
+      <!-- Location results -->
+      <template v-if="activeTab === 'location'">
+        <div
+          v-for="(result, index) in searchResults"
+          :key="result.id"
+          class="map-search-dialog__result"
+          :class="{ 'map-search-dialog__result--selected': index === selectedIndex }"
+          @click="onSelectResult(result)"
+          @mouseenter="selectedIndex = index"
+        >
+          <div class="map-search-dialog__result-icon">
+            <IconBase name="map-pin" :size="16" />
+          </div>
+          <div class="map-search-dialog__result-content">
+            <div class="map-search-dialog__result-name">
+              {{ result.name || result.displayName.split(',')[0] }}
+            </div>
+            <div class="map-search-dialog__result-address">
+              {{ result.displayName }}
+            </div>
+            <div class="map-search-dialog__result-meta">
+              <span class="map-search-dialog__result-type">{{ formatResultType(result) }}</span>
+            </div>
+          </div>
         </div>
-        <div class="map-search-dialog__result-content">
-          <div class="map-search-dialog__result-name">
-            {{ result.name || result.displayName.split(',')[0] }}
-          </div>
-          <div class="map-search-dialog__result-address">
-            {{ result.displayName }}
-          </div>
-          <div class="map-search-dialog__result-meta">
-            <span class="map-search-dialog__result-type">{{ formatResultType(result) }}</span>
-          </div>
+        <div v-if="searchResults.length === 0 && !isSearching && !searchError && searchQuery" class="map-search-dialog__empty">
+          未找到匹配的地点
         </div>
-      </div>
+      </template>
 
-      <div v-if="searchResults.length === 0 && !isSearching && !searchError && searchQuery" class="map-search-dialog__empty">
-        未找到匹配的地点
-      </div>
+      <!-- Station results -->
+      <template v-else>
+        <div
+          v-for="(station, index) in stationResults"
+          :key="station.id"
+          class="map-search-dialog__result"
+          :class="{ 'map-search-dialog__result--selected': index === selectedIndex }"
+          @click="onSelectStation(station)"
+          @mouseenter="selectedIndex = index"
+        >
+          <div class="map-search-dialog__result-icon">
+            <IconBase name="circle" :size="16" />
+          </div>
+          <div class="map-search-dialog__result-content">
+            <div class="map-search-dialog__result-name">{{ station.nameZh || station.nameEn }}</div>
+            <div v-if="station.nameEn" class="map-search-dialog__result-address">{{ station.nameEn }}</div>
+            <div class="map-search-dialog__result-meta">
+              <span
+                v-for="line in getStationLines(station)"
+                :key="line.id"
+                class="map-search-dialog__line-tag"
+                :style="{ background: line.color || '#888' }"
+              >{{ line.nameZh || line.nameEn || line.id }}</span>
+            </div>
+          </div>
+        </div>
+        <div v-if="stationResults.length === 0 && searchQuery" class="map-search-dialog__empty">
+          未找到匹配的站点
+        </div>
+        <div v-if="!searchQuery" class="map-search-dialog__empty" style="padding:16px">
+          输入站名或拼音搜索项目内站点
+        </div>
+      </template>
     </div>
 
-    <div class="map-search-dialog__footer">
+    <div v-if="activeTab === 'location'" class="map-search-dialog__footer">
       <span class="map-search-dialog__powered">Powered by OpenStreetMap & Nominatim</span>
     </div>
   </NModal>
 </template>
 
 <style scoped>
+.map-search-dialog__tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--toolbar-divider);
+  padding: 0 16px;
+}
+
+.map-search-dialog__tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  border: none;
+  background: none;
+  color: var(--toolbar-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.map-search-dialog__tab:hover {
+  color: var(--toolbar-text);
+}
+
+.map-search-dialog__tab--active {
+  color: var(--toolbar-text);
+  border-bottom-color: var(--ark-pink, #f900bf);
+}
+
 .map-search-dialog__search {
   padding: 16px;
   flex-shrink: 0;
@@ -280,6 +412,13 @@ function formatResultType(result) {
   border-radius: 999px;
   background: var(--toolbar-badge-bg);
   color: var(--toolbar-badge-text);
+}
+
+.map-search-dialog__line-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
 }
 
 .map-search-dialog__empty {

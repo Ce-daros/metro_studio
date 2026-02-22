@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue'
 import IconBase from './IconBase.vue'
+import ProjectThumbnail from './ProjectThumbnail.vue'
 import { NTooltip, NModal } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
 import { useDialog } from '../composables/useDialog.js'
@@ -252,6 +253,7 @@ onMounted(() => {
             >
               <IconBase :name="isSelected(project.id) ? 'check' : 'square'" :size="13" />
             </button>
+            <ProjectThumbnail :project="project" class="dialog__thumbnail" />
             <div class="dialog__item-main">
               <span class="dialog__item-name">
                 <template v-for="(part, index) in highlightedParts(project.name)" :key="`${project.id}-name-${index}`">
@@ -450,7 +452,7 @@ onMounted(() => {
 .dialog__item {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 8px 10px 8px 10px;
@@ -620,6 +622,10 @@ onMounted(() => {
 @media (max-width: 640px) {
   .dialog__body {
     max-height: calc(100vh - 132px);
+  }
+
+  .dialog__thumbnail {
+    display: none;
   }
 
   .dialog__item {

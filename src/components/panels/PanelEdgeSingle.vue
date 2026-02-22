@@ -64,24 +64,28 @@ async function updateConvertedNames() {
     return
   }
 
-  const lines = selectedEdgeLines.value
-  const newLineMap = new Map()
-  for (const line of lines) {
-    const name = getDisplayLineName(line, 'zh')
-    if (name) {
-      newLineMap.set(line.id, await convertText(name, 'traditional'))
+  try {
+    const lines = selectedEdgeLines.value
+    const newLineMap = new Map()
+    for (const line of lines) {
+      const name = getDisplayLineName(line, 'zh')
+      if (name) {
+        newLineMap.set(line.id, await convertText(name, 'traditional'))
+      }
     }
-  }
-  convertedLineNames.value = newLineMap
+    convertedLineNames.value = newLineMap
 
-  const stations = [selectedEdgeStations.value.from, selectedEdgeStations.value.to].filter(Boolean)
-  const newStationMap = new Map()
-  for (const station of stations) {
-    if (station.nameZh) {
-      newStationMap.set(station.id, await convertText(station.nameZh, 'traditional'))
+    const stations = [selectedEdgeStations.value.from, selectedEdgeStations.value.to].filter(Boolean)
+    const newStationMap = new Map()
+    for (const station of stations) {
+      if (station.nameZh) {
+        newStationMap.set(station.id, await convertText(station.nameZh, 'traditional'))
+      }
     }
+    convertedStationNames.value = newStationMap
+  } catch (e) {
+    console.warn('[PanelEdgeSingle] convertText failed:', e)
   }
-  convertedStationNames.value = newStationMap
 }
 
 watch([selectedEdgeLines, selectedEdgeStations, isTraditional], () => {

@@ -37,21 +37,20 @@ async function updateConvertedLineNames() {
     convertedLineNames.value.clear()
     return
   }
-
-  const lines = belongingLines.value
-  const newMap = new Map()
-  for (const line of lines) {
-    const name = getDisplayLineName(line, 'zh')
-    if (name) {
-      newMap.set(line.id, await convertText(name, 'traditional'))
+  try {
+    const lines = belongingLines.value
+    const newMap = new Map()
+    for (const line of lines) {
+      const name = getDisplayLineName(line, 'zh')
+      if (name) {
+        newMap.set(line.id, await convertText(name, 'traditional'))
+      }
     }
+    convertedLineNames.value = newMap
+  } catch (e) {
+    console.warn('[PanelStationSingle] convertText failed:', e)
   }
-  convertedLineNames.value = newMap
 }
-
-watch([belongingLines, isTraditional], () => {
-  updateConvertedLineNames()
-}, { immediate: true })
 
 const coordinatesText = computed(() => {
   if (!selectedStation.value?.lngLat) return null
@@ -66,6 +65,10 @@ const belongingLines = computed(() => {
     .map((id) => lineMap.get(id))
     .filter(Boolean)
 })
+
+watch([belongingLines, isTraditional], () => {
+  updateConvertedLineNames()
+}, { immediate: true })
 
 const connectedEdgesCount = computed(() => {
   if (!selectedStation.value || !store.project?.edges) return 0

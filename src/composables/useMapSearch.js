@@ -119,26 +119,28 @@ export function useMapSearch() {
     if (!map) return
 
     const [lng, lat] = result.lngLat
-    const zoom = 15
 
     if (currentMarkerRemover) {
       currentMarkerRemover()
       currentMarkerRemover = null
     }
 
-    map.easeTo({
-      center: [lng, lat],
-      zoom,
-      duration: 1000,
-    })
+    if (result.type === 'station') {
+      map.easeTo({ center: [lng, lat], zoom: 15, duration: 1000 })
+      if (getStoreFn) {
+        const store = getStoreFn()
+        if (store && result.stationId) {
+          store.setSelectedStations([result.stationId])
+        }
+      }
+      return result.name ? `已跳转到站点: ${result.name}` : '已跳转到站点'
+    }
 
+    map.easeTo({ center: [lng, lat], zoom: 15, duration: 1000 })
     currentMarkerRemover = createMarker(map, lng, lat)
     setupMapClickListener(map)
 
-    if (result.name) {
-      return `已跳转到: ${result.name}`
-    }
-    return '已跳转到搜索位置'
+    return result.name ? `已跳转到: ${result.name}` : '已跳转到搜索位置'
   }
 
   function createMarker(map, lng, lat) {

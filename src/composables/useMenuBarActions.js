@@ -17,7 +17,14 @@ import { isTrial, PURCHASE_URL } from './useLicense'
 const CHINESE_CITY_REGIONS = [
   { label: '华北', ids: ['beijing', 'tianjin', 'shijiazhuang', 'taiyuan'] },
   { label: '东北', ids: ['shenyang', 'dalian', 'changchun', 'harbin'] },
-  { label: '华东', ids: ['shanghai', 'nanjing', 'hangzhou', 'suzhou', 'wuxi', 'changzhou', 'xuzhou', 'ningbo', 'wenzhou', 'shaoxing', 'hefei', 'wuhu', 'fuzhou', 'xiamen', 'jinan', 'qingdao', 'nanchang'] },
+  { 
+    label: '华东',
+    subregions: [
+      { label: '江浙沪皖', ids: ['shanghai', 'nanjing', 'hangzhou', 'suzhou', 'wuxi', 'changzhou', 'xuzhou', 'ningbo', 'wenzhou', 'shaoxing', 'hefei', 'wuhu', 'nanchang'] },
+      { label: '福建', ids: ['fuzhou', 'xiamen'] },
+      { label: '山东', ids: ['jinan', 'qingdao'] }
+    ]
+  },
   { label: '华中', ids: ['wuhan', 'changsha', 'zhengzhou', 'luoyang'] },
   { label: '华南', ids: ['guangzhou', 'shenzhen', 'foshan', 'dongguan', 'nanning'] },
   { label: '西部', ids: ['chengdu', 'chongqing', 'xian', 'kunming', 'guiyang', 'urumqi', 'lanzhou'] },
@@ -38,12 +45,27 @@ function buildCityMenuItems(presets, importing) {
 
 function buildChineseCityMenuItems(importing) {
   const presetMap = Object.fromEntries(CITY_PRESETS.map((p) => [p.id, p]))
-  return CHINESE_CITY_REGIONS.map((region) => ({
-    type: 'submenu',
-    label: region.label,
-    icon: 'git-branch',
-    children: buildCityMenuItems(region.ids.map((id) => presetMap[id]).filter(Boolean), importing),
-  }))
+  return CHINESE_CITY_REGIONS.map((region) => {
+    if (region.subregions) {
+      return {
+        type: 'submenu',
+        label: region.label,
+        icon: 'git-branch',
+        children: region.subregions.map((subregion) => ({
+          type: 'submenu',
+          label: subregion.label,
+          icon: 'git-branch',
+          children: buildCityMenuItems(subregion.ids.map((id) => presetMap[id]).filter(Boolean), importing),
+        })),
+      }
+    }
+    return {
+      type: 'submenu',
+      label: region.label,
+      icon: 'git-branch',
+      children: buildCityMenuItems(region.ids.map((id) => presetMap[id]).filter(Boolean), importing),
+    }
+  })
 }
 
 // ── UI theme / font ──

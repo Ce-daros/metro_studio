@@ -35,6 +35,7 @@ import { useShortcuts } from './composables/useShortcuts.js'
 import { useMapSearch } from './composables/useMapSearch.js'
 import { isTrial, TRIAL_LIMITS } from './composables/useLicense'
 import { findCityPresetById } from './lib/osm/cityPresets'
+import { loadLatestProjectFromDb } from './lib/storage/db'
 
 const store = useProjectStore()
 const { searchVisible, mapViewbox, targetProvince, openSearchDialogWithProvince, closeSearchDialog, onSearchResultSelect } = useMapSearch()
@@ -180,13 +181,16 @@ async function handleMenuAction(action) {
     },
     importOsm: async () => {
       if (isTrial.value) { showUpgradeDialog('试用版不支持导入线网，请激活正式版。'); return }
-      const ok = await confirm({ 
-        title: '导入线网', 
-        message: '导入济南 OSM 线网将创建一个新工程，当前工程将被保留。是否继续？', 
-        confirmText: '继续导入',
-        cancelText: '取消'
-      })
-      if (!ok) return
+      const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
+      if (!isEmptyProject) {
+        const ok = await confirm({ 
+          title: '导入线网', 
+          message: '导入济南 OSM 线网将创建一个新工程，当前工程将被保留。是否继续？', 
+          confirmText: '继续导入',
+          cancelText: '取消'
+        })
+        if (!ok) return
+      }
       store.importJinanNetwork()
     },
     aiConfig: () => {
@@ -202,13 +206,16 @@ async function handleMenuAction(action) {
     const cityId = action.slice('importCity_'.length)
     const preset = findCityPresetById(cityId)
     const cityName = preset ? preset.name : cityId
-    const ok = await confirm({ 
-      title: '导入线网', 
-      message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`, 
-      confirmText: '继续导入',
-      cancelText: '取消'
-    })
-    if (!ok) return
+    const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
+    if (!isEmptyProject) {
+      const ok = await confirm({ 
+        title: '导入线网', 
+        message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`, 
+        confirmText: '继续导入',
+        cancelText: '取消'
+      })
+      if (!ok) return
+    }
     store.importCityNetwork(cityId)
     return
   }
@@ -237,6 +244,15 @@ function openGlobalProjectFilePicker() {
 
 function onShowReachability({ stationId, thresholdMeters }) {
   store.setReachability(stationId, thresholdMeters)
+}
+
+async function handleEnterDirectly() {
+  const latestProject = await loadLatestProjectFromDb()
+  if (latestProject) {
+    await store.loadProjectById(latestProject.id)
+  } else {
+    await store.createNewProject('未命名工程')
+  }
 }
 
 // ── Shortcut system ──
@@ -418,7 +434,7 @@ onBeforeUnmount(() => {
       class="app__welcome-full"
       @create-project="handleMenuAction('createProject')"
       @import-project="openGlobalProjectFilePicker"
-      @enter-directly="store.createNewProject('未命名工程')"
+      @enter-directly="handleEnterDirectly"
     />
   </main>
   <ProjectListDialog :visible="projectListVisible" @close="projectListVisible = false" />
@@ -433,7 +449,7 @@ onBeforeUnmount(() => {
   <UpgradeDialog :visible="upgradeVisible" :message="upgradeMessage" @close="upgradeVisible = false" />
   <BatchNameEditDialog :visible="batchNameEditVisible" @close="batchNameEditVisible = false" />
   <StationTTSDialog ref="ttsDialogRef" :project="store.project" :visible="ttsDialogVisible" @close="ttsDialogVisible = false" />
-  <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" @close="closeSearchDialog" @select="onSearchResultSelect" />
+  <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" :stations="store.project?.stations || []" :lines="store.project?.lines || []" @close="closeSearchDialog" @select="onSearchResultSelect" />
   <HelpView v-if="helpVisible" :init-category="helpInitCategory" @close="helpVisible = false" />
   <input
     ref="globalFileInputRef"

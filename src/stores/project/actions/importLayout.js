@@ -99,34 +99,50 @@ const importLayoutActions = {
   },
 
   /**
-   * Shared logic: apply an imported network result to the current project.
+   * Shared logic: apply an imported network result to current project.
    * @param {object} imported  Return value from importJinanMetroFromOsm or importCityMetroNetwork
    */
   _applyImportedNetwork(imported) {
     const now = new Date().toISOString()
     const currentProjectName = String(this.project.name || '').trim() || '新建工程'
     const cityLabel = imported.region?.name || 'OSM'
+    
+    const isEmptyProject = !this.project.stations?.length && !this.project.lines?.length
 
-    this.project = normalizeProject({
-      id: createId('project'),
-      name: `${currentProjectName} (${cityLabel} OSM导入)`,
-      region: imported.region,
-      regionBoundary: imported.boundary,
-      stations: imported.stations,
-      manualTransfers: [],
-      edges: imported.edges,
-      lines: imported.lines,
-      snapshots: [],
-      layoutMeta: {
+    if (isEmptyProject) {
+      this.project.region = imported.region
+      this.project.regionBoundary = imported.boundary
+      this.project.stations = imported.stations
+      this.project.manualTransfers = []
+      this.project.edges = imported.edges
+      this.project.lines = imported.lines
+      this.project.layoutMeta = {
         stationLabels: {},
         edgeDirections: {},
-      },
-      layoutConfig: this.project.layoutConfig,
-      meta: {
-        createdAt: now,
-        updatedAt: now,
-      },
-    })
+      }
+      this.project.meta.updatedAt = now
+    } else {
+      this.project = normalizeProject({
+        id: createId('project'),
+        name: `${currentProjectName} (${cityLabel} OSM导入)`,
+        region: imported.region,
+        regionBoundary: imported.boundary,
+        stations: imported.stations,
+        manualTransfers: [],
+        edges: imported.edges,
+        lines: imported.lines,
+        snapshots: [],
+        layoutMeta: {
+          stationLabels: {},
+          edgeDirections: {},
+        },
+        layoutConfig: this.project.layoutConfig,
+        meta: {
+          createdAt: now,
+          updatedAt: now,
+        },
+      })
+    }
 
     this.regionBoundary = imported.boundary
 
@@ -146,7 +162,9 @@ const importLayoutActions = {
     }
     this.recomputeStationLineMembership()
 
-    this.statusText = `导入完成（已新建工程）: ${this.project.lines.length} 条线 / ${this.project.stations.length} 站`
+    this.statusText = isEmptyProject 
+      ? `导入完成: ${this.project.lines.length} 条线 / ${this.project.stations.length} 站`
+      : `导入完成（已新建工程）: ${this.project.lines.length} 条线 / ${this.project.stations.length} 站`
     this.resetHistoryBaseline()
 
     this.fitToNetwork()
