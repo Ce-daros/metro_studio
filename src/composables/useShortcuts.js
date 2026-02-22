@@ -46,11 +46,8 @@ export function useShortcuts(handlers, options = {}) {
         if (!matchesEvent(binding.parsed, event)) continue
         if (!handlers[binding.id]) continue
 
-        // In text inputs, only allow shortcuts with Ctrl/Meta modifier
-        if (inTextInput) {
-          const hasModifier = binding.parsed.ctrl || binding.parsed.meta
-          if (!hasModifier) continue
-        }
+        // In text inputs, skip all shortcuts so native input behavior works
+        if (inTextInput) continue
 
         event.preventDefault()
         handlers[binding.id](event)

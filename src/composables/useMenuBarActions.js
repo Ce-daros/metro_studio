@@ -175,7 +175,7 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'item', label: 'AI 配置', action: 'aiConfig', icon: 'settings' },
     { type: 'item', label: '配置 Protomaps API Key', action: 'configProtomapsKey', icon: 'key' },
     { type: 'item', label: '配置 LocationIQ API Key', action: 'configLocationIqKey', icon: 'key' },
-    { type: 'item', label: '输入激活码', action: 'activationCode', icon: 'key' },
+    ...(isTrial.value ? [{ type: 'item', label: '输入激活码', action: 'activationCode', icon: 'key' }] : []),
     { type: 'separator' },
     { type: 'toggle', label: '启用动画', checked: animationsEnabled.value, action: 'toggleAnimations', icon: 'zap' },
     { type: 'separator' },

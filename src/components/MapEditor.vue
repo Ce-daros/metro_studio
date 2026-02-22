@@ -581,10 +581,17 @@ watch(
     timelineFilterYear: store.timelineFilterYear,
   }),
   () => {
-    if (!map || !map.isStyleLoaded()) return
-    ensureSources(map, store)
-    ensureMapLayers(map, store)
-    updateMapData(map, store)
+    if (!map) return
+    const doUpdate = () => {
+      ensureSources(map, store)
+      ensureMapLayers(map, store)
+      updateMapData(map, store)
+    }
+    if (map.isStyleLoaded()) {
+      doUpdate()
+    } else {
+      map.once('styledata', () => { if (map.isStyleLoaded()) doUpdate() })
+    }
   },
   { deep: true },
 )

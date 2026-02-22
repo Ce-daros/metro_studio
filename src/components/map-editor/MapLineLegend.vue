@@ -111,7 +111,7 @@ function toggleCollapsed() {
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32), inset 0 0 0 1px var(--legend-glow);
   backdrop-filter: blur(10px);
   color: #eef6ff;
-  z-index: 12;
+  z-index: 16;
   overflow: hidden;
   animation: legend-enter 240ms ease-out both;
 }

@@ -47,6 +47,7 @@ export const useProjectStore = defineStore('project', {
     quickLinkStartStationId: null,
     activeLineId: null,
     isImporting: false,
+    importProgress: -1,
     isLayoutRunning: false,
     isInitialized: false,
     statusText: '',

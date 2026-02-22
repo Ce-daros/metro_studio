@@ -85,13 +85,8 @@ const projectSummary = computed(() => {
       <Transition name="mode-fade" mode="out-in">
         <span :key="modeLabel" class="status-bar__badge ark-chamfer">{{ modeLabel }}</span>
       </Transition>
-      <span v-if="store.currentEditYear != null" class="status-bar__badge status-bar__badge--year">编辑年份: {{ store.currentEditYear }}</span>
     </div>
     <div class="status-bar__divider"></div>
-    <div class="status-bar__section">
-      <span class="status-bar__label">[选中]</span>
-      <span class="status-bar__value">{{ selectionSummary }}</span>
-    </div>
     <div class="status-bar__divider"></div>
     <div class="status-bar__section status-bar__section--grow">
       <span class="status-bar__label">[工程]</span>
@@ -103,9 +98,15 @@ const projectSummary = computed(() => {
       <span class="status-bar__value">{{ saveIndicator.label }}</span>
       <span v-if="lastSavedLabel && saveState?.value !== 'saving'" class="status-bar__save-time">{{ lastSavedLabel }}</span>
     </div>
-    <div v-if="store.statusText" class="status-bar__divider"></div>
-    <div v-if="store.statusText" class="status-bar__section status-bar__section--status">
-      <span class="status-bar__value status-bar__value--status">{{ store.statusText }}</span>
+    <div v-if="store.statusText || store.importProgress >= 0" class="status-bar__divider"></div>
+    <div v-if="store.statusText || store.importProgress >= 0" class="status-bar__section status-bar__section--status">
+      <div v-if="store.importProgress >= 0" class="status-bar__import-progress">
+        <div class="status-bar__import-track">
+          <div class="status-bar__import-fill" :style="{ width: `${store.importProgress}%` }" />
+        </div>
+        <span class="status-bar__value status-bar__value--status">{{ store.statusText }} {{ store.importProgress }}%</span>
+      </div>
+      <span v-else class="status-bar__value status-bar__value--status">{{ store.statusText }}</span>
     </div>
     <div class="status-bar__divider"></div>
     <div class="status-bar__section">
@@ -275,6 +276,28 @@ const projectSummary = computed(() => {
 .status-bar__save-time {
   color: var(--ark-text-dim);
   font-size: 12px;
+}
+
+.status-bar__import-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.status-bar__import-track {
+  width: 80px;
+  height: 4px;
+  background: rgba(188, 31, 255, 0.15);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.status-bar__import-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ark-purple, #bc1fff), var(--ark-pink, #f900bf));
+  box-shadow: 0 0 6px rgba(249, 0, 191, 0.5);
+  transition: width 0.3s ease;
 }
 
 .status-bar__barcode {

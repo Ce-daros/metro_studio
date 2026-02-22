@@ -14,6 +14,7 @@ const importLayoutActions = {
     const { isTrial } = await import('../../../composables/useLicense')
     if (isTrial.value) { this.statusText = '试用版不支持导入线网'; return }
     this.isImporting = true
+    this.importProgress = 0
     this.statusText = '正在保存当前工程...'
     try {
       await this.persistNow()
@@ -22,11 +23,13 @@ const importLayoutActions = {
         includeConstruction: false,
         includeProposed: false,
       })
+      this.importProgress = 100
       this._applyImportedNetwork(imported)
     } catch (error) {
       this.statusText = `导入失败: ${error.message || 'unknown error'}`
     } finally {
       this.isImporting = false
+      this.importProgress = -1
     }
   },
 
@@ -71,6 +74,7 @@ const importLayoutActions = {
     const displayName = preset ? preset.name : `OSM #${relationId}`
 
     this.isImporting = true
+    this.importProgress = 0
     this.statusText = '正在保存当前工程...'
     try {
       await this.persistNow()
@@ -79,13 +83,18 @@ const importLayoutActions = {
       const imported = await importCityMetroNetwork(relationId, {
         includeConstruction: importOptions.includeConstruction ?? false,
         includeProposed: importOptions.includeProposed ?? false,
+      }, undefined, (percent, msg) => {
+        this.importProgress = percent
+        if (msg) this.statusText = msg
       })
 
+      this.importProgress = 100
       this._applyImportedNetwork(imported)
     } catch (error) {
       this.statusText = `导入失败: ${error.message || 'unknown error'}`
     } finally {
       this.isImporting = false
+      this.importProgress = -1
     }
   },
 

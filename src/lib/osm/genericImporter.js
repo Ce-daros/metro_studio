@@ -266,18 +266,21 @@ function isPointInsideBbox(lngLat, bbox) {
  * @param {AbortSignal} [signal]
  * @returns {Promise<{region: object, boundary: object, stations: Array, edges: Array, lines: Array, importMeta: object}>}
  */
-export async function importCityMetroNetwork(relationId, options = {}, signal) {
+export async function importCityMetroNetwork(relationId, options = {}, signal, onProgress) {
   const includeConstruction = Boolean(options.includeConstruction)
   const includeProposed = Boolean(options.includeProposed)
 
   const areaId = 3600000000 + relationId
+  const report = onProgress || (() => {})
 
   // 1. Fetch boundary geometry (or use pre-supplied)
+  report(5, '获取行政边界...')
   let boundaryGeometry = options.boundaryGeoJson || null
   if (!boundaryGeometry) {
     const boundaryPayload = await postOverpassQuery(buildBoundaryQuery(relationId), signal)
     boundaryGeometry = extractBoundaryGeometry(boundaryPayload.elements)
   }
+  report(15, '边界获取完成')
 
   const bbox = boundaryGeometry ? bboxFromGeometry(boundaryGeometry) : null
 
@@ -294,16 +297,19 @@ export async function importCityMetroNetwork(relationId, options = {}, signal) {
     queries.push(standaloneQuery)
   }
 
+  report(20, '查询线路数据...')
   const payloads = []
   for (const query of queries) {
     payloads.push(postOverpassQuery(query, signal))
   }
 
   const results = await Promise.all(payloads)
+  report(55, '解析线路数据...')
   const elements = mergeElements(results)
   const { nodes, ways, relations } = indexElements(elements)
 
   // 3. Process route relations into lines, stations, edges
+  report(60, '构建站点与线段...')
   const stationByNodeId = new Map()
   const nodeIdByStationId = new Map()
   const lineByKey = new Map()
@@ -458,6 +464,7 @@ export async function importCityMetroNetwork(relationId, options = {}, signal) {
   }
 
   // 5. Merge stations by proximity and name, compute display positions
+  report(80, '合并站点拓扑...')
   const merged = mergeStationsAndTopology({
     stations: [...stationByNodeId.values()],
     edges: [...edgeByPairKey.values()],
@@ -465,6 +472,7 @@ export async function importCityMetroNetwork(relationId, options = {}, signal) {
     lineStatusById,
   })
 
+  report(95, '生成工程数据...')
   // 6. Build region metadata
   const preset = findCityPresetByRelationId(relationId)
   const regionName = preset ? preset.name : `OSM #${relationId}`
