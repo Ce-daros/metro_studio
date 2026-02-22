@@ -34,6 +34,7 @@ import { useAnimationSettings } from './composables/useAnimationSettings.js'
 import { useShortcuts } from './composables/useShortcuts.js'
 import { useMapSearch } from './composables/useMapSearch.js'
 import { isTrial, TRIAL_LIMITS } from './composables/useLicense'
+import { findCityPresetById } from './lib/osm/cityPresets'
 
 const store = useProjectStore()
 const { searchVisible, mapViewbox, targetProvince, openSearchDialogWithProvince, closeSearchDialog, onSearchResultSelect } = useMapSearch()
@@ -136,7 +137,7 @@ async function setActiveView(viewKey) {
   }
 }
 
-function handleMenuAction(action) {
+async function handleMenuAction(action) {
   if (!action) return
 
   const actionMap = {
@@ -177,8 +178,15 @@ function handleMenuAction(action) {
       if (!ok) return
       await store.deleteProjectById(store.project.id)
     },
-    importOsm: () => {
+    importOsm: async () => {
       if (isTrial.value) { showUpgradeDialog('试用版不支持导入线网，请激活正式版。'); return }
+      const ok = await confirm({ 
+        title: '导入线网', 
+        message: '导入济南 OSM 线网将创建一个新工程，当前工程将被保留。是否继续？', 
+        confirmText: '继续导入',
+        cancelText: '取消'
+      })
+      if (!ok) return
       store.importJinanNetwork()
     },
     aiConfig: () => {
@@ -192,6 +200,15 @@ function handleMenuAction(action) {
   if (action.startsWith('importCity_')) {
     if (isTrial.value) { showUpgradeDialog('试用版不支持导入线网，请激活正式版。'); return }
     const cityId = action.slice('importCity_'.length)
+    const preset = findCityPresetById(cityId)
+    const cityName = preset ? preset.name : cityId
+    const ok = await confirm({ 
+      title: '导入线网', 
+      message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`, 
+      confirmText: '继续导入',
+      cancelText: '取消'
+    })
+    if (!ok) return
     store.importCityNetwork(cityId)
     return
   }

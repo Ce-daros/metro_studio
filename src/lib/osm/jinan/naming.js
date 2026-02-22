@@ -121,8 +121,6 @@ function normalizeStationName(name) {
     .trim()
     .replace(/\s+/g, '')
     .replace(/[（(][^()（）]*[)）]/g, '')
-    .replace(/站$/u, '')
-    .toLowerCase()
 }
 
 export {

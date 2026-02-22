@@ -149,6 +149,7 @@ const importLayoutActions = {
     this.statusText = `导入完成（已新建工程）: ${this.project.lines.length} 条线 / ${this.project.stations.length} 站`
     this.resetHistoryBaseline()
 
+    this.fitToNetwork()
     this.persistNow().catch(() => {})
   },
 

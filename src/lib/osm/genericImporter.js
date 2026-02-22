@@ -65,7 +65,7 @@ function buildWayNodesQuery(wayIds) {
 );
 out body qt;
 >;
-out skel qt;
+out body qt;
 `.trim()
 }
 

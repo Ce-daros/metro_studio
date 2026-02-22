@@ -50,6 +50,13 @@ export function useToolbarProjectManagement() {
   }
 
   async function importFromOsm() {
+    const ok = await confirm({ 
+      title: '导入线网', 
+      message: '导入济南 OSM 线网将创建一个新工程，当前工程将被保留。是否继续？', 
+      confirmText: '继续导入',
+      cancelText: '取消'
+    })
+    if (!ok) return
     await store.importJinanNetwork()
     projectRenameName.value = store.project?.name || ''
     await refreshProjectOptions()
