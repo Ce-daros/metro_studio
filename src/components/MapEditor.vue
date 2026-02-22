@@ -10,6 +10,9 @@ import {
   LAYER_EDGES_HIT,
   LAYER_EDGES_SQUARE,
   LAYER_STATIONS,
+  SOURCE_EDGE_ANCHORS,
+  SOURCE_EDGES,
+  SOURCE_STATIONS,
 } from './map-editor/constants'
 import { buildMapStyle } from './map-editor/mapStyle'
 import {
@@ -587,12 +590,17 @@ watch(
   }),
   () => {
     if (!map) return
+    const hasCoreSources =
+      Boolean(map.getSource(SOURCE_STATIONS)) &&
+      Boolean(map.getSource(SOURCE_EDGES)) &&
+      Boolean(map.getSource(SOURCE_EDGE_ANCHORS))
     const doUpdate = () => {
       ensureSources(map, store)
       ensureMapLayers(map, store)
       updateMapData(map, store)
+      if (typeof map.triggerRepaint === 'function') map.triggerRepaint()
     }
-    if (map.isStyleLoaded()) {
+    if (map.isStyleLoaded() || hasCoreSources) {
       if (deferredProjectSyncStyleListener) {
         map.off('styledata', deferredProjectSyncStyleListener)
         deferredProjectSyncStyleListener = null
