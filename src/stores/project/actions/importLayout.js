@@ -124,7 +124,7 @@ const importLayoutActions = {
     } else {
       this.project = normalizeProject({
         id: createId('project'),
-        name: `${currentProjectName} (${cityLabel} OSM导入)`,
+        name: `${currentProjectName} (${cityLabel} OSM 导入)`,
         region: imported.region,
         regionBoundary: imported.boundary,
         stations: imported.stations,
@@ -201,6 +201,8 @@ const importLayoutActions = {
     } catch (error) {
       const stackTrace = error.stack || '无调用栈信息'
       this.statusText = `自动排版失败: ${error.message || 'unknown error'}\n\n调用栈:\n${stackTrace}`
+    } finally {
+      this.isLayoutRunning = false
     }
   },
 

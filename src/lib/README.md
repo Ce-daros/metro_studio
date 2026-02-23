@@ -20,7 +20,7 @@
 
 - **ai/** — LLM 能力封装（站点命名候选生成、结构化 JSON 校验与回退），详见 `ai/README.md`
 - **hud/** — 车辆 HUD 渲染模型（线路主路径、方向、换乘标识、超长单弯折返），详见 `hud/README.md`
-- **export/** — 导出逻辑（实际走向图 PNG、官方风格图 PNG、车辆 HUD ZIP），详见 `export/README.md`
+- **export/** — 导出逻辑（实际走向高清图、分享小图、官方风格图、车辆 HUD ZIP），详见 `export/README.md`
 - **layout/** — 布局 Worker 调用端，详见 `layout/README.md`
 - **ranking/** — 全球轨道交通排行榜与工程里程排名计算（Wikipedia 实时榜单解析），详见 `ranking/README.md`
 - **schematic/** — 示意图渲染模型（预览与导出共享，支持线段级线型覆盖），详见 `schematic/README.md`

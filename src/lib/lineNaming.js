@@ -64,19 +64,3 @@ export function getDisplayLineName(line, locale = 'zh') {
   if (!isLoopByName) return raw
   return stripLoopTerminusSuffix(raw, locale !== 'en')
 }
-
-export async function getDisplayLineNameWithConvert(line, locale = 'zh', convertText = null) {
-  if (!line) return ''
-  let raw = locale === 'en' ? cleanInput(line.nameEn) : cleanInput(line.nameZh)
-  if (!raw) return ''
-
-  if (locale !== 'en' && convertText) {
-    raw = await convertText(raw)
-  }
-
-  const zhName = cleanInput(line.nameZh)
-  const enName = cleanInput(line.nameEn)
-  const isLoopByName = /环/u.test(zhName) || /\b(?:loop|circle)\b/i.test(enName)
-  if (!isLoopByName) return raw
-  return stripLoopTerminusSuffix(raw, locale !== 'en')
-}

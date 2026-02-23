@@ -333,7 +333,7 @@ onMounted(() => {
     dCanvas.width = size
     dCanvas.height = size
 
-    // 工业化地铁网络拓扑 (45度/90度法则)
+    // 工业化地铁网络拓扑 (45 度/90 度法则)
     const STATIONS = [
       { id: 'N1', x: 60, y: 60, code: 'N-01' },
       { id: 'N2', x: 150, y: 60, code: 'N-02' },

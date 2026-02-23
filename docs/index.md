@@ -33,8 +33,8 @@ features:
     details: 根据站点周边地理信息，自动生成中英文站点名称。
   - icon: 🎥
     title: 时间线动画
-    details: 按年份展示线网发展历程，支持导出动画视频。
+    details: 按年份展示线网发展历程，支持播放预览与节奏控制。
   - icon: 📥
     title: 数据导入导出
-    details: 从 OpenStreetMap 导入真实数据，导出 PNG 图片、视频和项目文件。
+    details: 从 OpenStreetMap 导入真实数据，导出大图、分享小图（全网）、官方风格图、HUD 与项目文件。
 ---

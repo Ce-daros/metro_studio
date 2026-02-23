@@ -75,6 +75,26 @@ const projectSummary = computed(() => {
   const lineCount = store.project.lines?.length || 0
   return `${lineCount} 线路 · ${stationCount} 站点 · ${edgeCount} 线段`
 })
+
+const actualRouteProgress = computed(() => store.actualRouteExportProgress || null)
+
+const actualRouteProgressLabel = computed(() => {
+  const progress = actualRouteProgress.value
+  if (!progress?.active) return ''
+  const done = Number(progress.done) || 0
+  const total = Number(progress.total) || 0
+  const base = progress.message || '正在导出图片'
+  const progressText = total > 0 ? ` ${done}/${total}` : ''
+  const eta = Number(progress.etaSeconds)
+  const etaText = Number.isFinite(eta) && eta > 0 ? ` · 约 ${eta}s` : ''
+  return `${base}${progressText}${etaText}`
+})
+
+const shouldShowStatusSection = computed(() => {
+  if (store.importProgress >= 0) return true
+  if (actualRouteProgress.value?.active) return true
+  return Boolean(store.statusText)
+})
 </script>
 
 <template>
@@ -98,13 +118,19 @@ const projectSummary = computed(() => {
       <span class="status-bar__value">{{ saveIndicator.label }}</span>
       <span v-if="lastSavedLabel && saveState?.value !== 'saving'" class="status-bar__save-time">{{ lastSavedLabel }}</span>
     </div>
-    <div v-if="store.statusText || store.importProgress >= 0" class="status-bar__divider"></div>
-    <div v-if="store.statusText || store.importProgress >= 0" class="status-bar__section status-bar__section--status">
+    <div v-if="shouldShowStatusSection" class="status-bar__divider"></div>
+    <div v-if="shouldShowStatusSection" class="status-bar__section status-bar__section--status">
       <div v-if="store.importProgress >= 0" class="status-bar__import-progress">
         <div class="status-bar__import-track">
           <div class="status-bar__import-fill" :style="{ width: `${store.importProgress}%` }" />
         </div>
         <span class="status-bar__value status-bar__value--status">{{ store.statusText }} {{ store.importProgress }}%</span>
+      </div>
+      <div v-else-if="actualRouteProgress?.active" class="status-bar__import-progress">
+        <div class="status-bar__import-track status-bar__import-track--export">
+          <div class="status-bar__import-fill status-bar__import-fill--export" :style="{ width: `${actualRouteProgress.percent || 0}%` }" />
+        </div>
+        <span class="status-bar__value status-bar__value--status">{{ actualRouteProgressLabel }}</span>
       </div>
       <span v-else class="status-bar__value status-bar__value--status">{{ store.statusText }}</span>
     </div>
@@ -293,11 +319,21 @@ const projectSummary = computed(() => {
   overflow: hidden;
 }
 
+.status-bar__import-track--export {
+  width: 120px;
+  background: rgba(188, 31, 255, 0.18);
+}
+
 .status-bar__import-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--ark-purple, #bc1fff), var(--ark-pink, #f900bf));
   box-shadow: 0 0 6px rgba(249, 0, 191, 0.5);
   transition: width 0.3s ease;
+}
+
+.status-bar__import-fill--export {
+  background: linear-gradient(90deg, var(--ark-purple, #bc1fff), var(--ark-pink, #f900bf));
+  box-shadow: 0 0 8px rgba(249, 0, 191, 0.45);
 }
 
 .status-bar__barcode {

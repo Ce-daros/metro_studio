@@ -38,15 +38,17 @@ export class TimelinePreviewEngine {
    * @param {string} params.title
    * @param {string} params.author
    * @param {boolean} params.pseudoMode
+   * @param {'dark'|'light'} [params.basemapMode]
    * @param {Function} [params.onStateChange]
    * @param {Function} [params.onYearChange]
    */
-  constructor({ canvas, project, title, author, pseudoMode, onStateChange, onYearChange }) {
+  constructor({ canvas, project, title, author, pseudoMode, basemapMode = 'light', onStateChange, onYearChange }) {
     this._canvas = canvas
     this._project = project
     this._title = title
     this._author = author
     this._pseudoMode = pseudoMode
+    this._basemapMode = basemapMode === 'dark' ? 'dark' : 'light'
     this._onStateChange = onStateChange
     this._onYearChange = onYearChange
 
@@ -65,7 +67,7 @@ export class TimelinePreviewEngine {
     this._currentYearIndex = 0
 
     // Geographic data
-    this._tileCache = new TileCache()
+    this._tileCache = new TileCache(this._basemapMode)
     this._stationMap = new Map()
     this._lineMap = new Map()
     this._fullBounds = null
@@ -1152,6 +1154,31 @@ export class TimelinePreviewEngine {
   }
 
   setPseudoMode(v) { this._pseudoMode = Boolean(v) }
+
+  setBasemapMode(mode) {
+    const normalized = mode === 'dark' ? 'dark' : 'light'
+    if (normalized === this._basemapMode) return
+    this._basemapMode = normalized
+    this._tileCache.setBasemapMode(normalized)
+
+    if (this._state === 'loading') {
+      this._loadingProgress = { loaded: 0, total: 0 }
+      this._loadingSmoothedProgress = 0
+      this._loadingComplete = false
+      this._loadingCompleteTime = 0
+      this._precacheTilesForAnimation().then(() => {
+        if (this._state !== 'loading') return
+        this._tileCache.stopProgressTracking()
+        this._loadingComplete = true
+      })
+    }
+
+    if (this._state === 'idle') {
+      this._renderIdleFrame()
+    } else {
+      this._scheduleFrame()
+    }
+  }
 
   resize(w, h) {
     this._applyCanvasSize(w, h)

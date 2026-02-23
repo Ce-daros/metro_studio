@@ -96,8 +96,10 @@ function applySpringAndAngleForce(forces, positions, original, edgeRecords, conf
     const preferredAngle = interpolateAngles(snappedAngle, geoAngle, config.geoAngleBias)
     const desiredDx = Math.cos(preferredAngle) * length
     const desiredDy = Math.sin(preferredAngle) * length
-    const angleCorrectionX = (desiredDx - dx) * config.angleWeight
-    const angleCorrectionY = (desiredDy - dy) * config.angleWeight
+    const isCardinal = Math.abs(snappedAngle % (Math.PI / 2)) < 0.01
+    const cardinalBoost = isCardinal ? 1.35 : 1
+    const angleCorrectionX = (desiredDx - dx) * config.angleWeight * cardinalBoost
+    const angleCorrectionY = (desiredDy - dy) * config.angleWeight * cardinalBoost
 
     forces[edge.fromIndex][0] -= angleCorrectionX
     forces[edge.fromIndex][1] -= angleCorrectionY

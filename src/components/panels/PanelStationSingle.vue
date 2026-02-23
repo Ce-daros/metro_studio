@@ -3,13 +3,9 @@ import { computed, inject, nextTick, reactive, ref, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { NTooltip } from 'naive-ui'
-import { useTextTransform } from '../../composables/useTextTransform'
 
 const store = useProjectStore()
 const nameZhInputRef = ref(null)
-const { convertText } = useTextTransform()
-
-const isTraditional = computed(() => store.chineseScript === 'traditional')
 
 const renameTrigger = inject('stationRenameTrigger', ref(0))
 
@@ -30,28 +26,6 @@ const stationForm = reactive({
   nameEn: '',
 })
 
-const convertedLineNames = ref(new Map())
-
-async function updateConvertedLineNames() {
-  if (!isTraditional.value) {
-    convertedLineNames.value.clear()
-    return
-  }
-  try {
-    const lines = belongingLines.value
-    const newMap = new Map()
-    for (const line of lines) {
-      const name = getDisplayLineName(line, 'zh')
-      if (name) {
-        newMap.set(line.id, await convertText(name, 'traditional'))
-      }
-    }
-    convertedLineNames.value = newMap
-  } catch (e) {
-    console.warn('[PanelStationSingle] convertText failed:', e)
-  }
-}
-
 const coordinatesText = computed(() => {
   if (!selectedStation.value?.lngLat) return null
   const [lng, lat] = selectedStation.value.lngLat
@@ -66,10 +40,6 @@ const belongingLines = computed(() => {
     .filter(Boolean)
 })
 
-watch([belongingLines, isTraditional], () => {
-  updateConvertedLineNames()
-}, { immediate: true })
-
 const connectedEdgesCount = computed(() => {
   if (!selectedStation.value || !store.project?.edges) return 0
   const sid = selectedStation.value.id
@@ -79,9 +49,6 @@ const connectedEdgesCount = computed(() => {
 })
 
 function displayLineName(line) {
-  if (isTraditional.value && convertedLineNames.value.has(line.id)) {
-    return convertedLineNames.value.get(line.id)
-  }
   return getDisplayLineName(line, 'zh') || line?.nameZh || ''
 }
 

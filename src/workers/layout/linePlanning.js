@@ -151,7 +151,8 @@ function planLineChainTargetPositions(chain, positions, config) {
   }
 
   const mainDirection = estimateChainMainDirection(chain, positions, rawAngles, edgeLengths)
-  let directionSequence = solveDirectionSequence(rawAngles, mainDirection, config)
+  const localDirections = computeLocalMainDirections(rawAngles, edgeLengths, mainDirection)
+  let directionSequence = solveDirectionSequence(rawAngles, localDirections, config)
   directionSequence = smoothShortDirectionRuns(directionSequence, rawAngles, mainDirection, config)
 
   const nodeTargets = [positions[chain.nodePath[0]].slice(0, 2)]
@@ -214,20 +215,44 @@ function estimateChainMainDirection(chain, positions, rawAngles, edgeLengths) {
   return angleToDirectionIndex(Math.atan2(vy, vx))
 }
 
-function solveDirectionSequence(rawAngles, mainDirection, config) {
+function computeLocalMainDirections(rawAngles, edgeLengths, globalMain) {
+  const n = rawAngles.length
+  if (n <= 6) return new Array(n).fill(globalMain)
+  const windowRadius = 3
+  const result = new Array(n)
+  for (let i = 0; i < n; i += 1) {
+    let vx = 0, vy = 0
+    const lo = Math.max(0, i - windowRadius)
+    const hi = Math.min(n - 1, i + windowRadius)
+    for (let j = lo; j <= hi; j += 1) {
+      vx += Math.cos(rawAngles[j]) * edgeLengths[j]
+      vy += Math.sin(rawAngles[j]) * edgeLengths[j]
+    }
+    result[i] = Math.hypot(vx, vy) > 0.00001
+      ? angleToDirectionIndex(Math.atan2(vy, vx))
+      : globalMain
+  }
+  return result
+}
+
+function solveDirectionSequence(rawAngles, localDirections, config) {
   const edgeCount = rawAngles.length
   if (!edgeCount) return []
 
   const dp = Array.from({ length: edgeCount }, () => new Array(8).fill(Number.POSITIVE_INFINITY))
   const previousDirection = Array.from({ length: edgeCount }, () => new Array(8).fill(-1))
 
+  const getMain = typeof localDirections === 'number'
+    ? () => localDirections
+    : (i) => localDirections[i]
+
   for (let direction = 0; direction < 8; direction += 1) {
-    dp[0][direction] = directionUnaryCost(rawAngles[0], direction, mainDirection, config)
+    dp[0][direction] = directionUnaryCost(rawAngles[0], direction, getMain(0), config)
   }
 
   for (let edgeIndex = 1; edgeIndex < edgeCount; edgeIndex += 1) {
     for (let direction = 0; direction < 8; direction += 1) {
-      const unaryCost = directionUnaryCost(rawAngles[edgeIndex], direction, mainDirection, config)
+      const unaryCost = directionUnaryCost(rawAngles[edgeIndex], direction, getMain(edgeIndex), config)
       for (let prevDirection = 0; prevDirection < 8; prevDirection += 1) {
         const candidate =
           dp[edgeIndex - 1][prevDirection] +
@@ -328,7 +353,9 @@ function directionUnaryCost(observedAngle, direction, mainDirection, config) {
   const targetAngle = directionIndexToAngle(direction)
   const angleDeviation = Math.abs(normalizeAngle(observedAngle - targetAngle))
   const mainDistance = circularDirectionDistance(direction, mainDirection)
-  return angleDeviation * config.lineDataAngleWeight + mainDistance * config.lineMainDirectionWeight
+  const isDiagonal = direction % 2 === 1
+  const diagonalPenalty = isDiagonal ? (config.lineDiagonalPenalty || 0) : 0
+  return angleDeviation * config.lineDataAngleWeight + mainDistance * config.lineMainDirectionWeight + diagonalPenalty
 }
 
 function directionTurnCost(previousDirection, nextDirection, config) {
@@ -339,6 +366,11 @@ function directionTurnCost(previousDirection, nextDirection, config) {
     cost += config.lineUTurnPenalty
   } else if (steps === 3) {
     cost += config.lineUTurnPenalty * 0.45
+  }
+  const prevDiag = previousDirection % 2 === 1
+  const nextDiag = nextDirection % 2 === 1
+  if (prevDiag && nextDiag) {
+    cost += config.lineDiagonalToDiagonalTurnPenalty || 0
   }
   return cost
 }

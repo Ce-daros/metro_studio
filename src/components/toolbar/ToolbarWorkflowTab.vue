@@ -141,7 +141,7 @@ function redoEdit() {
       :disabled="selectedStationCount < 1 || store.isStationEnglishRetranslating"
       @click="retranslateSelectedStationEnglishNames"
     >
-      {{ store.isStationEnglishRetranslating ? '翻译中...' : 'AI翻译选中站英文' }}
+      {{ store.isStationEnglishRetranslating ? '翻译中...' : 'AI 翻译选中站英文' }}
     </button>
     <label class="toolbar__label">地理种子缩放（geoSeedScale）</label>
     <div class="toolbar__range-row">

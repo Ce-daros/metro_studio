@@ -53,6 +53,14 @@ const timelineActions = {
     this.timelinePlayback.speed = num
   },
 
+  setTimelinePreviewBasemapMode(mode) {
+    const normalized = mode === 'dark' ? 'dark' : 'light'
+    this.timelinePreviewBasemapMode = normalized
+    try {
+      window.localStorage.setItem('railmap_timeline_preview_basemap_mode', normalized)
+    } catch {}
+  },
+
   addTimelineEvent(year, description) {
     if (!this.project) return
     const numYear = Number(year)

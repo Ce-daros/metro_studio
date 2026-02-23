@@ -24,6 +24,7 @@ export function createTimelinePreviewRenderer(canvas, project, options = {}) {
     title = project?.name || 'Metro Studio',
     author = '',
     pseudoMode: initialPseudoMode = false,
+    basemapMode = 'light',
     onStateChange,
     onYearChange,
   } = options
@@ -34,6 +35,7 @@ export function createTimelinePreviewRenderer(canvas, project, options = {}) {
     title,
     author,
     pseudoMode: initialPseudoMode,
+    basemapMode,
     onStateChange,
     onYearChange,
   })
@@ -47,6 +49,7 @@ export function createTimelinePreviewRenderer(canvas, project, options = {}) {
     setSpeed: (s) => engine.setSpeed(s),
     setZoomOffset: (v) => engine.setZoomOffset(v),
     setPseudoMode: (v) => engine.setPseudoMode(v),
+    setBasemapMode: (v) => engine.setBasemapMode(v),
     resize: (w, h) => engine.resize(w, h),
     rebuild: () => engine.rebuild(),
     destroy: () => engine.destroy(),

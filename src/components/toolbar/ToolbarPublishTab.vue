@@ -32,12 +32,13 @@ function getLineName(line, index) {
       <option value="all">显示所有车站</option>
     </select>
     <div class="toolbar__row">
-      <button class="toolbar__btn" @click="guardedExport(() => store.exportActualRoutePng())">导出实际走向图 PNG</button>
-      <button class="toolbar__btn" @click="guardedExport(() => store.exportOfficialSchematicPng())">导出官方风格图 PNG</button>
+      <button class="toolbar__btn" @click="store.openActualRouteExportDialog()">导出大图</button>
+      <button class="toolbar__btn" @click="guardedExport(() => store.exportShareSmallPng())">导出小图</button>
     </div>
     <div class="toolbar__row">
+      <button class="toolbar__btn" @click="guardedExport(() => store.exportOfficialSchematicPng())">导出官方导示图</button>
       <div class="hud-menu">
-        <button class="toolbar__btn">导出车辆 HUD 打包 ▾</button>
+        <button class="toolbar__btn">打包导出车辆 HUD 图 ▾</button>
         <div class="hud-menu__dropdown">
           <button class="hud-menu__item" @click="guardedExport(() => store.exportAllLineHudZip())">全部</button>
           <button

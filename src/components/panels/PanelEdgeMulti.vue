@@ -1,15 +1,11 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { LINE_STYLE_OPTIONS } from '../../lib/lineStyles'
 import { NTooltip } from 'naive-ui'
-import { useTextTransform } from '../../composables/useTextTransform'
 
 const store = useProjectStore()
-const { convertText } = useTextTransform()
-const isTraditional = computed(() => store.chineseScript === 'traditional')
-const convertedLineNames = ref(new Map())
 
 const selectedEdgeCount = computed(() => store.selectedEdgeIds.length)
 const edgeReassignTargets = computed(() => store.project?.lines || [])
@@ -26,31 +22,7 @@ const canApplyBatch = computed(
   () => selectedEdgeCount.value > 0 && (Boolean(edgeBatchForm.targetLineId) || Boolean(edgeBatchForm.lineStyle) || edgeBatchForm.openingYear !== '' || edgeBatchForm.phase !== ''),
 )
 
-async function updateConvertedLineNames() {
-  if (!isTraditional.value) {
-    convertedLineNames.value.clear()
-    return
-  }
-
-  const lines = edgeReassignTargets.value
-  const newMap = new Map()
-  for (const line of lines) {
-    const name = getDisplayLineName(line, 'zh')
-    if (name) {
-      newMap.set(line.id, await convertText(name, 'traditional'))
-    }
-  }
-  convertedLineNames.value = newMap
-}
-
-watch([edgeReassignTargets, isTraditional], () => {
-  updateConvertedLineNames()
-}, { immediate: true })
-
 function displayLineName(line) {
-  if (isTraditional.value && convertedLineNames.value.has(line.id)) {
-    return convertedLineNames.value.get(line.id)
-  }
   return getDisplayLineName(line, 'zh') || line?.nameZh || ''
 }
 

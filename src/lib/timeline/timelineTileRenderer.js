@@ -4,11 +4,14 @@
  * Handles Web Mercator projection, tile math, async tile loading with
  * concurrency control, caching, and canvas rendering.
  *
- * Tile source: CartoDB Dark raster tiles (256×256).
+ * Tile source: CartoDB raster tiles (dark/light, 256×256).
  */
 
 const TILE_SIZE = 256
-const TILE_URL_TEMPLATE = 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+const TILE_URL_TEMPLATES = {
+  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+}
 const MAX_CONCURRENT_FETCHES = 12
 const MAX_CACHE_SIZE = 2048
 const DEG_TO_RAD = Math.PI / 180
@@ -142,7 +145,7 @@ export function selectZoomLevelFractional(bbox, width, height, padding = 0.85) {
 // ─── Tile cache ─────────────────────────────────────────────────
 
 export class TileCache {
-  constructor() {
+  constructor(basemapMode = 'light') {
     /** @type {Map<string, ImageBitmap|HTMLImageElement>} */
     this._cache = new Map()
     /** @type {Map<string, Promise<ImageBitmap|HTMLImageElement|null>>} */
@@ -150,10 +153,29 @@ export class TileCache {
     this._activeFetches = 0
     /** @type {Array<() => void>} */
     this._queue = []
+    this._basemapMode = basemapMode === 'dark' ? 'dark' : 'light'
     /** @type {(() => void)|null} */
     this.onTileLoaded = null
     /** @type {{ total: number, loaded: number, onProgress: ((loaded: number, total: number) => void)|null }|null} */
     this._progress = null
+  }
+
+  setBasemapMode(mode) {
+    const normalized = mode === 'dark' ? 'dark' : 'light'
+    if (normalized === this._basemapMode) return
+    this._basemapMode = normalized
+    this.clear()
+    if (this._progress) {
+      this._progress.loaded = 0
+    }
+  }
+
+  _buildTileUrl(z, x, y) {
+    const template = TILE_URL_TEMPLATES[this._basemapMode] || TILE_URL_TEMPLATES.light
+    return template
+      .replace('{z}', z)
+      .replace('{x}', x)
+      .replace('{y}', y)
   }
 
   /**
@@ -192,7 +214,7 @@ export class TileCache {
   }
 
   _key(z, x, y) {
-    return `${z}/${x}/${y}`
+    return `${this._basemapMode}/${z}/${x}/${y}`
   }
 
   /**
@@ -225,10 +247,7 @@ export class TileCache {
     const promise = new Promise((resolve) => {
       const doFetch = () => {
         this._activeFetches++
-        const url = TILE_URL_TEMPLATE
-          .replace('{z}', z)
-          .replace('{x}', x)
-          .replace('{y}', y)
+        const url = this._buildTileUrl(z, x, y)
 
         const img = new Image()
         img.crossOrigin = 'anonymous'

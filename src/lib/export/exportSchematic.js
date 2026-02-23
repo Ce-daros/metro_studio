@@ -176,7 +176,7 @@ export async function downloadAllLineHudZip(project, options = {}) {
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   })
-  downloadBlob(zipBlob, `${sanitizeFileName(project?.name, 'metro-studio')}_车辆HUD打包.zip`)
+  downloadBlob(zipBlob, `${sanitizeFileName(project?.name, 'metro-studio')}_车辆 HUD 图打包导出.zip`)
   return { exportedCount }
 }
 

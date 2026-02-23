@@ -171,7 +171,7 @@ export function useMenuBarActions(store, emit, refs) {
   })
 
   const aiMenuItems = computed(() => [
-    { type: 'item', label: 'AI翻译选中站英文', action: 'aiTranslateSelected', icon: 'languages', disabled: !store.selectedStationIds.length || store.isStationEnglishRetranslating },
+    { type: 'item', label: 'AI 翻译选中站英文', action: 'aiTranslateSelected', icon: 'languages', disabled: !store.selectedStationIds.length || store.isStationEnglishRetranslating },
     { type: 'item', label: '按规范重译全图英文', action: 'aiTranslateAll', icon: 'languages', disabled: !store.project?.stations?.length || store.isStationEnglishRetranslating },
     { type: 'separator' },
     { type: 'item', label: '报站生成', action: 'ttsGeneration', icon: 'volume-2' },
@@ -201,9 +201,10 @@ export function useMenuBarActions(store, emit, refs) {
   ])
 
   const exportMenuItems = computed(() => [
-    { type: 'item', label: '导出实际走向图 PNG', action: 'exportActualRoute', icon: 'map', disabled: !store.project },
-    { type: 'item', label: '导出官方风格图 PNG', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
-    { type: 'item', label: '导出车辆 HUD 打包', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
+    { type: 'item', label: '导出大图', action: 'exportActualRouteHighRes', icon: 'map', disabled: !store.project },
+    { type: 'item', label: '导出小图', action: 'exportShareSmall', icon: 'share', disabled: !store.project },
+    { type: 'item', label: '导出官方导示图', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
+    { type: 'item', label: '打包导出车辆 HUD 图', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
     { type: 'separator' },
     { type: 'submenu', label: '车站显示模式', icon: 'eye', children: [
       { type: 'toggle', label: '显示所有车站', checked: store.exportStationVisibilityMode === 'all', action: 'stationVisAll', icon: 'eye' },
@@ -378,7 +379,8 @@ export function useMenuBarActions(store, emit, refs) {
       deleteStations: () => store.deleteSelectedStations(),
       deleteNewStations: () => store.deleteNewStations(),
       deleteEdges: () => store.deleteSelectedEdge(),
-      exportActualRoute: () => store.exportActualRoutePng(),
+      exportActualRouteHighRes: () => store.openActualRouteExportDialog(),
+      exportShareSmall: () => store.exportShareSmallPng(),
       exportSchematic: () => store.exportOfficialSchematicPng(),
       exportHudZip: () => store.exportAllLineHudZip(),
       exportFile: () => store.exportProjectFile(),

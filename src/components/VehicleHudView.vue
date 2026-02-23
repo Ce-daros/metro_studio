@@ -11,11 +11,8 @@ import {
 } from "../lib/hud/renderModel";
 import { useProjectStore } from "../stores/projectStore";
 import { useViewportControl } from "../composables/useViewportControl";
-import { useTextTransform } from "../composables/useTextTransform";
 
 const store = useProjectStore();
-const { convertText } = useTextTransform();
-const isTraditional = computed(() => store.chineseScript === 'traditional');
 const selectedLineId = ref("");
 const selectedDirectionKey = ref("");
 const svgRef = ref(null);
@@ -81,45 +78,9 @@ const model = computed(() =>
   }),
 );
 
-const convertedLineLabels = ref(new Map())
-const convertedDirectionLabels = ref(new Map())
-
-async function updateConvertedLabels() {
-  if (!isTraditional.value) {
-    convertedLineLabels.value.clear()
-    convertedDirectionLabels.value.clear()
-    return
-  }
-
-  const newLineMap = new Map()
-  for (const line of lineOptions.value) {
-    const zh = String(line?.nameZh || "").trim()
-    if (zh) {
-      newLineMap.set(line.id, await convertText(zh, 'traditional'))
-    }
-  }
-  convertedLineLabels.value = newLineMap
-
-  const newDirMap = new Map()
-  for (const option of directionOptions.value) {
-    const zh = String(option?.labelZh || "").trim()
-    if (zh) {
-      newDirMap.set(option.key, await convertText(zh, 'traditional'))
-    }
-  }
-  convertedDirectionLabels.value = newDirMap
-}
-
-watch([lineOptions, directionOptions, isTraditional], () => {
-  updateConvertedLabels()
-}, { immediate: true })
-
 function formatLineOptionLabel(line) {
   let zh = String(line?.nameZh || "").trim()
   const en = String(line?.nameEn || "").trim()
-  if (isTraditional.value && convertedLineLabels.value.has(line.id)) {
-    zh = convertedLineLabels.value.get(line.id)
-  }
   if (zh && en) return `${zh} / ${en}`
   return zh || en || String(line?.id || "").trim() || "未命名线路"
 }
@@ -127,9 +88,6 @@ function formatLineOptionLabel(line) {
 function formatDirectionOptionLabel(option) {
   let zh = String(option?.labelZh || "").trim()
   const en = String(option?.labelEn || "").trim()
-  if (isTraditional.value && convertedDirectionLabels.value.has(option.key)) {
-    zh = convertedDirectionLabels.value.get(option.key)
-  }
   if (zh && en) return `${zh} / ${en}`
   return zh || en || String(option?.key || "").trim() || "未命名方向"
 }

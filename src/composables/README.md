@@ -7,7 +7,7 @@ Vue 3 Composition API composables，封装可复用的组件逻辑。
 ### 地图编辑器相关
 - **useMapContextMenu.js** — 右键菜单状态、位置调整、所有 `*FromContext` 操作函数
 - **useMapLineSelectionMenu.js** — 线路选择菜单状态、选择逻辑
-- **useMapExport.js** — PNG 导出全流程（`exportActualRoutePngFromMap` 及辅助函数）
+- **useMapExport.js** — PNG 导出全流程（实际走向高清图、分享小图、截图抓帧与高分辨率分块渲染）
 - **useMapEventHandlers.js** — 点击/拖拽/键盘/鼠标事件处理、`dragState`/`anchorDragState`/`selectionBox` 状态
 - **useMapBoundary.js** — 边界哈希、`fitMapToBoundary`、边界 watcher
 - **useRouteDrawPreview.js** — 连续布线预览状态、距离计算、颜色渐变

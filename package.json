@@ -1,7 +1,7 @@
 {
   "name": "metro-studio",
   "private": true,
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -23,6 +23,7 @@
     "maplibre-gl": "^5.18.0",
     "marked": "^17.0.3",
     "naive-ui": "^2.43.2",
+    "onnxruntime-web": "^1.24.2",
     "opencc-js": "^1.0.5",
     "pinia": "^3.0.4",
     "pinyin-pro": "^3.28.0",

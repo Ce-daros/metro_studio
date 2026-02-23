@@ -79,7 +79,7 @@ function onKeyDown(event) {
             v-model="editingText"
             class="timeline-events__input"
             type="text"
-            placeholder="如：1号线一期开通运营"
+            placeholder="如：1 号线一期开通运营"
             autofocus
             @keydown="onKeyDown"
             @blur="saveEdit"

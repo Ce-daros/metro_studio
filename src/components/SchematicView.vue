@@ -4,11 +4,8 @@ import { buildSchematicRenderModel } from '../lib/schematic/renderModel'
 import { useProjectStore } from '../stores/projectStore'
 import TimelineSlider from './TimelineSlider.vue'
 import { createTimelinePlayer } from '../lib/timeline/timelinePlayer.js'
-import { useTextTransform } from '../composables/useTextTransform'
 
 const store = useProjectStore()
-const { convertText } = useTextTransform()
-const isTraditional = computed(() => store.chineseScript === 'traditional')
 const svgRef = ref(null)
 const viewport = reactive({
   scale: 1,
@@ -34,48 +31,11 @@ const renderModel = computed(() =>
 )
 const viewportTransform = computed(() => `translate(${viewport.tx} ${viewport.ty}) scale(${viewport.scale})`)
 
-const convertedStationNames = ref(new Map())
-const convertedLineNames = ref(new Map())
-
-async function updateConvertedNames() {
-  if (!isTraditional.value) {
-    convertedStationNames.value.clear()
-    convertedLineNames.value.clear()
-    return
-  }
-
-  const newStationMap = new Map()
-  for (const station of renderModel.value.stations) {
-    if (station.nameZh) {
-      newStationMap.set(station.id, await convertText(station.nameZh, 'traditional'))
-    }
-  }
-  convertedStationNames.value = newStationMap
-
-  const newLineMap = new Map()
-  for (const label of renderModel.value.lineLabels) {
-    if (label.nameZh) {
-      newLineMap.set(label.id, await convertText(label.nameZh, 'traditional'))
-    }
-  }
-  convertedLineNames.value = newLineMap
-}
-
-watch([renderModel, isTraditional], () => {
-  updateConvertedNames()
-}, { immediate: true })
-
 function getStationNameZh(station) {
-  if (isTraditional.value && convertedStationNames.value.has(station.id)) {
-    return convertedStationNames.value.get(station.id)
-  }
   return station.nameZh || ''
 }
 
 function getLineNameZh(label) {
-  if (isTraditional.value && convertedLineNames.value.has(label.id)) {
-    return convertedLineNames.value.get(label.id)
-  }
   return label.nameZh || ''
 }
 

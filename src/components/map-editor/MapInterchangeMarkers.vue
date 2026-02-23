@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { buildInterchangeMarkerEntries } from './interchangeMarkersShared'
 
 const props = defineProps({
   stations: { type: Array, required: true },
@@ -11,59 +12,12 @@ const props = defineProps({
   zoom: { type: Number, default: 4 },
 })
 
-function getZoomScale(zoom) {
-  const minZoom = 3
-  const maxZoom = 18
-  const clamped = Math.min(maxZoom, Math.max(minZoom, zoom))
-  const scale = 2 ** ((clamped - 12) / 2.4)
-  return Math.min(2.4, Math.max(0.35, scale))
-}
-
 const interchangeStations = computed(() => {
-  if (!props.visible) return []
-  const zoomScale = getZoomScale(props.zoom)
-  return props.stations.filter(s => s.isInterchange).map(s => {
-    // 获取站点所属的所有线路颜色
-    const lineIds = s.transferLineIds?.length ? s.transferLineIds : (s.lineIds || [])
-    const lineColors = lineIds.map(id => props.lineById.get(id)?.color).filter(Boolean)
-    const uniqueLineColors = [...new Set(lineColors)]
-    
-    // 如果没有获取到线路颜色，默认给一些占位色
-    const colors = uniqueLineColors.length > 0 ? uniqueLineColors : ['#bc1fff', '#38bdf8']
-
-    const count = colors.length
-    const shownColors = colors.slice(0, 4)
-    const shownCount = shownColors.length
-    const dotSize = Math.max(5, 6.4 * zoomScale)
-    const gap = Math.max(1, 1.6 * zoomScale)
-    const borderWidth = Math.max(1.2, 1.6 * zoomScale)
-    const innerWidth = count * dotSize + (count - 1) * gap
-    const containerSize = innerWidth + borderWidth * 2 + gap * 2
-
-    // pie 模式：正方形，conic-gradient 从中心点放射状平分
-    const pieSize = Math.max(10, 13 * zoomScale)
-    const pieBorder = borderWidth
-    const pieContainerSize = pieSize + pieBorder * 2
-    // 构建 conic-gradient stops
-    const stops = shownColors.map((c, i) => {
-      const from = (i / shownColors.length) * 360
-      const to = ((i + 1) / shownColors.length) * 360
-      return `${c} ${from}deg ${to}deg`
-    }).join(', ')
-    const pieBackground = `conic-gradient(${stops})`
-
-    return {
-      ...s,
-      containerSize: Number(containerSize.toFixed(2)),
-      dotSize,
-      gap,
-      borderWidth,
-      colors,
-      pieSize,
-      pieBorder,
-      pieContainerSize: Number(pieContainerSize.toFixed(2)),
-      pieBackground,
-    }
+  return buildInterchangeMarkerEntries({
+    stations: props.stations,
+    lineById: props.lineById,
+    zoom: props.zoom,
+    visible: props.visible,
   })
 })
 </script>

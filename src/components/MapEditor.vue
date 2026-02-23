@@ -125,6 +125,7 @@ const lineSelectionMenuStyle = computed(() => ({
 }))
 
 const { exportActualRoutePngFromMap } = useMapExport({ store, getMap })
+store.registerActualRoutePngExporter(exportActualRoutePngFromMap)
 
 const {
   routeDrawPreview,
@@ -439,8 +440,6 @@ function setGridVisibility(visible) {
 // ── Lifecycle ──
 
 onMounted(() => {
-  store.registerActualRoutePngExporter(exportActualRoutePngFromMap)
-
   const pmtilesProtocol = new Protocol()
   maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile)
 

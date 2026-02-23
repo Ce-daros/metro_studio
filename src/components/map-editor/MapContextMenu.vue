@@ -81,7 +81,7 @@ defineExpose({ menuEl })
             @click="emit('ai-translate')"
             :disabled="!contextStation || isStationEnglishRetranslating"
           >
-            {{ isStationEnglishRetranslating ? '翻译中...' : 'AI翻译英文' }}
+            {{ isStationEnglishRetranslating ? '翻译中...' : 'AI 翻译英文' }}
           </button>
           <button @click="emit('rename-station')" :disabled="!contextStation">重命名站点</button>
           <button @click="emit('delete-station')" :disabled="!contextMenu.stationId">删除该站点</button>

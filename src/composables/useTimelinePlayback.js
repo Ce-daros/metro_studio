@@ -76,6 +76,7 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
       title: store.project.name || 'Metro Studio',
       author: '',
       pseudoMode: pseudoMode.value,
+      basemapMode: store.timelinePreviewBasemapMode,
       onStateChange(state, info) {
         playbackState.value = state
         if (info) {
@@ -239,6 +240,15 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
       createRenderer()
     }
   })
+
+  watch(
+    () => store.timelinePreviewBasemapMode,
+    () => {
+      if (!renderer) return
+      destroyRenderer()
+      createRenderer()
+    },
+  )
 
   // ── Lifecycle ──
 

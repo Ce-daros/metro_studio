@@ -101,7 +101,7 @@ const TILE_SOURCES = {
   },
 }
 
-function buildMapStyle(tileType = 'dark') {
+function buildMapStyle(tileType = 'osm') {
   const source = TILE_SOURCES[tileType] || TILE_SOURCES.dark
   return {
     version: 8,

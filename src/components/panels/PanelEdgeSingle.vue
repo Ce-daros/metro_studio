@@ -1,16 +1,11 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { LINE_STYLE_OPTIONS } from '../../lib/lineStyles'
 import { NTooltip } from 'naive-ui'
-import { useTextTransform } from '../../composables/useTextTransform'
 
 const store = useProjectStore()
-const { convertText } = useTextTransform()
-const isTraditional = computed(() => store.chineseScript === 'traditional')
-const convertedLineNames = ref(new Map())
-const convertedStationNames = ref(new Map())
 
 const selectedEdge = computed(() => {
   if (!store.project || !store.selectedEdgeIds.length) return null
@@ -57,53 +52,12 @@ const canApplyBatch = computed(
   () => Boolean(edgeBatchForm.targetLineId) || Boolean(edgeBatchForm.lineStyle) || edgeBatchForm.curveMode !== 'keep' || edgeBatchForm.openingYear !== '' || edgeBatchForm.phase !== '',
 )
 
-async function updateConvertedNames() {
-  if (!isTraditional.value) {
-    convertedLineNames.value.clear()
-    convertedStationNames.value.clear()
-    return
-  }
-
-  try {
-    const lines = selectedEdgeLines.value
-    const newLineMap = new Map()
-    for (const line of lines) {
-      const name = getDisplayLineName(line, 'zh')
-      if (name) {
-        newLineMap.set(line.id, await convertText(name, 'traditional'))
-      }
-    }
-    convertedLineNames.value = newLineMap
-
-    const stations = [selectedEdgeStations.value.from, selectedEdgeStations.value.to].filter(Boolean)
-    const newStationMap = new Map()
-    for (const station of stations) {
-      if (station.nameZh) {
-        newStationMap.set(station.id, await convertText(station.nameZh, 'traditional'))
-      }
-    }
-    convertedStationNames.value = newStationMap
-  } catch (e) {
-    console.warn('[PanelEdgeSingle] convertText failed:', e)
-  }
-}
-
-watch([selectedEdgeLines, selectedEdgeStations, isTraditional], () => {
-  updateConvertedNames()
-}, { immediate: true })
-
 function displayLineName(line) {
-  if (isTraditional.value && convertedLineNames.value.has(line.id)) {
-    return convertedLineNames.value.get(line.id)
-  }
   return getDisplayLineName(line, 'zh') || line?.nameZh || ''
 }
 
 function displayStationName(station) {
   if (!station) return ''
-  if (isTraditional.value && convertedStationNames.value.has(station.id)) {
-    return convertedStationNames.value.get(station.id)
-  }
   return station.nameZh || ''
 }
 

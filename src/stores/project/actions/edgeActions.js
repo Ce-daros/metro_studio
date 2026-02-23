@@ -574,7 +574,7 @@ export const edgeActions = {
     )
 
     if (connectedEdges.length !== 2) {
-      this.statusText = '该站点不恰好连接2条线段，无法合并'
+      this.statusText = '该站点不恰好连接 2 条线段，无法合并'
       return false
     }
 
@@ -679,5 +679,3 @@ export const edgeActions = {
   },
 
 }
-
-

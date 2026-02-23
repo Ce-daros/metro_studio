@@ -75,7 +75,7 @@ const mapPreferencesActions = {
   },
 
   setMapTileType(tileType) {
-    const normalized = tileType || 'dark'
+    const normalized = tileType || 'osm'
     if (normalized === 'stamenToner' || normalized === 'stamenTerrain') {
       this.mapTileType = 'dark'
       return

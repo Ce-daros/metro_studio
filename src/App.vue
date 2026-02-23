@@ -28,6 +28,7 @@ import MapSearchDialog from './components/MapSearchDialog.vue'
 import LanduseLegend from './components/LanduseLegend.vue'
 import NoProjectWelcome from './components/NoProjectWelcome.vue'
 import HelpView from './components/HelpView.vue'
+import ExportActualRouteDialog from './components/ExportActualRouteDialog.vue'
 import { useProjectStore } from './stores/projectStore'
 import { useAutoSave } from './composables/useAutoSave'
 import { useDialog } from './composables/useDialog.js'
@@ -454,6 +455,7 @@ onBeforeUnmount(() => {
   <StationTTSDialog ref="ttsDialogRef" :project="store.project" :visible="ttsDialogVisible" @close="ttsDialogVisible = false" />
   <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" :stations="store.project?.stations || []" :lines="store.project?.lines || []" @close="closeSearchDialog" @select="onSearchResultSelect" />
   <LanduseLegend :visible="landuseLegendVisible" @close="landuseLegendVisible = false" />
+  <ExportActualRouteDialog />
   <HelpView v-if="helpVisible" :init-category="helpInitCategory" @close="helpVisible = false" />
   <input
     ref="globalFileInputRef"

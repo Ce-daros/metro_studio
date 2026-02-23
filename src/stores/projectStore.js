@@ -23,14 +23,6 @@ function getInitialProtomapsApiKey() {
   }
 }
 
-function getInitialChineseScript() {
-  try {
-    const saved = window.localStorage.getItem('metro_studio_chinese_script')
-    if (saved === 'traditional' || saved === 'simplified') return saved
-  } catch { /* ignore */ }
-  return 'simplified'
-}
-
 function getInitialOverlayLayers() {
   try {
     const saved = window.localStorage.getItem('railmap_overlay_layers')
@@ -45,6 +37,14 @@ function getInitialInterchangeMarkerStyle() {
     if (saved === 'bar' || saved === 'pie') return saved
   } catch { /* ignore */ }
   return 'bar'
+}
+
+function getInitialTimelinePreviewBasemapMode() {
+  try {
+    const saved = window.localStorage.getItem('railmap_timeline_preview_basemap_mode')
+    if (saved === 'dark' || saved === 'light') return saved
+  } catch { /* ignore */ }
+  return 'light'
 }
 
 /** @typedef {import('../lib/projectModel').RailProject} RailProject */
@@ -76,6 +76,21 @@ export const useProjectStore = defineStore('project', {
       message: '',
     },
     exportStationVisibilityMode: 'all',
+    actualRouteExportDialogVisible: false,
+    actualRouteExportResolutionPreset: 4096,
+    actualRouteExportBasemap: '',
+    isActualRouteExporting: false,
+    actualRouteExportProgress: {
+      active: false,
+      phase: 'idle',
+      message: '',
+      done: 0,
+      total: 0,
+      percent: 0,
+      etaSeconds: null,
+      workerCount: 1,
+      startedAt: 0,
+    },
     overlayLayers: getInitialOverlayLayers(),
     highlightStationLocations: false,
     showStationMarkers: true,
@@ -86,14 +101,14 @@ export const useProjectStore = defineStore('project', {
     showMapGrid: false,
     showMapCoordinates: false,
     protomapsApiKey: getInitialProtomapsApiKey(),
-    mapTileType: 'dark',
+    mapTileType: 'osm',
     currentEditYear: DEFAULT_EDIT_YEAR,
-    chineseScript: getInitialChineseScript(),
     timelineFilterYear: null,
     timelinePlayback: {
       state: 'idle',
       speed: 1,
     },
+    timelinePreviewBasemapMode: getInitialTimelinePreviewBasemapMode(),
     navigation: {
       active: false,
       originLngLat: null,
@@ -241,13 +256,6 @@ export const useProjectStore = defineStore('project', {
     ...annotationActions,
     ...clipboardActions,
     ...reachabilityActions,
-    setChineseScript(script) {
-      if (script !== 'simplified' && script !== 'traditional') return
-      this.chineseScript = script
-      try {
-        window.localStorage.setItem('metro_studio_chinese_script', script)
-      } catch { /* ignore */ }
-    },
     fitToNetwork() {
       this.fitToNetworkTrigger++
     },

@@ -101,6 +101,14 @@ const activeLineName = computed(() => {
   return getDisplayLineName(activeLine.value, 'zh') || activeLine.value.nameZh || '未命名'
 })
 
+const timelinePreviewBasemapMode = computed(() => (
+  store.timelinePreviewBasemapMode === 'dark' ? 'dark' : 'light'
+))
+
+function setTimelinePreviewBasemapMode(mode) {
+  store.setTimelinePreviewBasemapMode(mode)
+}
+
 const viewButtons = [
   { view: 'map', icon: 'map', label: '地图' },
   { view: 'schematic', icon: 'layout', label: '示意图' },
@@ -267,6 +275,23 @@ function toggleNavigation() {
           @click="incrementEditYear"
           aria-label="增加年份"
         >+</button>
+      </div>
+
+      <div v-if="activeView === 'preview'" class="menu-bar__timeline-basemap" role="group" aria-label="时间轴底图模式">
+        <button
+          class="menu-bar__timeline-basemap-btn"
+          :class="{ 'menu-bar__timeline-basemap-btn--active': timelinePreviewBasemapMode === 'light' }"
+          type="button"
+          title="时间轴预览底图：明亮"
+          @click="setTimelinePreviewBasemapMode('light')"
+        >明亮</button>
+        <button
+          class="menu-bar__timeline-basemap-btn"
+          :class="{ 'menu-bar__timeline-basemap-btn--active': timelinePreviewBasemapMode === 'dark' }"
+          type="button"
+          title="时间轴预览底图：暗黑"
+          @click="setTimelinePreviewBasemapMode('dark')"
+        >暗黑</button>
       </div>
 
       <div class="menu-bar__view-switcher">
@@ -470,6 +495,35 @@ function toggleNavigation() {
   overflow: hidden;
   background: linear-gradient(90deg, rgba(6, 6, 8, 0.84), rgba(188, 31, 255, 0.1));
   clip-path: var(--clip-chamfer-sm);
+}
+
+.menu-bar__timeline-basemap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--toolbar-input-border);
+  background: rgba(8, 8, 11, 0.9);
+  clip-path: var(--clip-chamfer-sm);
+  overflow: hidden;
+}
+
+.menu-bar__timeline-basemap-btn {
+  border: none;
+  background: transparent;
+  color: var(--toolbar-muted);
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.menu-bar__timeline-basemap-btn:hover {
+  color: var(--toolbar-text);
+  background: rgba(188, 31, 255, 0.12);
+}
+
+.menu-bar__timeline-basemap-btn--active {
+  color: var(--toolbar-tab-active-text);
+  background: var(--toolbar-tab-active-bg);
 }
 
 .menu-bar__view-btn {

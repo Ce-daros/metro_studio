@@ -376,7 +376,7 @@ watch(
                 <div v-if="stats.interchanges.total > 0" class="stats-group">
                   <h3 class="stats-group__title">换乘站分布</h3>
                   <div class="stats-row">
-                    <span class="stats-row__label">N线换乘站</span>
+                    <span class="stats-row__label">N 线换乘站</span>
                     <div class="stats-row__value">
                       <span
                         v-for="(count, n) in stats.interchanges.byLineCount"

@@ -3,12 +3,8 @@ import { computed, inject, reactive } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
 import { NTooltip } from 'naive-ui'
 import { useProjectStore } from '../../stores/projectStore'
-import { useTextTransform } from '../../composables/useTextTransform'
 
 const store = useProjectStore()
-const { convertText } = useTextTransform()
-
-const isTraditional = computed(() => store.chineseScript === 'traditional')
 
 const isNewStation = (s) => s.nameZh?.startsWith('新站 ')
 
@@ -49,7 +45,7 @@ function applyBatchStationRename() {
   })
 }
 
-async function copyStationNames() {
+function copyStationNames() {
   const stations = [...selectedStationsInOrder.value]
   const n = stations.length
   if (n > 1) {
@@ -69,10 +65,7 @@ async function copyStationNames() {
     stations.sort((a, b) => flip ? proj.get(b.id) - proj.get(a.id) : proj.get(a.id) - proj.get(b.id))
   }
   
-  let names = stations.map((s) => s.nameZh)
-  if (isTraditional.value) {
-    names = await Promise.all(names.map((name) => convertText(name, 'traditional')))
-  }
+  const names = stations.map((s) => s.nameZh)
   navigator.clipboard.writeText(names.join(' '))
 }
 
@@ -103,10 +96,10 @@ function translateNonNewStations() {
             :disabled="!selectedStationCount || store.isStationEnglishRetranslating"
             @click="translateNonNewStations"
           >
-            {{ store.isStationEnglishRetranslating ? '翻译中...' : 'AI翻译选中站英文' }}
+            {{ store.isStationEnglishRetranslating ? '翻译中...' : 'AI 翻译选中站英文' }}
           </button>
         </template>
-        AI翻译选中站英文名
+        AI 翻译选中站英文名
       </NTooltip>
       <div v-if="stationEnglishRetranslateProgress.total > 0" class="pp-progress">
         <div class="pp-progress-head">

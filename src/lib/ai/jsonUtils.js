@@ -41,34 +41,34 @@ function extractBracePair(text) {
 
 /**
  * 多层兜底提取 JSON 对象
- * 第1层：直接 parse
- * 第2层：提取 code block 后 parse
- * 第3层：找 { } 配对后 parse
- * 第4层：清理常见格式问题后重试 2/3 层
- * 第5层：正则逐字段提取
+ * 第 1 层：直接 parse
+ * 第 2 层：提取 code block 后 parse
+ * 第 3 层：找 { } 配对后 parse
+ * 第 4 层：清理常见格式问题后重试 2/3 层
+ * 第 5 层：正则逐字段提取
  */
 export function extractJsonObject(text) {
   if (typeof text !== 'string' || !text.trim()) return null
 
-  // 第1层：直接 parse
+  // 第 1 层：直接 parse
   const direct = safeJsonParse(text)
   if (direct && typeof direct === 'object') return direct
 
-  // 第2层：code block
+  // 第 2 层：code block
   const codeBlock = extractFromCodeBlock(text)
   if (codeBlock) {
     const parsed = safeJsonParse(codeBlock)
     if (parsed && typeof parsed === 'object') return parsed
   }
 
-  // 第3层：{ } 配对
+  // 第 3 层：{ } 配对
   const braceText = extractBracePair(text)
   if (braceText) {
     const parsed = safeJsonParse(braceText)
     if (parsed && typeof parsed === 'object') return parsed
   }
 
-  // 第4层：清理后重试
+  // 第 4 层：清理后重试
   const cleaned = cleanJsonText(codeBlock || braceText || text)
   const cleanBrace = extractBracePair(cleaned)
   if (cleanBrace) {
@@ -76,6 +76,6 @@ export function extractJsonObject(text) {
     if (parsed && typeof parsed === 'object') return parsed
   }
 
-  // 第5层：正则兜底
+  // 第 5 层：正则兜底
   return null
 }
