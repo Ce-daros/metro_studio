@@ -1,61 +1,76 @@
 .landuse-legend {
+  --legend-bg: linear-gradient(160deg, rgba(10, 14, 24, 0.84) 0%, rgba(7, 10, 18, 0.94) 100%);
+  --legend-border: rgba(123, 214, 255, 0.34);
+  --legend-glow: rgba(58, 198, 255, 0.18);
   position: absolute;
-  bottom: 16px;
-  left: 16px;
-  background: var(--toolbar-card-bg);
-  border: 1px solid var(--toolbar-border);
-  padding: 8px 10px;
-  max-width: 200px;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  left: 12px;
+  bottom: 444px;
+  width: 180px;
+  max-height: 400px;
+  border: 1px solid var(--legend-border);
+  border-radius: 12px;
+  background: var(--legend-bg);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.32), inset 0 0 0 1px var(--legend-glow);
+  backdrop-filter: blur(10px);
+  color: #eef6ff;
+  z-index: 15;
+  overflow: hidden;
+  animation: legend-enter 240ms ease-out both;
+}
+
+.landuse-legend__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  background: linear-gradient(90deg, rgba(188, 31, 255, 0.3), rgba(249, 0, 191, 0.12));
+  border-bottom: 1px solid rgba(188, 31, 255, 0.34);
+}
+
+.landuse-legend__head h3 {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: 'Rajdhani', 'Noto Sans SC', sans-serif;
+  font-weight: 700;
 }
 
 .landuse-legend__toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 4px 6px;
-  border: none;
-  background: transparent;
-  color: var(--toolbar-text);
-  font-size: 11px;
-  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  background: rgba(2, 6, 23, 0.46);
+  color: #dbeafe;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.15s ease;
-  border-radius: 4px;
 }
 
 .landuse-legend__toggle:hover {
-  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(125, 211, 252, 0.72);
+  background: rgba(15, 23, 42, 0.72);
 }
 
-.landuse-legend__toggle-icon {
-  flex-shrink: 0;
-  line-height: 1;
-  font-size: 10px;
-}
-
-.landuse-legend__title {
-  flex: 1;
-  text-align: left;
-}
-
-.landuse-legend__content {
+.landuse-legend__list {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-top: 6px;
-  max-height: 300px;
+  margin: 0;
+  padding: 8px;
+  max-height: calc(400px - 40px);
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.landuse-legend__content::-webkit-scrollbar {
+.landuse-legend__list::-webkit-scrollbar {
   width: 6px;
 }
 
-.landuse-legend__content::-webkit-scrollbar-thumb {
-  background: var(--toolbar-scrollbar-thumb);
+.landuse-legend__list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.46);
   border-radius: 999px;
 }
 
@@ -63,20 +78,50 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.62), rgba(30, 41, 59, 0.24));
 }
 
 .landuse-legend__color {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
   flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.45);
 }
 
 .landuse-legend__label {
-  font-size: 11px;
-  line-height: 1.3;
-  color: var(--toolbar-text);
-  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.25;
+  font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
+  color: rgba(241, 245, 249, 0.96);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes legend-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .landuse-legend {
+    width: min(180px, calc(100% - 20px));
+    max-height: min(36vh, 300px);
+    left: 10px;
+    bottom: 330px;
+  }
+
+  .landuse-legend__list {
+    max-height: calc(min(36vh, 300px) - 40px);
+  }
 }

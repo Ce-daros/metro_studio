@@ -19,12 +19,43 @@ const mapPreferencesActions = {
     this.showInterchangeMarkers = !this.showInterchangeMarkers
   },
 
+  setInterchangeMarkerStyle(style) {
+    const nextStyle = style === 'pie' ? 'pie' : 'bar'
+    this.interchangeMarkerStyle = nextStyle
+    try {
+      window.localStorage.setItem('railmap_interchange_marker_style', nextStyle)
+    } catch {}
+  },
+
   toggleLanduseOverlay() {
-    this.showLanduseOverlay = !this.showLanduseOverlay
+    this.toggleOverlay('zoning')
   },
 
   setShowLanduseOverlay(visible) {
-    this.showLanduseOverlay = Boolean(visible)
+    const has = this.overlayLayers.includes('zoning')
+    if (visible && !has) this.overlayLayers.push('zoning')
+    if (!visible && has) this.overlayLayers = this.overlayLayers.filter(id => id !== 'zoning')
+    try { window.localStorage.setItem('railmap_overlay_layers', JSON.stringify(this.overlayLayers)) } catch {}
+  },
+
+  toggleOverlay(id) {
+    const idx = this.overlayLayers.indexOf(id)
+    if (idx >= 0) this.overlayLayers.splice(idx, 1)
+    else this.overlayLayers.push(id)
+    try { window.localStorage.setItem('railmap_overlay_layers', JSON.stringify(this.overlayLayers)) } catch {}
+  },
+
+  setOverlayMode(mode) {
+    if (mode === 'none') {
+      this.overlayLayers = this.overlayLayers.filter((id) => id !== 'zoning' && id !== 'population')
+    } else if (mode === 'zoning') {
+      this.overlayLayers = this.overlayLayers.filter((id) => id !== 'population')
+      if (!this.overlayLayers.includes('zoning')) this.overlayLayers.push('zoning')
+    } else if (mode === 'population') {
+      this.overlayLayers = this.overlayLayers.filter((id) => id !== 'zoning')
+      if (!this.overlayLayers.includes('population')) this.overlayLayers.push('population')
+    }
+    try { window.localStorage.setItem('railmap_overlay_layers', JSON.stringify(this.overlayLayers)) } catch {}
   },
 
   toggleHighlightStationLocations() {
@@ -44,7 +75,12 @@ const mapPreferencesActions = {
   },
 
   setMapTileType(tileType) {
-    this.mapTileType = tileType || 'dark'
+    const normalized = tileType || 'dark'
+    if (normalized === 'stamenToner' || normalized === 'stamenTerrain') {
+      this.mapTileType = 'dark'
+      return
+    }
+    this.mapTileType = normalized
   },
 }
 

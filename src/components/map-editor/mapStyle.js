@@ -69,30 +69,6 @@ const TILE_SOURCES = {
     maxzoom: 19,
     attribution: '© OpenStreetMap, © CARTO',
   },
-  stamenToner: {
-    type: 'raster',
-    tiles: [
-      'https://stamen-tiles-a.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
-      'https://stamen-tiles-b.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
-      'https://stamen-tiles-c.a.ssl.fastly.net/toner/{z}/{x}/{y}.png',
-    ],
-    tileSize: 256,
-    minzoom: 0,
-    maxzoom: 18,
-    attribution: '© OpenStreetMap, © Stamen',
-  },
-  stamenTerrain: {
-    type: 'raster',
-    tiles: [
-      'https://stamen-tiles-a.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
-      'https://stamen-tiles-b.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
-      'https://stamen-tiles-c.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png',
-    ],
-    tileSize: 256,
-    minzoom: 0,
-    maxzoom: 18,
-    attribution: '© OpenStreetMap, © Stamen',
-  },
   esriWorldStreet: {
     type: 'raster',
     tiles: [

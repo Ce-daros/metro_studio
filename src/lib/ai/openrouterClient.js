@@ -28,7 +28,11 @@ function resolveChatEndpoint() {
       ''
   ).trim()
 
-  const normalizedBase = (customBase || 'https://api.bltcy.ai').replace(/\/+$/, '')
+  if (!customBase) {
+    throw new Error('未配置 AI API Base URL，请在设置中填写或使用环境变量 VITE_BLTCY_API_BASE')
+  }
+
+  const normalizedBase = customBase.replace(/\/+$/, '')
   return `${normalizedBase}${BLTCY_CHAT_COMPLETIONS_PATH}`
 }
 

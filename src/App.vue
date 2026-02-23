@@ -25,6 +25,7 @@ import UpgradeDialog from './components/UpgradeDialog.vue'
 import BatchNameEditDialog from './components/BatchNameEditDialog.vue'
 import StationTTSDialog from './components/StationTTSDialog.vue'
 import MapSearchDialog from './components/MapSearchDialog.vue'
+import LanduseLegend from './components/LanduseLegend.vue'
 import NoProjectWelcome from './components/NoProjectWelcome.vue'
 import HelpView from './components/HelpView.vue'
 import { useProjectStore } from './stores/projectStore'
@@ -77,6 +78,7 @@ const upgradeVisible = ref(false)
 const upgradeMessage = ref('')
 const helpVisible = ref(false)
 const helpInitCategory = ref('guide')
+const landuseLegendVisible = ref(false)
 const ttsDialogRef = ref(null)
 const globalFileInputRef = ref(null)
 const canvasContainer = ref(null)
@@ -382,6 +384,7 @@ onBeforeUnmount(() => {
         @show-batch-name-edit="batchNameEditVisible = true"
         @show-search="openSearchDialogWithProvince"
         @show-help="(cat) => { helpInitCategory = cat; helpVisible = true }"
+        @show-landuse-legend="landuseLegendVisible = true"
       />
       <div class="app__body">
         <ToolStrip
@@ -450,6 +453,7 @@ onBeforeUnmount(() => {
   <BatchNameEditDialog :visible="batchNameEditVisible" @close="batchNameEditVisible = false" />
   <StationTTSDialog ref="ttsDialogRef" :project="store.project" :visible="ttsDialogVisible" @close="ttsDialogVisible = false" />
   <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" :stations="store.project?.stations || []" :lines="store.project?.lines || []" @close="closeSearchDialog" @select="onSearchResultSelect" />
+  <LanduseLegend :visible="landuseLegendVisible" @close="landuseLegendVisible = false" />
   <HelpView v-if="helpVisible" :init-category="helpInitCategory" @close="helpVisible = false" />
   <input
     ref="globalFileInputRef"

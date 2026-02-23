@@ -365,4 +365,26 @@ watch(
 .shortcut-dialog__btn--primary:hover {
   box-shadow: 0 2px 8px var(--ark-pink-glow);
 }
+
+:deep(.n-card) {
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.n-card__header) {
+  flex-shrink: 0;
+}
+
+:deep(.n-card__content) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:deep(.n-card__footer) {
+  flex-shrink: 0;
+}
 </style>

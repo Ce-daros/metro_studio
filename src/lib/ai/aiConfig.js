@@ -1,7 +1,7 @@
 const AI_CONFIG_STORAGE_KEY = 'metro_studio_ai_config'
 
 const DEFAULT_CONFIG = {
-  baseUrl: 'https://api.bltcy.ai',
+  baseUrl: import.meta.env.VITE_BLTCY_API_BASE || 'https://api.bltcy.ai',
   apiKey: '',
   model: '',
 }

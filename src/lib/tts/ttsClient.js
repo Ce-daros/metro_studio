@@ -1,4 +1,4 @@
-const TTS_BASE = 'http://localhost:9880'
+const TTS_BASE = import.meta.env.VITE_TTS_BASE_URL || 'http://localhost:9880'
 
 /**
  * Call TTS server to generate a single announcement audio.

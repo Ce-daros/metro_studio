@@ -3,8 +3,7 @@ import { ref, computed } from 'vue'
 // Ed25519 public key (SPKI DER, base64)
 const PUB_KEY_B64 = 'MCowBQYDK2VwAyEA5NYs7LPomNcyx21Uw72EXbtnY0lvag0TyQ1H8KEaq7I='
 
-// TODO: 替换为你的后端支付页面地址
-export const PURCHASE_URL = 'https://metro-back.angelkawaii.xyz/buy'
+export const PURCHASE_URL = import.meta.env.VITE_PURCHASE_URL || 'https://metro-back.angelkawaii.xyz/buy'
 
 const LICENSE_KEY = 'railmap_license'
 const INTEGRITY_KEY = 'railmap_license_integrity'

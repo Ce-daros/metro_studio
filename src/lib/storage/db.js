@@ -7,9 +7,9 @@ const PROJECT_STORE = 'projects'
 const META_STORE = 'meta'
 const LATEST_PROJECT_KEY = 'latest-project-id'
 
-let dbPromise
+let dbPromise = null
 
-function getDb() {
+async function getDb() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
@@ -20,6 +20,9 @@ function getDb() {
           db.createObjectStore(META_STORE, { keyPath: 'key' })
         }
       },
+    }).catch(error => {
+      dbPromise = null
+      throw new Error(`无法打开 IndexedDB: ${error.message}`)
     })
   }
   return dbPromise
@@ -160,57 +163,85 @@ function toSerializableProject(project) {
 
 /** @param {import('../projectModel').RailProject} project @returns {Promise<object>} */
 export async function saveProjectToDb(project) {
-  const db = await getDb()
-  const serializable = toSerializableProject(project)
-  await db.put(PROJECT_STORE, serializable)
-  await db.put(META_STORE, { key: LATEST_PROJECT_KEY, value: serializable.id })
-  return serializable
+  try {
+    const db = await getDb()
+    const serializable = toSerializableProject(project)
+    await db.put(PROJECT_STORE, serializable)
+    await db.put(META_STORE, { key: LATEST_PROJECT_KEY, value: serializable.id })
+    return serializable
+  } catch (error) {
+    throw new Error(`保存项目失败 (${project?.id || 'unknown'}): ${error.message}`)
+  }
 }
 
 /** @param {string} projectId @returns {Promise<import('../projectModel').RailProject|null>} */
 export async function loadProjectFromDb(projectId) {
-  const db = await getDb()
-  const result = await db.get(PROJECT_STORE, projectId)
-  return result ? normalizeProject(result) : null
+  try {
+    const db = await getDb()
+    const result = await db.get(PROJECT_STORE, projectId)
+    return result ? normalizeProject(result) : null
+  } catch (error) {
+    throw new Error(`加载项目失败 (${projectId}): ${error.message}`)
+  }
 }
 
 /** @returns {Promise<import('../projectModel').RailProject[]>} */
 export async function listProjectsFromDb() {
-  const db = await getDb()
-  const projects = await db.getAll(PROJECT_STORE)
-  return projects
-    .map((project) => normalizeProject(project))
-    .sort((a, b) => (a.meta.updatedAt < b.meta.updatedAt ? 1 : -1))
+  try {
+    const db = await getDb()
+    const projects = await db.getAll(PROJECT_STORE)
+    return projects
+      .map((project) => normalizeProject(project))
+      .sort((a, b) => (a.meta.updatedAt < b.meta.updatedAt ? 1 : -1))
+  } catch (error) {
+    throw new Error(`列出项目失败: ${error.message}`)
+  }
 }
 
 /** @returns {Promise<import('../projectModel').RailProject|null>} */
 export async function loadLatestProjectFromDb() {
-  const db = await getDb()
-  const latest = await db.get(META_STORE, LATEST_PROJECT_KEY)
-  if (!latest?.value) {
-    return null
+  try {
+    const db = await getDb()
+    const latest = await db.get(META_STORE, LATEST_PROJECT_KEY)
+    if (!latest?.value) {
+      return null
+    }
+    return loadProjectFromDb(latest.value)
+  } catch (error) {
+    throw new Error(`加载最新项目失败: ${error.message}`)
   }
-  return loadProjectFromDb(latest.value)
 }
 
 /** @param {string} projectId @returns {Promise<void>} */
 export async function setLatestProject(projectId) {
-  const db = await getDb()
-  await db.put(META_STORE, { key: LATEST_PROJECT_KEY, value: projectId })
+  try {
+    const db = await getDb()
+    await db.put(META_STORE, { key: LATEST_PROJECT_KEY, value: projectId })
+  } catch (error) {
+    throw new Error(`设置最新项目失败 (${projectId}): ${error.message}`)
+  }
 }
 
 /** @returns {Promise<void>} */
 export async function clearLatestProject() {
-  const db = await getDb()
-  await db.delete(META_STORE, LATEST_PROJECT_KEY)
+  try {
+    const db = await getDb()
+    await db.delete(META_STORE, LATEST_PROJECT_KEY)
+  } catch (error) {
+    throw new Error(`清除最新项目失败: ${error.message}`)
+  }
 }
 
 /** @param {string} projectId @returns {Promise<void>} */
 export async function deleteProjectFromDb(projectId) {
-  const db = await getDb()
-  await db.delete(PROJECT_STORE, projectId)
-  const latest = await db.get(META_STORE, LATEST_PROJECT_KEY)
-  if (latest?.value === projectId) {
-    await db.delete(META_STORE, LATEST_PROJECT_KEY)
+  try {
+    const db = await getDb()
+    await db.delete(PROJECT_STORE, projectId)
+    const latest = await db.get(META_STORE, LATEST_PROJECT_KEY)
+    if (latest?.value === projectId) {
+      await db.delete(META_STORE, LATEST_PROJECT_KEY)
+    }
+  } catch (error) {
+    throw new Error(`删除项目失败 (${projectId}): ${error.message}`)
   }
 }

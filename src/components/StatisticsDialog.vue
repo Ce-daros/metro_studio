@@ -235,7 +235,7 @@ watch(
 </script>
 
 <template>
-  <NModal :show="visible" preset="card" title="统计信息" style="width:800px;max-width:calc(100vw - 32px)" @close="doClose" @mask-click="doClose">
+  <NModal :show="visible" preset="card" title="统计信息" :style="{ width: '800px', maxWidth: 'calc(100vw - 32px)' }" @close="doClose" @mask-click="doClose">
     <div class="stats-dialog__tabs">
             <button
               v-for="tab in tabs"
@@ -585,11 +585,35 @@ watch(
 </template>
 
 <style scoped>
+:deep(.n-card) {
+  height: 90vh;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+:deep(.n-card__header) {
+  flex-shrink: 0;
+}
+
+:deep(.n-card__content) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+:deep(.n-card__footer) {
+  flex-shrink: 0;
+}
+
 .stats-dialog__tabs {
   display: flex;
   gap: 0;
   padding: 0 20px;
   border-bottom: 1px solid var(--toolbar-divider);
+  flex-shrink: 0;
 }
 
 .stats-dialog__tab {

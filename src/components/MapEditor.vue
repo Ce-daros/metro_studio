@@ -21,6 +21,9 @@ import {
   updateMapData,
   ensureLanduseLayer,
   removeLanduseLayer,
+   syncOverlays,
+  setPopulationYear,
+  getPopulationYearFromStore,
   setStationHighlightVisibility,
   updateMapDisplayVisibility,
   startSelectionBlink,
@@ -40,7 +43,6 @@ import { DEFAULT_MAP_CENTER } from '../lib/constants'
 import { setMapGetter, setStoreGetter } from '../composables/useMapSearch.js'
 import IconBase from './IconBase.vue'
 import TimelineSlider from './TimelineSlider.vue'
-import LanduseLegend from './LanduseLegend.vue'
 import MapContextMenu from './map-editor/MapContextMenu.vue'
 import MapLineSelectionMenu from './map-editor/MapLineSelectionMenu.vue'
 import MapAnnotationMarkers from './map-editor/MapAnnotationMarkers.vue'
@@ -481,9 +483,7 @@ onMounted(() => {
 
     onBoundaryMapLoad()
 
-    if (store.showLanduseOverlay) {
-      ensureLanduseLayer(map, store)
-    }
+    syncOverlays(map, store)
 
     map.on('click', LAYER_STATIONS, handleStationClick)
     map.on('mousedown', LAYER_STATIONS, startStationDrag)
@@ -632,18 +632,21 @@ watch(
   )
 
   watch(
-    () => ({
-      showLanduseOverlay: store.showLanduseOverlay,
-      protomapsApiKey: store.protomapsApiKey,
-    }),
-    ({ showLanduseOverlay: visible }) => {
-      if (!map || !map.isStyleLoaded()) return
-      if (visible) {
-        ensureLanduseLayer(map, store)
-      } else {
-        removeLanduseLayer(map)
-      }
+    () => [...store.overlayLayers],
+    () => {
+      if (!map) return
+      syncOverlays(map, store)
     },
+    { deep: true },
+  )
+
+  watch(
+    () => ({ currentEditYear: store.currentEditYear, timelineFilterYear: store.timelineFilterYear }),
+    () => {
+      if (!map || !store.overlayLayers.includes('population')) return
+      setPopulationYear(map, getPopulationYearFromStore(store))
+    },
+    { deep: true },
   )
 
   watch(
@@ -662,7 +665,7 @@ watch(
       showInterchangeMarkers: store.showInterchangeMarkers,
     }),
     () => {
-      if (!map || !map.isStyleLoaded()) return
+      if (!map) return
       updateMapDisplayVisibility(map, store)
     },
     { deep: true },
@@ -687,9 +690,7 @@ watch(
         updateMapData(map, store)
         refreshMapGridLayer()
         setGridVisibility(store.showMapGrid)
-        if (store.showLanduseOverlay) {
-          ensureLanduseLayer(map, store)
-        }
+        syncOverlays(map, store)
         setStationHighlightVisibility(map, store.highlightStationLocations)
         updateMapDisplayVisibility(map, store)
         refreshViewportMeta()
@@ -820,7 +821,6 @@ watch(
       @stop="onTimelineStop"
       @speed-change="onTimelineSpeedChange"
     />
-    <LanduseLegend :visible="store.showLanduseOverlay" />
   </section>
 </template>
 

@@ -11,18 +11,22 @@ const props = defineProps({
   activeView: { type: String, default: 'map' },
 })
 
-const emit = defineEmits(['set-view', 'action', 'show-project-list', 'show-ai-config', 'show-tts-dialog', 'show-shortcut-settings', 'show-statistics', 'show-about', 'show-batch-name-edit', 'show-search', 'show-help'])
+const emit = defineEmits(['set-view', 'action', 'show-project-list', 'show-ai-config', 'show-tts-dialog', 'show-shortcut-settings', 'show-statistics', 'show-about', 'show-batch-name-edit', 'show-search', 'show-help', 'show-landuse-legend'])
 
 const store = useProjectStore()
 const openMenuKey = ref(null)
 const menuBarRef = ref(null)
-const menuButtonRects = ref({})
 const lineDropdownOpen = ref(false)
 const lineButtonRef = ref(null)
-const lineDropdownRect = ref(null)
 const fileInputRef = ref(null)
 
 const { menus, handleAction, uiTheme, toggleTheme } = useMenuBarActions(store, emit, { fileInputRef })
+
+function getFallbackMenuIcon(item) {
+  if (item.type === 'submenu') return 'menu'
+  if (item.type === 'toggle') return item.checked ? 'check-circle' : 'box'
+  return 'file'
+}
 
 function convertMenuItems(items) {
   return items.map((item, i) => {
@@ -30,7 +34,8 @@ function convertMenuItems(items) {
     const opt = { key: item.action || `submenu_${item.label}`, label: item.label, disabled: item.disabled }
     if (item.type === 'toggle' && item.checked) opt.label = `✓ ${item.label}`
     if (item.shortcut) opt.label = `${item.label}    ${item.shortcut}`
-    if (item.icon) opt.icon = () => h(IconBase, { name: item.icon, size: 16 })
+    const iconName = item.icon || getFallbackMenuIcon(item)
+    opt.icon = () => h(IconBase, { name: iconName, size: 16 })
     if (item.type === 'submenu' && item.children) opt.children = convertMenuItems(item.children)
     return opt
   })
@@ -45,6 +50,7 @@ const lineNDropdownOptions = computed(() =>
   lines.value.map((line) => ({
     key: `line_${line.id}`,
     label: getDisplayLineName(line, 'zh') || line.nameZh || '未命名',
+    icon: () => h(IconBase, { name: 'route', size: 16 }),
   }))
 )
 
@@ -108,20 +114,11 @@ function toggleMenu(key) {
     return
   }
   openMenuKey.value = key
-  captureMenuButtonRect(key)
 }
 
 function onMenuBarMouseEnter(key) {
   if (openMenuKey.value && openMenuKey.value !== key) {
     openMenuKey.value = key
-    captureMenuButtonRect(key)
-  }
-}
-
-function captureMenuButtonRect(key) {
-  const btn = menuBarRef.value?.querySelector(`[data-menu-key="${key}"]`)
-  if (btn) {
-    menuButtonRects.value[key] = btn.getBoundingClientRect()
   }
 }
 
@@ -145,29 +142,6 @@ async function onFileSelected(event) {
     event.target.value = ''
   }
 }
-
-function toggleLineDropdown() {
-  openMenuKey.value = null
-  lineDropdownOpen.value = !lineDropdownOpen.value
-  if (lineDropdownOpen.value && lineButtonRef.value) {
-    lineDropdownRect.value = lineButtonRef.value.getBoundingClientRect()
-  }
-}
-
-function onLineSelect(item) {
-  lineDropdownOpen.value = false
-  if (item.action?.startsWith('line_')) {
-    store.setActiveLine(item.action.slice(5))
-  }
-}
-
-const lineMenuItems = computed(() =>
-  lines.value.map((line) => ({
-    type: 'item',
-    label: getDisplayLineName(line, 'zh') || line.nameZh || '未命名',
-    action: `line_${line.id}`,
-  })),
-)
 
 function toggleNavigation() {
   if (store.navigation.active) {

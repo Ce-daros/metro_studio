@@ -1,5 +1,33 @@
 # 更新日志
 
+## 2026-02-23 (v1.0.0-beta.1)
+
+### 新功能
+- 新增人口密度叠加层：支持 1km/100m 双分辨率，2000-2020 年时间轴控制
+- 分区覆盖图例改为模态对话框形式，支持滚动和折叠
+- 新增叠加层管理系统：支持 zoning 和 population 叠加层的统一管理
+
+### 改进优化
+- 重构地图事件处理：点击和拖拽逻辑分离到独立 composable 文件
+- 改进暗色地图文本显示：根据地图类型自动调整文本颜色和描边
+- 优化叠加层渲染顺序：使用 normalizeOverlayOrder 确保正确的图层顺序
+- 人口密度颜色映射：使用对数缩放和 50 级渐变色板
+- 叠加层可见性过滤：更新站点可见性过滤逻辑
+
+### 重构
+- 拆分 useMapEventHandlers.js 为三个独立文件：
+  - useMapClickHandlers.js：处理地图点击事件
+  - useMapDragHandlers.js：处理地图拖拽事件
+  - useMapInteractionState.js：管理交互状态
+- 重构 LanduseLegend.vue：从内嵌组件改为模态对话框
+
+### 构建
+- 添加 vitest 测试框架 (v4.0.18)
+- 新增 .env.example 环境变量示例文件
+- 新增 REVIEW.md 文档
+
+---
+
 ## 2026-02-22 (v1.0.0-rc.9)
 
 ### 改进优化

@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { DEFAULT_EDIT_YEAR } from '../lib/constants'
+import { calculateNetworkMetrics } from '../lib/network/networkStatistics'
 import { exportPersistenceActions } from './project/actions/exportPersistence'
 import { historyActions } from './project/actions/history'
 import { importLayoutActions } from './project/actions/importLayout'
@@ -28,6 +29,22 @@ function getInitialChineseScript() {
     if (saved === 'traditional' || saved === 'simplified') return saved
   } catch { /* ignore */ }
   return 'simplified'
+}
+
+function getInitialOverlayLayers() {
+  try {
+    const saved = window.localStorage.getItem('railmap_overlay_layers')
+    if (saved) return JSON.parse(saved)
+  } catch { /* ignore */ }
+  return []
+}
+
+function getInitialInterchangeMarkerStyle() {
+  try {
+    const saved = window.localStorage.getItem('railmap_interchange_marker_style')
+    if (saved === 'bar' || saved === 'pie') return saved
+  } catch { /* ignore */ }
+  return 'bar'
 }
 
 /** @typedef {import('../lib/projectModel').RailProject} RailProject */
@@ -59,13 +76,13 @@ export const useProjectStore = defineStore('project', {
       message: '',
     },
     exportStationVisibilityMode: 'all',
-    showLanduseOverlay: false,
+    overlayLayers: getInitialOverlayLayers(),
     highlightStationLocations: false,
     showStationMarkers: true,
     showStationLabels: true,
     showLineLabels: true,
     showInterchangeMarkers: true,
-    interchangeMarkerStyle: 'orbit', // 'orbit' | 'radar' | 'gear'
+    interchangeMarkerStyle: getInitialInterchangeMarkerStyle(), // 'bar' | 'pie'
     showMapGrid: false,
     showMapCoordinates: false,
     protomapsApiKey: getInitialProtomapsApiKey(),
@@ -205,8 +222,9 @@ export const useProjectStore = defineStore('project', {
         km: totalMeters / 1000,
       }
     },
-    networkStatistics() {
-      return null
+    networkStatistics(state) {
+      if (!state.project) return null
+      return calculateNetworkMetrics(state.project)
     },
   },
   actions: {

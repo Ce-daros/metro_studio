@@ -171,6 +171,7 @@ function doClose() {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  max-height: 60vh;
 }
 
 .bne-dialog__empty {

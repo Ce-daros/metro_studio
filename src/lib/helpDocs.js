@@ -165,7 +165,7 @@ npm run dev
     { key: 'views', title: '多视图展示', content: `
 ## 地图视图 (快捷键 1)
 
-在 OpenStreetMap 底图上进行真实地理位置编辑。支持多种瓦片类型：OSM 标准、CartoDB（Voyager / 浅色 / 深色）、Stamen（Toner / Terrain）、ESRI（卫星 / 街道 / 地形）、Wikimedia、OpenTopoMap。
+在 OpenStreetMap 底图上进行真实地理位置编辑。支持多种瓦片类型：OSM 标准、CartoDB（Voyager / 浅色 / 深色）、ESRI（卫星 / 街道 / 地形）、Wikimedia、OpenTopoMap。
 
 ## 示意图视图 (快捷键 2)
 

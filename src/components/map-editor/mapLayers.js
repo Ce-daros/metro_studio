@@ -22,6 +22,8 @@ import {
 import { LINE_STYLE_OPTIONS, getLineStyleMap } from '../../lib/lineStyles'
 
 const LAYER_LANDUSE = 'landuse-overlay'
+const LAYER_POPULATION_1KM = 'population-overlay-1km'
+const LAYER_POPULATION_100M = 'population-overlay-100m'
 const LAYER_STATIONS_LABEL = 'railmap-stations-label'
 const LAYER_STATIONS_INTERCHANGE = 'railmap-stations-interchange'
 
@@ -401,14 +403,18 @@ export function setStationHighlightVisibility(map, visible) {
 
 export function updateMapDisplayVisibility(map, store) {
   if (!map) return
+  const darkBasemap = store.mapTileType === 'dark'
   if (map.getLayer(LAYER_STATIONS)) {
     map.setLayoutProperty(LAYER_STATIONS, 'visibility', store.showStationMarkers ? 'visible' : 'none')
+    if (store.showStationMarkers) {
+      updateStationVisibilityFilter(map, store)
+    }
   }
   if (map.getLayer(LAYER_STATIONS_LABEL)) {
     map.setLayoutProperty(LAYER_STATIONS_LABEL, 'visibility', store.showStationLabels ? 'visible' : 'none')
-    map.setPaintProperty(LAYER_STATIONS_LABEL, 'text-color', '#eef3ff')
-    map.setPaintProperty(LAYER_STATIONS_LABEL, 'text-halo-color', 'rgba(5, 5, 5, 0.85)')
-    map.setPaintProperty(LAYER_STATIONS_LABEL, 'text-halo-width', 2)
+    map.setPaintProperty(LAYER_STATIONS_LABEL, 'text-color', darkBasemap ? '#eef3ff' : '#111827')
+    map.setPaintProperty(LAYER_STATIONS_LABEL, 'text-halo-color', darkBasemap ? 'rgba(5, 5, 5, 0.85)' : '#ffffff')
+    map.setPaintProperty(LAYER_STATIONS_LABEL, 'text-halo-width', darkBasemap ? 2 : 1.4)
   }
   if (map.getLayer(LAYER_STATIONS_INTERCHANGE)) {
     // 始终隐藏静态换乘标识，改用动态 HTML Marker
@@ -446,8 +452,8 @@ export function ensureLanduseLayer(map, store) {
       }
       colorExpression.push('#E8F4C6')
 
-      const beforeLayer = map.getLayer(LAYER_STATIONS_LABEL) ? LAYER_STATIONS_LABEL : LAYER_STATIONS
-      map.addLayer({
+      const beforeLayer = getOverlayAnchorLayer(map)
+      const layerDef = {
         id: LAYER_LANDUSE,
         type: 'fill',
         source: 'protomaps',
@@ -456,14 +462,17 @@ export function ensureLanduseLayer(map, store) {
           'fill-color': colorExpression,
           'fill-opacity': 0.75,
         },
-      }, beforeLayer)
+      }
+      if (beforeLayer) map.addLayer(layerDef, beforeLayer)
+      else map.addLayer(layerDef)
+      normalizeOverlayOrder(map)
     } catch (e) {
       console.error('Failed to add landuse layer:', e)
       return
     }
   }
 
-  updateLanduseVisibility(map, store.showLanduseOverlay)
+  updateLanduseVisibility(map, store.overlayLayers.includes('zoning'))
 }
 
 export function removeLanduseLayer(map) {
@@ -472,11 +481,188 @@ export function removeLanduseLayer(map) {
   if (map.getLayer(LAYER_LANDUSE)) {
     map.removeLayer(LAYER_LANDUSE)
   }
+
+  if (map.getSource('protomaps')) {
+    map.removeSource('protomaps')
+  }
 }
 
 export function updateLanduseVisibility(map, visible) {
   if (!map || !map.getLayer(LAYER_LANDUSE)) return
   map.setLayoutProperty(LAYER_LANDUSE, 'visibility', visible ? 'visible' : 'none')
+}
+
+const WORLDPOP_BASE = 'https://worldpop.arcgis.com/arcgis/rest/services'
+const DEFAULT_POP_YEAR = 2020
+
+function clampPopulationYear(year) {
+  const n = Number.isFinite(Number(year)) ? Math.floor(Number(year)) : DEFAULT_POP_YEAR
+  return Math.max(2000, Math.min(2020, n))
+}
+
+export function getPopulationYearFromStore(store) {
+  const sourceYear = store?.timelineFilterYear ?? store?.currentEditYear ?? DEFAULT_POP_YEAR
+  return clampPopulationYear(sourceYear)
+}
+
+// 50-step population density color ramp (log-spaced thresholds, interpolated yellow→red)
+const POP_STOPS = [[1,[255,255,178]],[100,[254,217,118]],[1000,[253,141,60]],[5000,[227,26,28]],[20000,[128,0,38]]]
+
+function buildPopRamp(n) {
+  const thresholds = [0]
+  for (let i = 1; i <= n; i++) thresholds.push(Math.round(Math.pow(20000, i / n)))
+  const colormap = [[0, 0, 0, 0]]
+  const ranges = [], outputs = []
+  for (let i = 0; i < n; i++) {
+    ranges.push(thresholds[i], thresholds[i + 1])
+    outputs.push(i + 1)
+    const v = thresholds[i + 1]
+    let lo = POP_STOPS[0], hi = POP_STOPS[POP_STOPS.length - 1]
+    for (let j = 0; j < POP_STOPS.length - 1; j++) {
+      if (v <= POP_STOPS[j + 1][0]) { lo = POP_STOPS[j]; hi = POP_STOPS[j + 1]; break }
+    }
+    const t = Math.min(1, (Math.log(v) - Math.log(lo[0] || 1)) / (Math.log(hi[0]) - Math.log(lo[0] || 1)))
+    colormap.push([i + 1, Math.round(lo[1][0] + (hi[1][0] - lo[1][0]) * t), Math.round(lo[1][1] + (hi[1][1] - lo[1][1]) * t), Math.round(lo[1][2] + (hi[1][2] - lo[1][2]) * t)])
+  }
+  ranges.push(thresholds[n], 1e9)
+  outputs.push(n + 1)
+  colormap.push([n + 1, 128, 0, 38])
+  return { colormap, ranges, outputs }
+}
+
+const _ramp = buildPopRamp(255)
+
+function getOverlayAnchorLayer(map) {
+  if (map.getLayer(LAYER_STATIONS_LABEL)) return LAYER_STATIONS_LABEL
+  if (map.getLayer(LAYER_STATIONS)) return LAYER_STATIONS
+  return null
+}
+
+function moveLayerSafe(map, layerId, beforeId) {
+  if (!map.getLayer(layerId)) return
+  if (beforeId && map.getLayer(beforeId)) map.moveLayer(layerId, beforeId)
+  else map.moveLayer(layerId)
+}
+
+function normalizeOverlayOrder(map) {
+  if (!map) return
+  const anchor = getOverlayAnchorLayer(map)
+  moveLayerSafe(map, LAYER_LANDUSE, anchor)
+  moveLayerSafe(map, LAYER_POPULATION_1KM, anchor)
+  moveLayerSafe(map, LAYER_POPULATION_100M, anchor)
+}
+
+function worldpopTileUrl(resolution, year) {
+  const ts = Date.UTC(year, 0, 1)
+  const mosaicRule = encodeURIComponent(JSON.stringify({
+    multidimensionalDefinition: [{
+      dimensionName: 'StdTime',
+      values: [ts],
+      isSlice: true,
+    }],
+  }))
+  const rule = encodeURIComponent(JSON.stringify({
+    rasterFunction: 'Colormap',
+    rasterFunctionArguments: {
+      Colormap: _ramp.colormap,
+      Raster: {
+        rasterFunction: 'Remap',
+        rasterFunctionArguments: {
+          InputRanges: _ramp.ranges,
+          OutputValues: _ramp.outputs,
+          AllowUnmatched: false,
+        },
+      },
+    },
+  }))
+  return `${WORLDPOP_BASE}/WorldPop_Population_Density_${resolution}/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=512,512&format=png32&f=image&noData=0&noDataInterpretation=esriNoDataMatchAny&renderingRule=${rule}&mosaicRule=${mosaicRule}&time=${ts},${ts}&year=${year}`
+}
+
+let _currentPopYear = DEFAULT_POP_YEAR
+
+function updateOrAddSource(map, srcId, tileUrl, attr) {
+  const existing = map.getSource(srcId)
+  if (existing) {
+    existing.setTiles([tileUrl])
+  } else {
+    map.addSource(srcId, { type: 'raster', tileSize: 512, attribution: attr, tiles: [tileUrl] })
+  }
+}
+
+export function ensurePopulationLayer(map, year) {
+  if (!map) return
+  const yr = year ?? _currentPopYear
+  _currentPopYear = yr
+  const beforeLayer = getOverlayAnchorLayer(map)
+  const attr = '© WorldPop / Esri (CC BY 4.0)'
+
+  // 1km layer: zoom 0–8
+  const src1km = 'worldpop-density-1km'
+  try { updateOrAddSource(map, src1km, worldpopTileUrl('1km', yr), attr) }
+  catch (e) { console.error('Failed to setup 1km population source:', e); return }
+  if (!map.getLayer(LAYER_POPULATION_1KM)) {
+    try {
+      const layerDef = { id: LAYER_POPULATION_1KM, type: 'raster', source: src1km,
+        maxzoom: 9, paint: { 'raster-opacity': 0.35 },
+      }
+      if (beforeLayer) map.addLayer(layerDef, beforeLayer)
+      else map.addLayer(layerDef)
+    } catch (e) { console.error('Failed to add 1km population layer:', e) }
+  }
+
+  // 100m layer: zoom 9+
+  const src100m = 'worldpop-density-100m'
+  try { updateOrAddSource(map, src100m, worldpopTileUrl('100m', yr), attr) }
+  catch (e) { console.error('Failed to setup 100m population source:', e); return }
+  if (!map.getLayer(LAYER_POPULATION_100M)) {
+    try {
+      const layerDef = { id: LAYER_POPULATION_100M, type: 'raster', source: src100m,
+        minzoom: 9, paint: { 'raster-opacity': 0.35 },
+      }
+      if (beforeLayer) map.addLayer(layerDef, beforeLayer)
+      else map.addLayer(layerDef)
+    } catch (e) { console.error('Failed to add 100m population layer:', e) }
+  }
+
+  normalizeOverlayOrder(map)
+}
+
+export function removePopulationLayer(map) {
+  if (!map) return
+  for (const [layer, src] of [[LAYER_POPULATION_1KM, 'worldpop-density-1km'], [LAYER_POPULATION_100M, 'worldpop-density-100m']]) {
+    if (map.getLayer(layer)) map.removeLayer(layer)
+    if (map.getSource(src)) map.removeSource(src)
+  }
+}
+
+export function setPopulationYear(map, year) {
+  if (!map) return
+  const nextYear = clampPopulationYear(year)
+  if (nextYear === _currentPopYear && map.getSource('worldpop-density-1km')) return
+  ensurePopulationLayer(map, nextYear)
+}
+
+const OVERLAY_HANDLERS = {
+  zoning: { ensure: ensureLanduseLayer, remove: removeLanduseLayer },
+  population: { ensure: (map, store) => ensurePopulationLayer(map, getPopulationYearFromStore(store)), remove: removePopulationLayer },
+}
+
+export function ensureOverlay(map, store, id) {
+  const h = OVERLAY_HANDLERS[id]
+  if (h) h.ensure(map, store)
+}
+
+export function removeOverlay(map, id) {
+  const h = OVERLAY_HANDLERS[id]
+  if (h) h.remove(map)
+}
+
+export function syncOverlays(map, store) {
+  for (const id of Object.keys(OVERLAY_HANDLERS)) {
+    if (store.overlayLayers.includes(id)) ensureOverlay(map, store, id)
+    else removeOverlay(map, id)
+  }
+  normalizeOverlayOrder(map)
 }
 
 export { COMMON_LANDUSE_TYPES, LANDUSE_COLORS }

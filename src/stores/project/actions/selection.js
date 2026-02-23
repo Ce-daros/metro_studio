@@ -231,7 +231,12 @@ const selectionActions = {
         this.statusText = '已停留当前点，请点击其他点继续布线'
         return
       }
-      this.addEdgeBetweenStations(this.pendingEdgeStartStationId, stationId)
+      const newEdge = this.addEdgeBetweenStations(this.pendingEdgeStartStationId, stationId)
+      if (!newEdge) {
+        this.statusText = '创建线段失败，请重试'
+        this.pendingEdgeStartStationId = null
+        return
+      }
       this.pendingEdgeStartStationId = stationId
       this.statusText = '已连接并继续布线：请点击下一个点'
     }

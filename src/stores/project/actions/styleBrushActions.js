@@ -1,11 +1,4 @@
 export const styleBrushActions = {
-  styleBrush: {
-    active: false,
-    sourceType: null,
-    sourceId: null,
-    styleData: null,
-  },
-
   activateStyleBrush(objectId, objectType) {
     if (!this.project) return false
 
@@ -25,8 +18,6 @@ export const styleBrushActions = {
       extractedStyle = {
         lineStyleOverride: sourceObject.lineStyleOverride,
         isCurved: sourceObject.isCurved,
-        waypoints: sourceObject.waypoints ? JSON.parse(JSON.stringify(sourceObject.waypoints)) : null,
-        sharedByLineIds: sourceObject.sharedByLineIds ? [...sourceObject.sharedByLineIds] : [],
         openingYear: sourceObject.openingYear,
       }
     } else if (objectType === 'line') {
@@ -113,22 +104,6 @@ export const styleBrushActions = {
 
     if (targetEdge.isCurved !== sourceStyle.isCurved) {
       targetEdge.isCurved = sourceStyle.isCurved
-      changed = true
-    }
-
-    if (sourceStyle.waypoints) {
-      const sourceWaypointsStr = JSON.stringify(sourceStyle.waypoints)
-      const targetWaypointsStr = JSON.stringify(targetEdge.waypoints)
-      if (sourceWaypointsStr !== targetWaypointsStr) {
-        targetEdge.waypoints = JSON.parse(JSON.stringify(sourceStyle.waypoints))
-        changed = true
-      }
-    }
-
-    const sourceLinesStr = JSON.stringify(sourceStyle.sharedByLineIds.sort())
-    const targetLinesStr = JSON.stringify((targetEdge.sharedByLineIds || []).sort())
-    if (sourceLinesStr !== targetLinesStr) {
-      targetEdge.sharedByLineIds = [...sourceStyle.sharedByLineIds]
       changed = true
     }
 
@@ -247,22 +222,6 @@ export const styleBrushActions = {
 
       if (edge.isCurved !== sourceStyle.isCurved) {
         edge.isCurved = sourceStyle.isCurved
-        changed = true
-      }
-
-      if (sourceStyle.waypoints) {
-        const sourceWaypointsStr = JSON.stringify(sourceStyle.waypoints)
-        const targetWaypointsStr = JSON.stringify(edge.waypoints)
-        if (sourceWaypointsStr !== targetWaypointsStr) {
-          edge.waypoints = JSON.parse(JSON.stringify(sourceStyle.waypoints))
-          changed = true
-        }
-      }
-
-      const sourceLinesStr = JSON.stringify(sourceStyle.sharedByLineIds.sort())
-      const targetLinesStr = JSON.stringify((edge.sharedByLineIds || []).sort())
-      if (sourceLinesStr !== targetLinesStr) {
-        edge.sharedByLineIds = [...sourceStyle.sharedByLineIds]
         changed = true
       }
 

@@ -667,12 +667,15 @@ export const edgeActions = {
 
     const selectedEdges = new Set(this.selectedEdgeIds || [])
     if (selectedEdges.has(firstEdge.id) || selectedEdges.has(secondEdge.id)) {
-      this.selectedEdgeIds = this.selectedEdgeIds.filter((edgeId) => !selectedEdges.has(edgeId))
-      if (!this.selectedEdgeIds.length) {
-        this.selectedEdgeId = null
-        this.selectedEdgeAnchor = null
+        this.selectedEdgeIds = this.selectedEdgeIds.filter((edgeId) => !selectedEdges.has(edgeId))
+        if (!this.selectedEdgeIds.length) {
+          this.selectedEdgeId = null
+          this.selectedEdgeAnchor = null
+        }
       }
-      }
+
+    this.touchProject('合并边')
+    return true
   },
 
 }

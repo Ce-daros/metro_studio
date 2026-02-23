@@ -32,7 +32,25 @@ const CHINESE_CITY_REGIONS = [
 ]
 
 const CHINESE_CITY_IDS = new Set(CHINESE_CITY_REGIONS.flatMap((r) => r.ids))
+
+const INTERNATIONAL_CITY_REGIONS = [
+  { label: '亚洲', ids: ['tokyo', 'seoul', 'singapore', 'bangkok', 'delhi', 'istanbul'] },
+  { label: '欧洲', ids: ['london', 'paris', 'moscow', 'berlin', 'madrid', 'barcelona', 'stockholm', 'vienna', 'prague', 'budapest'] },
+  { label: '北美洲', ids: ['newyork'] },
+  { label: '非洲', ids: ['cairo'] },
+]
+
 const INTERNATIONAL_CITY_PRESETS = CITY_PRESETS.filter((p) => !CHINESE_CITY_IDS.has(p.id))
+
+function buildInternationalCityMenuItems(importing) {
+  const presetMap = Object.fromEntries(CITY_PRESETS.map((p) => [p.id, p]))
+  return INTERNATIONAL_CITY_REGIONS.map((region) => ({
+    type: 'submenu',
+    label: region.label,
+    icon: 'git-branch',
+    children: buildCityMenuItems(region.ids.map((id) => presetMap[id]).filter(Boolean), importing),
+  }))
+}
 
 function buildCityMenuItems(presets, importing) {
   return presets.map((p) => ({
@@ -122,7 +140,7 @@ export function useMenuBarActions(store, emit, refs) {
         { type: 'item', label: '导入济南 OSM 线网', action: 'importOsm', icon: 'route', disabled: importing || isTrial.value },
         { type: 'separator' },
         { type: 'submenu', label: '中国城市', icon: 'git-branch', children: buildChineseCityMenuItems(importing) },
-        { type: 'submenu', label: '国际城市', icon: 'git-branch', children: buildCityMenuItems(INTERNATIONAL_CITY_PRESETS, importing) },
+        { type: 'submenu', label: '国际城市', icon: 'git-branch', children: buildInternationalCityMenuItems(importing) },
       ]},
     ]
   })
@@ -159,11 +177,22 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'item', label: '报站生成', action: 'ttsGeneration', icon: 'volume-2' },
   ])
 
+  const overlayMode = computed(() => {
+    if (store.overlayLayers.includes('population')) return 'population'
+    if (store.overlayLayers.includes('zoning')) return 'zoning'
+    return 'none'
+  })
+
   const viewMenuItems = computed(() => [
     { type: 'toggle', label: '显示站点标识', checked: store.showStationMarkers, action: 'toggleStationMarkers', icon: 'map-pin' },
     { type: 'toggle', label: '显示站点名', checked: store.showStationLabels, action: 'toggleStationLabels', icon: 'eye' },
     { type: 'toggle', label: '显示换乘标记', checked: store.showInterchangeMarkers, action: 'toggleInterchangeMarkers', icon: 'target' },
-    { type: 'toggle', label: '显示区域覆盖', checked: store.showLanduseOverlay, action: 'toggleLanduseOverlay', icon: 'map' },
+    { type: 'submenu', label: '叠加图层', icon: 'layers', children: [
+      { type: 'toggle', label: '无叠加', checked: overlayMode.value === 'none', action: 'overlayNone', icon: 'eye-off' },
+      { type: 'toggle', label: '分区覆盖', checked: overlayMode.value === 'zoning', action: 'overlayZoning', icon: 'map' },
+      { type: 'toggle', label: '人口热力', checked: overlayMode.value === 'population', action: 'overlayPopulation', icon: 'flame' },
+    ] },
+    { type: 'item', label: '分区覆盖图例', action: 'showLanduseLegend', icon: 'list' },
     { type: 'separator' },
     { type: 'toggle', label: '显示网格', checked: store.showMapGrid, action: 'toggleMapGrid', icon: 'box' },
     { type: 'toggle', label: '显示坐标', checked: store.showMapCoordinates, action: 'toggleMapCoordinates', icon: 'map-pin' },
@@ -194,6 +223,11 @@ export function useMenuBarActions(store, emit, refs) {
   const settingsMenuItems = computed(() => [
     { type: 'item', label: '快捷键绑定', action: 'shortcutSettings', icon: 'sliders' },
     { type: 'separator' },
+    { type: 'submenu', label: '换乘站标识样式', icon: 'target', children: [
+      { type: 'toggle', label: '横向色块', checked: store.interchangeMarkerStyle === 'bar', action: 'interchangeMarkerStyleBar', icon: 'target' },
+      { type: 'toggle', label: '黑圈扇区', checked: store.interchangeMarkerStyle === 'pie', action: 'interchangeMarkerStylePie', icon: 'layers' },
+    ] },
+    { type: 'separator' },
     { type: 'item', label: 'AI 配置', action: 'aiConfig', icon: 'settings' },
     { type: 'item', label: '配置 Protomaps API Key', action: 'configProtomapsKey', icon: 'key' },
     { type: 'item', label: '配置 LocationIQ API Key', action: 'configLocationIqKey', icon: 'key' },
@@ -207,9 +241,6 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'toggle', label: 'CartoDB Voyager', checked: store.mapTileType === 'voyager', action: 'mapTileVoyager', icon: 'compass' },
       { type: 'toggle', label: 'CartoDB 浅色', checked: store.mapTileType === 'positron', action: 'mapTilePositron', icon: 'sun' },
       { type: 'toggle', label: 'CartoDB 深色', checked: store.mapTileType === 'dark', action: 'mapTileDark', icon: 'moon' },
-      { type: 'separator' },
-      { type: 'toggle', label: 'Stamen Toner 高对比', checked: store.mapTileType === 'stamenToner', action: 'mapTileStamenToner', icon: 'minimize-2' },
-      { type: 'toggle', label: 'Stamen Terrain 地形', checked: store.mapTileType === 'stamenTerrain', action: 'mapTileStamenTerrain', icon: 'mountain' },
       { type: 'separator' },
       { type: 'toggle', label: 'ESRI 卫星影像', checked: store.mapTileType === 'satellite', action: 'mapTileSatellite', icon: 'globe' },
       { type: 'toggle', label: 'ESRI 街道地图', checked: store.mapTileType === 'esriWorldStreet', action: 'mapTileEsriWorldStreet', icon: 'map-pin' },
@@ -306,8 +337,6 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'stationVisNone') { store.setExportStationVisibilityMode('none'); return }
     if (action === 'mapTileOsm') { store.setMapTileType('osm'); return }
     if (action === 'mapTileVoyager') { store.setMapTileType('voyager'); return }
-    if (action === 'mapTileStamenToner') { store.setMapTileType('stamenToner'); return }
-    if (action === 'mapTileStamenTerrain') { store.setMapTileType('stamenTerrain'); return }
     if (action === 'mapTileSatellite') { store.setMapTileType('satellite'); return }
     if (action === 'mapTileEsriWorldStreet') { store.setMapTileType('esriWorldStreet'); return }
     if (action === 'mapTileEsriWorldTopo') { store.setMapTileType('esriWorldTopo'); return }
@@ -315,6 +344,8 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'mapTileTopo') { store.setMapTileType('topo'); return }
     if (action === 'mapTilePositron') { store.setMapTileType('positron'); return }
     if (action === 'mapTileDark') { store.setMapTileType('dark'); return }
+    if (action === 'interchangeMarkerStyleBar') { store.setInterchangeMarkerStyle('bar'); return }
+    if (action === 'interchangeMarkerStylePie') { store.setInterchangeMarkerStyle('pie'); return }
     if (action === 'showProjectList') { emit('show-project-list'); return }
     if (action === 'aiConfig') { emit('show-ai-config'); return }
     if (action === 'ttsGeneration') { emit('show-tts-dialog'); return }
@@ -324,7 +355,13 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'toggleStationLabels') { store.toggleStationLabels(); return }
     if (action === 'toggleLineLabels') { store.toggleLineLabels(); return }
     if (action === 'toggleInterchangeMarkers') { store.toggleInterchangeMarkers(); return }
-    if (action === 'toggleLanduseOverlay') { store.toggleLanduseOverlay(); return }
+    if (action === 'toggleLanduseOverlay') { store.setOverlayMode('zoning'); return }
+    if (action === 'toggleOverlayZoning') { store.setOverlayMode('zoning'); return }
+    if (action === 'toggleOverlayPopulation') { store.setOverlayMode('population'); return }
+    if (action === 'overlayNone') { store.setOverlayMode('none'); return }
+    if (action === 'overlayZoning') { store.setOverlayMode('zoning'); return }
+    if (action === 'overlayPopulation') { store.setOverlayMode('population'); return }
+    if (action === 'showLanduseLegend') { emit('show-landuse-legend'); return }
     if (action === 'toggleMapGrid') { store.toggleMapGrid(); return }
     if (action === 'toggleMapCoordinates') { store.toggleMapCoordinates(); return }
     if (action === 'configProtomapsKey') { handleConfigProtomapsKey(); return }
