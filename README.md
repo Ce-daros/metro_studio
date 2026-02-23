@@ -10,7 +10,7 @@ https://metro-studio-iota.vercel.app/
 
 ## 什么是 Metro Studio
 
-Metro Studio 是一个地铁线路图编辑器，专为轨道交通爱好者设计。你可以在 OpenStreetMap 地图上绘制地铁线网，自动生成官方风格的示意图，并导出为图片或视频。
+Metro Studio 是一个地铁线路图编辑器，专为轨道交通爱好者设计。你可以在 OpenStreetMap 地图上绘制地铁线网，自动生成官方风格的示意图，并导出为图片。
 
 ## 功能特性
 
@@ -18,7 +18,7 @@ Metro Studio 是一个地铁线路图编辑器，专为轨道交通爱好者设�
 - √ 自动生成八方向规整的示意图
 - √ 多视图：地图视图 / 示意图视图 / 车载 HUD 视图 / 时间线视图
 - √ 框选、多选、批量编辑
-- √ 导出 PNG 高清图片和视频
+- √ 导出 PNG 高清图片和 HUD 资源打包
 - √ AI 辅助翻译站点英文名
 - √ 从 OpenStreetMap 导入真实数据
 - √ 搜索 OSM 地标、地点、POI
@@ -46,7 +46,7 @@ Metro Studio 是一个地铁线路图编辑器，专为轨道交通爱好者设�
 
 **导出与分享**
 
-导出 PNG 高清图片、时间线动画视频、项目数据文件。
+导出 PNG 高清图片、HUD 资源打包、项目数据文件。
 
 <img width="2301" height="1255" alt="image" src="https://github.com/user-attachments/assets/186290f2-477d-4095-86b6-d1b2f03aee57" />
 

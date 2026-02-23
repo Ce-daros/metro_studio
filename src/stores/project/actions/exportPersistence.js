@@ -5,7 +5,6 @@ import {
 import { saveProjectToDb, setLatestProject } from '../../../lib/storage/db'
 import { downloadProjectFile, parseProjectFile } from '../../../lib/storage/projectFile'
 import { validateProject } from '../../../lib/validation'
-import { exportTimelineVideo, getResolutionPresets } from '../../../lib/timeline/timelineExporter'
 
 let persistTimer = null
 let actualRoutePngExporter = null
@@ -150,44 +149,6 @@ const exportPersistenceActions = {
     const normalized = String(mode || '').trim()
     if (!['all', 'interchange', 'none'].includes(normalized)) return
     this.exportStationVisibilityMode = normalized
-  },
-
-  async exportTimelineVideo(options = {}) {
-    if (!this.project) return
-    if (!this.timelineHasData) {
-      this.statusText = '没有标记年份的线段，无法导出时间轴动画'
-      return
-    }
-    this.statusText = '正在导出时间轴动画...'
-    try {
-      const blob = await exportTimelineVideo(this.project, {
-        resolution: options.resolution || '1080p',
-        title: this.project.name,
-        author: options.author || '',
-        showIntro: options.showIntro !== false,
-        showOutro: options.showOutro !== false,
-        onProgress: (p) => {
-          this.statusText = `导出时间轴动画: ${Math.round(p * 100)}%`
-        },
-        signal: options.signal,
-      })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${this.project.name || 'metro-studio'}_timeline.webm`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      this.statusText = '时间轴动画已导出'
-    } catch (error) {
-      if (error.message === '导出已取消') {
-        this.statusText = '时间轴动画导出已取消'
-        return
-      }
-      this.statusText = `时间轴动画导出失败: ${error.message || '未知错误'}`
-      throw error
-    }
   },
 
 }

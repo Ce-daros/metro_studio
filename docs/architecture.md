@@ -25,7 +25,7 @@ src/
 ├── lib/                 # 核心业务逻辑
 │   ├── ai/              # AI 站点命名
 │   ├── animation/       # 时间线动画
-│   ├── export/          # PNG/视频导出
+│   ├── export/          # PNG/HUD 导出
 │   ├── hud/             # 车载 HUD 显示
 │   ├── layout/          # 自动布局算法
 │   ├── network/         # 网络图操作

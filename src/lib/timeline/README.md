@@ -19,4 +19,3 @@
 - **timelineTileRenderer.js** — OSM 瓦片缓存与渲染（`TileCache` 类、`renderTiles`、`lngLatToPixel`）。支持分数 zoom 对齐、祖先瓦片回退、进度追踪 API。
 - **timelineAnimator.js** — 时间轴动画播放器（旧版，已被 `timelinePreviewRenderer.js` 替代）
 - **timelinePlayer.js** — 时间轴播放控制器（旧版，已被 `timelinePreviewRenderer.js` 替代）
-- **timelineExporter.js** — 时间轴视频导出（MP4/WebM）

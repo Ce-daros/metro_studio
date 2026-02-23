@@ -6,7 +6,7 @@ const props = defineProps({
   lineById: { type: Map, required: true },
   markersKey: { type: Number, required: true },
   getMarkerStyle: { type: Function, required: true },
-  style: { type: String, default: 'orbit' }, // 'orbit' | 'radar' | 'gear'
+  style: { type: String, default: 'bar' }, // 'bar' | 'pie'
   visible: { type: Boolean, default: true },
   zoom: { type: Number, default: 4 },
 })
@@ -32,11 +32,25 @@ const interchangeStations = computed(() => {
     const colors = uniqueLineColors.length > 0 ? uniqueLineColors : ['#bc1fff', '#38bdf8']
 
     const count = colors.length
+    const shownColors = colors.slice(0, 4)
+    const shownCount = shownColors.length
     const dotSize = Math.max(5, 6.4 * zoomScale)
     const gap = Math.max(1, 1.6 * zoomScale)
     const borderWidth = Math.max(1.2, 1.6 * zoomScale)
     const innerWidth = count * dotSize + (count - 1) * gap
     const containerSize = innerWidth + borderWidth * 2 + gap * 2
+
+    // pie 模式：正方形，conic-gradient 从中心点放射状平分
+    const pieSize = Math.max(10, 13 * zoomScale)
+    const pieBorder = borderWidth
+    const pieContainerSize = pieSize + pieBorder * 2
+    // 构建 conic-gradient stops
+    const stops = shownColors.map((c, i) => {
+      const from = (i / shownColors.length) * 360
+      const to = ((i + 1) / shownColors.length) * 360
+      return `${c} ${from}deg ${to}deg`
+    }).join(', ')
+    const pieBackground = `conic-gradient(${stops})`
 
     return {
       ...s,
@@ -45,6 +59,10 @@ const interchangeStations = computed(() => {
       gap,
       borderWidth,
       colors,
+      pieSize,
+      pieBorder,
+      pieContainerSize: Number(pieContainerSize.toFixed(2)),
+      pieBackground,
     }
   })
 })
@@ -59,12 +77,13 @@ const interchangeStations = computed(() => {
       :style="[
         getMarkerStyle(station.lngLat),
         {
-          width: `${station.containerSize}px`,
-          height: `${station.containerSize}px`,
+          width: `${style === 'pie' ? station.pieContainerSize : station.containerSize}px`,
+          height: `${style === 'pie' ? station.pieContainerSize : station.containerSize}px`,
         },
       ]"
     >
       <div
+        v-if="style !== 'pie'"
         class="interchange-outer"
         :style="{
           borderWidth: `${station.borderWidth}px`,
@@ -83,6 +102,16 @@ const interchangeStations = computed(() => {
           }"
         ></div>
       </div>
+      <div
+        v-else
+        class="interchange-square"
+        :style="{
+          width: `${station.pieSize}px`,
+          height: `${station.pieSize}px`,
+          borderWidth: `${station.pieBorder}px`,
+          background: station.pieBackground,
+        }"
+      ></div>
     </div>
   </div>
 </template>
@@ -115,5 +144,10 @@ const interchangeStations = computed(() => {
 .interchange-dot {
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.interchange-square {
+  border: solid #000;
+  box-sizing: border-box;
 }
 </style>

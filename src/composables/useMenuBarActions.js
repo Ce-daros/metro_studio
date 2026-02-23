@@ -205,14 +205,6 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'item', label: '导出官方风格图 PNG', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
     { type: 'item', label: '导出车辆 HUD 打包', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
     { type: 'separator' },
-      { type: 'submenu', label: '导出时间轴视频', icon: 'film', disabled: !store.project || !store.timelineHasData, children: isTrial.value
-        ? [{ type: 'item', label: '720p (1280×720)', action: 'exportTimeline_720p', icon: 'film' }]
-        : [
-        { type: 'item', label: '1080p (1920×1080)', action: 'exportTimeline_1080p', icon: 'film' },
-        { type: 'item', label: '2K (2560×1440)', action: 'exportTimeline_2k', icon: 'film' },
-        { type: 'item', label: '4K (3840×2160)', action: 'exportTimeline_4k', icon: 'film' },
-      ]},
-    { type: 'separator' },
     { type: 'submenu', label: '车站显示模式', icon: 'eye', children: [
       { type: 'toggle', label: '显示所有车站', checked: store.exportStationVisibilityMode === 'all', action: 'stationVisAll', icon: 'eye' },
       { type: 'toggle', label: '仅显示换乘站', checked: store.exportStationVisibilityMode === 'interchange', action: 'stationVisInterchange', icon: 'eye' },
@@ -224,8 +216,8 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'item', label: '快捷键绑定', action: 'shortcutSettings', icon: 'sliders' },
     { type: 'separator' },
     { type: 'submenu', label: '换乘站标识样式', icon: 'target', children: [
-      { type: 'toggle', label: '横向色块', checked: store.interchangeMarkerStyle === 'bar', action: 'interchangeMarkerStyleBar', icon: 'target' },
-      { type: 'toggle', label: '黑圈扇区', checked: store.interchangeMarkerStyle === 'pie', action: 'interchangeMarkerStylePie', icon: 'layers' },
+      { type: 'toggle', label: '横向色块', checked: store.interchangeMarkerStyle === 'bar', action: 'interchangeMarkerStyleBar', icon: 'layers' },
+      { type: 'toggle', label: '黑圈扇区', checked: store.interchangeMarkerStyle === 'pie', action: 'interchangeMarkerStylePie', icon: 'target' },
     ] },
     { type: 'separator' },
     { type: 'item', label: 'AI 配置', action: 'aiConfig', icon: 'settings' },
@@ -327,11 +319,6 @@ export function useMenuBarActions(store, emit, refs) {
       return }
     if (action === 'fitToNetwork') { store.fitToNetwork(); return }
     if (action.startsWith('importCity_')) { emit('action', action); return }
-    if (action.startsWith('exportTimeline_')) {
-      const resolution = action.slice('exportTimeline_'.length)
-      store.exportTimelineVideo({ resolution })
-      return
-    }
     if (action === 'stationVisAll') { store.setExportStationVisibilityMode('all'); return }
     if (action === 'stationVisInterchange') { store.setExportStationVisibilityMode('interchange'); return }
     if (action === 'stationVisNone') { store.setExportStationVisibilityMode('none'); return }
@@ -394,7 +381,6 @@ export function useMenuBarActions(store, emit, refs) {
       exportActualRoute: () => store.exportActualRoutePng(),
       exportSchematic: () => store.exportOfficialSchematicPng(),
       exportHudZip: () => store.exportAllLineHudZip(),
-      exportTimeline: () => store.exportTimelineVideo(),
       exportFile: () => store.exportProjectFile(),
       persistToDb: () => store.persistNow(),
       aiTranslateSelected: () => store.retranslateSelectedStationEnglishNamesWithAi(),

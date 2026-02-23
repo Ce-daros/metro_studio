@@ -5,7 +5,7 @@
  * Includes progressive line drawing, station reveal animations, and
  * professional overlay UI (year, stats, events, branding, scale bar).
  *
- * Used by both timelinePreviewRenderer.js and timelineExporter.js.
+ * Used by timelinePreviewRenderer.js.
  */
 
 import { lngLatToPixel } from './timelineTileRenderer'
