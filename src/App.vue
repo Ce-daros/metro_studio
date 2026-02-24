@@ -205,19 +205,23 @@ async function handleMenuAction(action) {
   }
 
   if (action.startsWith('importCity_')) {
-    if (isTrial.value) { showUpgradeDialog('试用版不支持导入线网，请激活正式版。'); return }
     const cityId = action.slice('importCity_'.length)
     const preset = findCityPresetById(cityId)
     const cityName = preset ? preset.name : cityId
-    const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
-    if (!isEmptyProject) {
-      const ok = await confirm({ 
-        title: '导入线网', 
-        message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`, 
-        confirmText: '继续导入',
-        cancelText: '取消'
-      })
-      if (!ok) return
+    // 没有活跃工程时（从主页面点击城市按钮），先创建一个以城市命名的空工程
+    if (!store.project) {
+      await store.createNewProject(`${cityName}地铁线网`)
+    } else {
+      const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
+      if (!isEmptyProject) {
+        const ok = await confirm({ 
+          title: '导入线网', 
+          message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`, 
+          confirmText: '继续导入',
+          cancelText: '取消'
+        })
+        if (!ok) return
+      }
     }
     store.importCityNetwork(cityId)
     return
@@ -439,6 +443,8 @@ onBeforeUnmount(() => {
       @create-project="handleMenuAction('createProject')"
       @import-project="openGlobalProjectFilePicker"
       @enter-directly="handleEnterDirectly"
+      @import-city="(cityId) => handleMenuAction(`importCity_${cityId}`)"
+      @show-about="aboutVisible = true"
     />
   </main>
   <ProjectListDialog :visible="projectListVisible" @close="projectListVisible = false" />

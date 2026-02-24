@@ -239,6 +239,23 @@ const lifecycleActions = {
     return listProjectsFromDb()
   },
 
+  async closeCurrentProject() {
+    this.project = null
+    this.regionBoundary = null
+    this.activeLineId = null
+    this.mode = 'select'
+    this.selectedStationId = null
+    this.selectedStationIds = []
+    this.selectedEdgeId = null
+    this.selectedEdgeIds = []
+    this.selectedEdgeAnchor = null
+    this.pendingEdgeStartStationId = null
+    resetStationEnglishRetranslateState(this)
+    this.statusText = '已关闭工程'
+    updateEditYearToMax(this)
+    this.resetHistoryBaseline()
+  },
+
 }
 
 export { lifecycleActions }

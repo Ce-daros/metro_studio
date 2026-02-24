@@ -32,12 +32,15 @@ function convertMenuItems(items) {
     if (item.type === 'group') {
       return { type: 'group', key: `group_${i}`, label: item.label, children: convertMenuItems(item.children) }
     }
-    const opt = { key: item.action || `submenu_${item.label}`, label: item.label, disabled: item.disabled }
+    const hasChildren = item.type === 'submenu' && item.children?.length > 0
+    const opt = { key: item.action || `submenu_${item.label}`, label: item.label }
+    // 只有非子菜单项才设置 disabled，因为 NDropdown 会阻止 disabled 的子菜单展开
+    if (!hasChildren && item.disabled) opt.disabled = true
     if (item.shortcut) opt.label = `${item.label}    ${item.shortcut}`
     if (item.type === 'toggle') opt.icon = blockIcon(item.checked ? BLOCK_CHARS.toggle_on : BLOCK_CHARS.toggle_off)
     else if (item.type === 'submenu') opt.icon = blockIcon(BLOCK_CHARS.submenu)
     else opt.icon = blockIcon(BLOCK_CHARS.item)
-    if (item.type === 'submenu' && item.children) opt.children = convertMenuItems(item.children)
+    if (hasChildren) opt.children = convertMenuItems(item.children)
     return opt
   })
 }

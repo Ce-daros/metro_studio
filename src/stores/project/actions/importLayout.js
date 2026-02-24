@@ -45,8 +45,6 @@ const importLayoutActions = {
    */
   async importCityNetwork(cityPresetOrRelationId, importOptions = {}) {
     if (!this.project || this.isImporting) return
-    const { isTrial } = await import('../../../composables/useLicense')
-    if (isTrial.value) { this.statusText = '试用版不支持导入线网'; return }
 
     let preset = null
     let relationId = null

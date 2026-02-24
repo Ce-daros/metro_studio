@@ -142,6 +142,8 @@ export function useMenuBarActions(store, emit, refs) {
         { type: 'submenu', label: '中国城市', icon: 'git-branch', children: buildChineseCityMenuItems(importing) },
         { type: 'submenu', label: '国际城市', icon: 'git-branch', children: buildInternationalCityMenuItems(importing) },
       ]},
+      { type: 'separator' },
+      { type: 'item', label: '返回菜单', action: 'closeProject', icon: 'home', disabled: !store.project },
     ]
   })
 
@@ -379,6 +381,7 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'helpGuide') { emit('show-help', 'guide'); return }
     if (action === 'helpFeat') { emit('show-help', 'feat'); return }
     if (action === 'helpKeys') { emit('show-help', 'guide'); return }
+    if (action === 'closeProject') { store.closeCurrentProject(); return }
 
     // Simple store actions
     const simpleActions = {
