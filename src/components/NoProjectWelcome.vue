@@ -503,6 +503,19 @@ onBeforeUnmount(() => {
       <div class="welcome__actions-wrap">
         <div class="welcome__section-label">COMMAND CENTER / 导航指令</div>
         <div class="welcome__actions-grid">
+          <button class="welcome__action-card welcome__action-card--tutorial" type="button">
+            <div class="welcome__card-inner">
+              <span class="welcome__icon-box">
+                <span style="font-size:20px;color:var(--ark-bg-deep);line-height:1;">▥</span>
+              </span>
+              <span class="welcome__action-copy">
+                <span class="welcome__action-en">TUTORIAL</span>
+                <strong>教程</strong>
+              </span>
+              <span class="welcome__action-key">NEW</span>
+            </div>
+          </button>
+
           <button class="welcome__action-card welcome__action-card--primary" type="button" @click="emit('create-project')">
             <div class="welcome__card-inner">
               <span class="welcome__icon-box">
@@ -862,6 +875,30 @@ onBeforeUnmount(() => {
 
 .welcome__action-card--primary:hover {
   background: rgba(249, 0, 191, 0.12);
+}
+
+.welcome__action-card--tutorial {
+  background: var(--ark-pink);
+}
+
+.welcome__action-card--tutorial:hover {
+  background: var(--ark-pink-light);
+}
+
+.welcome__action-card--tutorial .welcome__icon-box {
+  border-color: rgba(5, 5, 8, 0.22);
+  background: rgba(5, 5, 8, 0.16);
+}
+
+.welcome__action-card--tutorial .welcome__action-en,
+.welcome__action-card--tutorial .welcome__action-copy strong,
+.welcome__action-card--tutorial .welcome__action-key {
+  color: var(--ark-bg-deep);
+}
+
+.welcome__action-card--tutorial .welcome__action-key {
+  border-color: rgba(5, 5, 8, 0.28);
+  opacity: 1;
 }
 
 .welcome__icon-box {

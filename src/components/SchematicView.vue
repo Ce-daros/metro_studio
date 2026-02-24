@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="schematic-view">
     <header class="schematic-view__header">
-      <h2>官方风示意图视图（地理主导）</h2>
+      <h2>示意图</h2>
       <div class="schematic-view__stats">
         <span v-if="latestSnapshot">评分: {{ latestSnapshot.score.toFixed(2) }}</span>
         <span>快照: {{ store.project?.snapshots.length || 0 }}</span>

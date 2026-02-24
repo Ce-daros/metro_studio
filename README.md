@@ -10,7 +10,7 @@ https://metro-studio-iota.vercel.app/
 
 ## 什么是 Metro Studio
 
-Metro Studio 是一个地铁线路图编辑器，专为轨道交通爱好者设计。你可以在 OpenStreetMap 地图上绘制地铁线网，自动生成官方风格的示意图，并导出为图片。
+Metro Studio 是一个地铁线路图编辑器，专为轨道交通爱好者设计。你可以在 OpenStreetMap 地图上绘制地铁线网，自动生成示意图，并导出为图片。
 
 ## 功能特性
 
