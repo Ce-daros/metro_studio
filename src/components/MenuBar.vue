@@ -26,26 +26,45 @@ const blockIcon = (char) => () => h('span', {
   style: 'font-size:16px;color:var(--ark-pink);line-height:1;display:inline-flex;align-items:center;',
 }, char)
 
-function convertMenuItems(items) {
+function convertMenuItems(items, path = 'root') {
   return items.map((item, i) => {
-    if (item.type === 'separator') return { type: 'divider', key: `sep_${i}` }
+    const itemPath = `${path}_${i}`
+    if (item.type === 'separator') return { type: 'divider', key: `sep_${itemPath}` }
     if (item.type === 'group') {
-      return { type: 'group', key: `group_${i}`, label: item.label, children: convertMenuItems(item.children) }
+      return { type: 'group', key: `group_${itemPath}`, label: item.label, children: convertMenuItems(item.children || [], itemPath) }
     }
     const hasChildren = item.type === 'submenu' && item.children?.length > 0
-    const opt = { key: item.action || `submenu_${item.label}`, label: item.label }
+    const opt = { key: item.action || `submenu_${itemPath}_${item.label || 'untitled'}`, label: item.label }
     // 只有非子菜单项才设置 disabled，因为 NDropdown 会阻止 disabled 的子菜单展开
     if (!hasChildren && item.disabled) opt.disabled = true
     if (item.shortcut) opt.label = `${item.label}    ${item.shortcut}`
     if (item.type === 'toggle') opt.icon = blockIcon(item.checked ? BLOCK_CHARS.toggle_on : BLOCK_CHARS.toggle_off)
     else if (item.type === 'submenu') opt.icon = blockIcon(BLOCK_CHARS.submenu)
     else opt.icon = blockIcon(BLOCK_CHARS.item)
-    if (hasChildren) opt.children = convertMenuItems(item.children)
+    if (hasChildren) opt.children = convertMenuItems(item.children || [], itemPath)
     return opt
   })
 }
 
+function collectLeafActionKeys(items, actionKeys) {
+  items.forEach((item) => {
+    const children = item.children || []
+    if (children.length > 0) {
+      collectLeafActionKeys(children, actionKeys)
+      return
+    }
+    if (item.action) actionKeys.add(item.action)
+  })
+}
+
+const leafActionKeys = computed(() => {
+  const keys = new Set()
+  menus.value.forEach((menu) => collectLeafActionKeys(menu.items || [], keys))
+  return keys
+})
+
 function onNDropdownSelect(key) {
+  if (!leafActionKeys.value.has(key)) return
   closeMenu()
   handleAction(key)
 }

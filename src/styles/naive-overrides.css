@@ -16,6 +16,12 @@
     0 0 24px rgba(181, 32, 255, 0.25),
     0 8px 32px rgba(0, 0, 0, 0.50) !important;
   color: var(--ark-text) !important;
+}
+
+.n-dialog,
+.n-card,
+.n-modal,
+.n-message {
   clip-path: var(--clip-chamfer-sm) !important;
 }
 
