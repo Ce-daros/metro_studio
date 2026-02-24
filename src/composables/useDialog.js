@@ -64,7 +64,25 @@ function prompt({
   })
 }
 
-/** @returns {{confirm: (options?: {title?: string, message?: string, confirmText?: string, cancelText?: string, danger?: boolean}) => Promise<boolean>, prompt: (options?: {title?: string, message?: string, placeholder?: string, defaultValue?: string, confirmText?: string, cancelText?: string}) => Promise<string|null>}} */
+function info({
+  title = '提示',
+  message,
+  confirmText = '知道了',
+} = {}) {
+  return new Promise((resolve) => {
+    if (!dialogApi) { resolve(); return }
+    dialogApi.info({
+      title,
+      content: message,
+      positiveText: confirmText,
+      onPositiveClick: () => resolve(),
+      onClose: () => resolve(),
+      onMaskClick: () => resolve(),
+    })
+  })
+}
+
+/** @returns {{confirm: (options?: {title?: string, message?: string, confirmText?: string, cancelText?: string, danger?: boolean}) => Promise<boolean>, prompt: (options?: {title?: string, message?: string, placeholder?: string, defaultValue?: string, confirmText?: string, cancelText?: string}) => Promise<string|null>, info: (options?: {title?: string, message?: string, confirmText?: string}) => Promise<void>}} */
 export function useDialog() {
-  return { confirm, prompt }
+  return { confirm, prompt, info }
 }

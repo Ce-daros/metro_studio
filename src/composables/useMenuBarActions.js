@@ -11,6 +11,7 @@ import { useDialog } from './useDialog.js'
 import { getEffectiveBindings, formatBindingDisplay } from '../lib/shortcutRegistry'
 import { getLocationIqApiKey, setLocationIqApiKey } from '../lib/osm/nominatimClient'
 import { isTrial, PURCHASE_URL } from './useLicense'
+import doYouKnowData from '../assets/doyouknow.json'
 
 // ── City preset filtering ──
 
@@ -100,7 +101,16 @@ function buildChineseCityMenuItems(importing) {
 export function useMenuBarActions(store, emit, refs) {
   const uiTheme = ref(DEFAULT_UI_THEME)
   const { enabled: animationsEnabled, toggleAnimation } = useAnimationSettings()
-  const { prompt } = useDialog()
+  const { prompt, info } = useDialog()
+
+  // Do You Know — random tip each click
+  let _lastTipIndex = -1
+  function showDoYouKnow() {
+    let idx
+    do { idx = Math.floor(Math.random() * doYouKnowData.length) } while (idx === _lastTipIndex && doYouKnowData.length > 1)
+    _lastTipIndex = idx
+    info({ title: '💡 你知道吗', message: doYouKnowData[idx].text, confirmText: '涨知识了' })
+  }
 
   // ── UI preference helpers ──
 
@@ -281,6 +291,8 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'item', label: '功能介绍', action: 'helpFeat', icon: 'layers' },
     { type: 'item', label: '快捷键参考', action: 'helpKeys', icon: 'keyboard' },
     { type: 'separator' },
+    { type: 'item', label: '你知道吗', action: 'doYouKnow', icon: 'zap' },
+    { type: 'separator' },
     ...(isTrial.value ? [{ type: 'item', label: '购买正式版', action: 'purchase', icon: 'star' }] : []),
     { type: 'item', label: '关于项目', action: 'about', icon: 'info' },
   ])
@@ -381,6 +393,7 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'helpGuide') { emit('show-help', 'guide'); return }
     if (action === 'helpFeat') { emit('show-help', 'feat'); return }
     if (action === 'helpKeys') { emit('show-help', 'guide'); return }
+    if (action === 'doYouKnow') { showDoYouKnow(); return }
     if (action === 'closeProject') { store.closeCurrentProject(); return }
 
     // Simple store actions
