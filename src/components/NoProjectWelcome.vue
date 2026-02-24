@@ -1,6 +1,5 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import IconBase from './IconBase.vue'
 import { isTrial, PURCHASE_URL } from '../composables/useLicense'
 
 const emit = defineEmits(['create-project', 'import-project', 'enter-directly'])
@@ -490,7 +489,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="welcome__title-shell">
           <!-- 隐形标题，用于 SEO 和占位，实际视觉由 Canvas 提供 -->
-          <h1 class="welcome__title-ghost" aria-label="METRO STUDIO">METRO STUDIO</h1>
+          <h1 class="welcome__title-ghost"  aria-label="METRO STUDIO">WELCOME</h1>
           <div
             class="welcome__mode-badge"
             :class="isTrial ? 'welcome__mode-badge--free' : 'welcome__mode-badge--paid'"
@@ -507,7 +506,7 @@ onBeforeUnmount(() => {
           <button class="welcome__action-card welcome__action-card--primary" type="button" @click="emit('create-project')">
             <div class="welcome__card-inner">
               <span class="welcome__icon-box">
-                <IconBase name="plus-circle" :size="20" />
+                <span style="font-size:20px;color:var(--ark-pink);line-height:1;">▣</span>
               </span>
               <span class="welcome__action-copy">
                 <span class="welcome__action-en">CREATE PROJECT</span>
@@ -520,7 +519,7 @@ onBeforeUnmount(() => {
           <button class="welcome__action-card" type="button" @click="emit('import-project')">
             <div class="welcome__card-inner">
               <span class="welcome__icon-box">
-                <IconBase name="upload" :size="20" />
+                <span style="font-size:20px;color:var(--ark-pink);line-height:1;">▧</span>
               </span>
               <span class="welcome__action-copy">
                 <span class="welcome__action-en">IMPORT PROJECT</span>
@@ -533,7 +532,7 @@ onBeforeUnmount(() => {
           <button class="welcome__action-card welcome__action-card--ghost" type="button" @click="emit('enter-directly')">
             <div class="welcome__card-inner">
               <span class="welcome__icon-box">
-                <IconBase name="zap" :size="20" />
+                <span style="font-size:20px;color:var(--ark-pink);line-height:1;">▨</span>
               </span>
               <span class="welcome__action-copy">
                 <span class="welcome__action-en">QUICK START</span>
@@ -546,7 +545,7 @@ onBeforeUnmount(() => {
           <a v-if="isTrial" class="welcome__action-card welcome__action-card--buy" :href="PURCHASE_URL" target="_blank" rel="noopener">
             <div class="welcome__card-inner">
               <span class="welcome__icon-box welcome__icon-box--buy">
-                <IconBase name="star" :size="20" />
+                <span style="font-size:20px;color:var(--ark-pink);line-height:1;">▤</span>
               </span>
               <span class="welcome__action-copy">
                 <span class="welcome__action-en">UPGRADE LICENSE</span>

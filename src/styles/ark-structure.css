@@ -1,0 +1,194 @@
+/* ════════════════════════════════════════════════════════
+   ARK STRUCTURAL UTILITIES
+   ════════════════════════════════════════════════════════ */
+
+/* Terminal corner brackets */
+.ark-terminal-corner {
+  position: relative;
+}
+
+.ark-terminal-corner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    /* Top-left */
+    linear-gradient(135deg, transparent 8px, rgba(255, 10, 192, 0.55) 8px, rgba(255, 10, 192, 0.55) 9px, transparent 9px) top left / 18px 18px no-repeat,
+    linear-gradient(to right, rgba(255, 10, 192, 0.40) 0, transparent 100%) top left / 28px 1px no-repeat,
+    linear-gradient(to bottom, rgba(255, 10, 192, 0.40) 0, transparent 100%) top left / 1px 28px no-repeat,
+    /* Top-right */
+    linear-gradient(-45deg, transparent 8px, rgba(181, 32, 255, 0.55) 8px, rgba(181, 32, 255, 0.55) 9px, transparent 9px) top right / 18px 18px no-repeat,
+    linear-gradient(to left, rgba(181, 32, 255, 0.40) 0, transparent 100%) top right / 28px 1px no-repeat,
+    linear-gradient(to bottom, rgba(181, 32, 255, 0.40) 0, transparent 100%) top right / 1px 28px no-repeat,
+    /* Bottom-left */
+    linear-gradient(45deg, transparent 8px, rgba(181, 32, 255, 0.55) 8px, rgba(181, 32, 255, 0.55) 9px, transparent 9px) bottom left / 18px 18px no-repeat,
+    linear-gradient(to right, rgba(181, 32, 255, 0.40) 0, transparent 100%) bottom left / 28px 1px no-repeat,
+    linear-gradient(to top, rgba(181, 32, 255, 0.40) 0, transparent 100%) bottom left / 1px 28px no-repeat,
+    /* Bottom-right */
+    linear-gradient(-135deg, transparent 8px, rgba(255, 10, 192, 0.55) 8px, rgba(255, 10, 192, 0.55) 9px, transparent 9px) bottom right / 18px 18px no-repeat,
+    linear-gradient(to left, rgba(255, 10, 192, 0.40) 0, transparent 100%) bottom right / 28px 1px no-repeat,
+    linear-gradient(to top, rgba(255, 10, 192, 0.40) 0, transparent 100%) bottom right / 1px 28px no-repeat;
+}
+
+/* Glitch hover effect */
+.ark-glitch-hover:hover:not(:disabled) {
+  animation: ark-glitch 0.18s steps(3, end);
+  text-shadow:
+    -1px 0 rgba(255, 10, 192, 0.85),
+    1px 0 rgba(181, 32, 255, 0.85),
+    0 0 8px rgba(255, 10, 192, 0.30);
+}
+
+/* Frame with double-border */
+.ark-frame {
+  position: relative;
+  border: 1px solid var(--ark-border);
+  background: var(--ark-bg-card);
+}
+
+.ark-frame::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 1px solid var(--ark-border-dim);
+  pointer-events: none;
+}
+
+.ark-frame::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--ark-pink) 20%,
+    var(--ark-purple) 80%,
+    transparent 100%
+  );
+  opacity: 0.50;
+  pointer-events: none;
+}
+
+/* Chamfer clip */
+.ark-chamfer {
+  clip-path: var(--clip-chamfer-sm);
+}
+
+.ark-chamfer-md {
+  clip-path: var(--clip-chamfer-md);
+}
+
+/* Glass panel */
+.ark-glass {
+  background: var(--ark-glass);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+}
+
+/* Status indicator bar */
+.ark-indicator {
+  height: 2px;
+  background: var(--ark-border-subtle);
+  transition: background var(--transition-normal), box-shadow var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.ark-indicator::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(181, 32, 255, 0.3), transparent);
+  animation: ark-indicator-sweep 3s ease-in-out infinite;
+}
+
+.ark-indicator--active {
+  background: var(--ark-pink);
+  box-shadow: 0 0 8px var(--ark-pink-glow), 0 1px 4px var(--ark-pink-glow);
+}
+
+.ark-indicator--active::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+}
+
+/* Scanline overlay for panels */
+.ark-scanlines {
+  position: relative;
+}
+
+.ark-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
+  );
+  animation: ark-scanline 4s linear infinite;
+  z-index: 2;
+  mix-blend-mode: multiply;
+}
+
+/* HUD corner decoration */
+.ark-hud-corners {
+  position: relative;
+}
+
+.ark-hud-corners::before,
+.ark-hud-corners::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ark-hud-corners::before {
+  top: 4px;
+  left: 4px;
+  width: 14px;
+  height: 14px;
+  border-top: 2px solid var(--ark-pink);
+  border-left: 2px solid var(--ark-pink);
+  filter: drop-shadow(0 0 4px var(--ark-pink-glow));
+}
+
+.ark-hud-corners::after {
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 2px solid var(--ark-purple);
+  border-right: 2px solid var(--ark-purple);
+  filter: drop-shadow(0 0 4px var(--ark-purple-glow));
+}
+
+/* Tech label (classification markers) */
+.ark-tech-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  font-family: var(--app-font-mono);
+  font-size: var(--font-size-xxs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ark-pink);
+  background: rgba(255, 10, 192, 0.08);
+  border-left: 2px solid var(--ark-pink);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+
+.ark-tech-label::before {
+  content: '◆';
+  font-size: 6px;
+  opacity: 0.7;
+}

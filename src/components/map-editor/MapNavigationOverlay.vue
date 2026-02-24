@@ -1,6 +1,4 @@
 <script setup>
-import IconBase from '../IconBase.vue'
-
 defineProps({
   navPrompt: { type: [String, null], default: null },
   navResultVisible: { type: Boolean, required: true },
@@ -13,7 +11,7 @@ const emit = defineEmits(['exit-navigation'])
 
 <template>
   <div v-if="navPrompt" class="map-editor__nav-prompt">
-    <IconBase name="navigation" :size="14" />
+    <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
     <span>{{ navPrompt }}</span>
     <button class="map-editor__nav-prompt-close" @click="emit('exit-navigation')">Esc 退出</button>
   </div>
@@ -22,7 +20,7 @@ const emit = defineEmits(['exit-navigation'])
     <div class="map-editor__nav-panel-header">
       <h3>导航结果</h3>
       <button class="map-editor__nav-panel-close" @click="emit('exit-navigation')" aria-label="关闭导航">
-        <IconBase name="x" :size="14" />
+        <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
       </button>
     </div>
     <div v-if="navigationResult" class="map-editor__nav-panel-body">

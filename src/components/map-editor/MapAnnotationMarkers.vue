@@ -1,6 +1,4 @@
 <script setup>
-import IconBase from '../IconBase.vue'
-
 defineProps({
   annotations: { type: Array, required: true },
   annotationMarkersKey: { type: Number, required: true },
@@ -18,7 +16,7 @@ defineProps({
     :style="getMarkerStyle(annotation.lngLat)"
   >
     <div class="map-editor__annotation-marker-icon">
-      <IconBase name="message-circle" :size="16" />
+      <span style="font-size:16px;color:var(--ark-pink);line-height:1;">▣</span>
     </div>
     <div v-if="annotation.text" class="map-editor__annotation-marker-text">{{ annotation.text }}</div>
   </div>

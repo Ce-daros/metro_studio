@@ -1,6 +1,5 @@
 <script setup>
 import { onMounted, ref, computed, watch } from 'vue'
-import IconBase from './IconBase.vue'
 import ProjectThumbnail from './ProjectThumbnail.vue'
 import { NTooltip, NModal } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
@@ -196,7 +195,7 @@ onMounted(() => {
     <div class="dialog__body">
       <div class="dialog__search-row">
         <div class="dialog__search-wrap">
-          <IconBase name="search" :size="14" class="dialog__search-icon" />
+          <span style="font-size:14px;color:var(--ark-pink);line-height:1;" class="dialog__search-icon">▣</span>
           <input
             v-model="projectFilter"
             class="dialog__search"
@@ -205,7 +204,7 @@ onMounted(() => {
           <NTooltip v-if="projectFilter" placement="bottom">
             <template #trigger>
               <button class="dialog__search-clear" type="button" @click="projectFilter = ''">
-                <IconBase name="x" :size="12" />
+                <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
               </button>
             </template>
             清除搜索
@@ -226,7 +225,7 @@ onMounted(() => {
           :disabled="!filteredProjectOptions.length || isBulkWorking"
           @click="toggleSelectAllVisible"
         >
-          <IconBase :name="allVisibleSelected ? 'check' : 'square'" :size="13" />
+          <span style="font-size:13px;color:var(--ark-pink);line-height:1;">{{ allVisibleSelected ? '▨' : '▢' }}</span>
           <span>全选当前结果</span>
         </button>
         <div class="dialog__bulk-actions">
@@ -251,7 +250,7 @@ onMounted(() => {
               :disabled="isBulkWorking"
               @click="toggleProjectSelection(project.id)"
             >
-              <IconBase :name="isSelected(project.id) ? 'check' : 'square'" :size="13" />
+              <span style="font-size:13px;color:var(--ark-pink);line-height:1;">{{ isSelected(project.id) ? '▨' : '▢' }}</span>
             </button>
             <ProjectThumbnail :project="project" class="dialog__thumbnail" />
             <div class="dialog__item-main">
@@ -289,7 +288,7 @@ onMounted(() => {
           </div>
         </li>
         <li v-if="!filteredProjectOptions.length" class="dialog__empty">
-          <IconBase name="layers" :size="32" class="dialog__empty-icon" />
+          <span style="font-size:32px;color:var(--ark-pink);line-height:1;" class="dialog__empty-icon">▣</span>
           <span>{{ projectFilter ? '无匹配工程' : '本地库暂无工程' }}</span>
         </li>
       </ul>

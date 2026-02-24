@@ -1,7 +1,6 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { NModal } from 'naive-ui'
-import IconBase from './IconBase.vue'
 import { searchLocation } from '../lib/osm/nominatimSearch'
 import { pinyin } from 'pinyin-pro'
 
@@ -225,7 +224,7 @@ function formatResultType(result) {
           @mouseenter="selectedIndex = index"
         >
           <div class="map-search-dialog__result-icon">
-            <IconBase name="map-pin" :size="16" />
+            <span style="font-size:16px;color:var(--ark-pink);line-height:1;">▣</span>
           </div>
           <div class="map-search-dialog__result-content">
             <div class="map-search-dialog__result-name">
@@ -255,7 +254,7 @@ function formatResultType(result) {
           @mouseenter="selectedIndex = index"
         >
           <div class="map-search-dialog__result-icon">
-            <IconBase name="circle" :size="16" />
+            <span style="font-size:16px;color:var(--ark-pink);line-height:1;">▧</span>
           </div>
           <div class="map-search-dialog__result-content">
             <div class="map-search-dialog__result-name">{{ station.nameZh || station.nameEn }}</div>

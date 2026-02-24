@@ -201,16 +201,33 @@ export function useMenuBarActions(store, emit, refs) {
   ])
 
   const exportMenuItems = computed(() => [
-    { type: 'item', label: '导出大图', action: 'exportActualRouteHighRes', icon: 'map', disabled: !store.project },
-    { type: 'item', label: '导出小图', action: 'exportShareSmall', icon: 'share', disabled: !store.project },
-    { type: 'item', label: '导出官方导示图', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
-    { type: 'item', label: '打包导出车辆 HUD 图', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
+    {
+      type: 'group',
+      label: '真实图',
+      children: [
+        {
+          type: 'submenu',
+          label: '设置',
+          icon: 'settings',
+          children: [
+            { type: 'toggle', label: '显示所有车站', checked: store.exportStationVisibilityMode === 'all', action: 'stationVisAll', icon: 'eye' },
+            { type: 'toggle', label: '仅显示换乘站', checked: store.exportStationVisibilityMode === 'interchange', action: 'stationVisInterchange', icon: 'eye' },
+            { type: 'toggle', label: '隐藏所有车站', checked: store.exportStationVisibilityMode === 'none', action: 'stationVisNone', icon: 'eye-off' },
+          ],
+        },
+        { type: 'item', label: '导出大图', action: 'exportActualRouteHighRes', icon: 'map', disabled: !store.project },
+        { type: 'item', label: '导出小图', action: 'exportShareSmall', icon: 'share', disabled: !store.project },
+      ],
+    },
     { type: 'separator' },
-    { type: 'submenu', label: '车站显示模式', icon: 'eye', children: [
-      { type: 'toggle', label: '显示所有车站', checked: store.exportStationVisibilityMode === 'all', action: 'stationVisAll', icon: 'eye' },
-      { type: 'toggle', label: '仅显示换乘站', checked: store.exportStationVisibilityMode === 'interchange', action: 'stationVisInterchange', icon: 'eye' },
-      { type: 'toggle', label: '隐藏所有车站', checked: store.exportStationVisibilityMode === 'none', action: 'stationVisNone', icon: 'eye-off' },
-    ]},
+    {
+      type: 'group',
+      label: '模拟图',
+      children: [
+        { type: 'item', label: '导出官方导示图', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
+        { type: 'item', label: '导出车上 HUD 图', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
+      ],
+    },
   ])
 
   const settingsMenuItems = computed(() => [

@@ -41,10 +41,57 @@ const selectionActions = {
     if (!Number.isFinite(parsed)) return
     const normalized = Math.max(0.1, Math.min(16, parsed))
     if (!this.project.layoutConfig || typeof this.project.layoutConfig !== 'object') {
-      this.project.layoutConfig = { geoSeedScale: normalized }
+      this.project.layoutConfig = {
+        geoSeedScale: normalized,
+        displayConfig: {},
+        paramReduction: { enabled: false, deltas: [] },
+      }
     } else {
       this.project.layoutConfig.geoSeedScale = normalized
     }
+    this.touchProject('')
+  },
+
+  setLayoutParamReductionEnabled(enabled) {
+    if (!this.project) return
+    if (!this.project.layoutConfig || typeof this.project.layoutConfig !== 'object') {
+      this.project.layoutConfig = {
+        geoSeedScale: 6,
+        displayConfig: {},
+        paramReduction: { enabled: Boolean(enabled), deltas: [] },
+      }
+      this.touchProject('')
+      return
+    }
+    if (!this.project.layoutConfig.paramReduction || typeof this.project.layoutConfig.paramReduction !== 'object') {
+      this.project.layoutConfig.paramReduction = { enabled: false, deltas: [] }
+    }
+    this.project.layoutConfig.paramReduction.enabled = Boolean(enabled)
+    this.touchProject('')
+  },
+
+  setLayoutParamReductionAxisDelta(index, value) {
+    if (!this.project?.layoutConfig) return
+    if (!this.project.layoutConfig.paramReduction || typeof this.project.layoutConfig.paramReduction !== 'object') {
+      this.project.layoutConfig.paramReduction = { enabled: false, deltas: [] }
+    }
+    const idx = Math.max(0, Math.floor(Number(index) || 0))
+    const next = Math.max(-3, Math.min(3, Number(value) || 0))
+    const deltas = Array.isArray(this.project.layoutConfig.paramReduction.deltas)
+      ? [...this.project.layoutConfig.paramReduction.deltas]
+      : []
+    while (deltas.length <= idx) deltas.push(0)
+    deltas[idx] = next
+    this.project.layoutConfig.paramReduction.deltas = deltas
+    this.touchProject('')
+  },
+
+  resetLayoutParamReductionAxisDeltas() {
+    if (!this.project?.layoutConfig) return
+    if (!this.project.layoutConfig.paramReduction || typeof this.project.layoutConfig.paramReduction !== 'object') {
+      this.project.layoutConfig.paramReduction = { enabled: false, deltas: [] }
+    }
+    this.project.layoutConfig.paramReduction.deltas = []
     this.touchProject('')
   },
 

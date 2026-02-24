@@ -21,6 +21,8 @@ const layoutGeoSeedScale = computed({
   set: (value) => store.setLayoutGeoSeedScale(value),
 })
 
+const paramReductionEnabled = computed(() => Boolean(store.project?.layoutConfig?.paramReduction?.enabled))
+
 function undoEdit() {
   store.undo()
 }
@@ -152,11 +154,14 @@ function redoEdit() {
         min="0.1"
         max="16"
         step="0.1"
-        :disabled="!store.project || store.isLayoutRunning"
+        :disabled="!store.project || store.isLayoutRunning || paramReductionEnabled"
       />
       <span class="toolbar__range-value">{{ layoutGeoSeedScale.toFixed(1) }}</span>
     </div>
-    <p class="toolbar__hint">值越大，初始地理骨架展开越明显。</p>
+    <p class="toolbar__hint">
+      <template v-if="paramReductionEnabled">已启用降维参数：geoSeedScale 由 projection.json 控制。</template>
+      <template v-else>值越大，初始地理骨架展开越明显。</template>
+    </p>
     <button
       class="toolbar__btn toolbar__btn--primary"
       :disabled="store.isLayoutRunning || !store.project?.stations?.length"

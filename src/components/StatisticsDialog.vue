@@ -4,7 +4,6 @@ import { NModal } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
 import { calculateNetworkMetrics } from '../lib/network/networkStatistics'
 import { getDisplayLineName } from '../lib/lineNaming'
-import IconBase from './IconBase.vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -244,7 +243,7 @@ watch(
               type="button"
               @click="activeTab = tab.key"
             >
-              <IconBase :name="tab.icon" :size="14" />
+              <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
               <span>{{ tab.label }}</span>
             </button>
           </div>
@@ -401,15 +400,15 @@ watch(
                     </div>
                     <div class="path-info__metrics">
                       <span class="path-metric">
-                        <IconBase name="map" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
                         {{ formatDistance(stats.paths.longestDistance.metrics.maxDistance) }}
                       </span>
                       <span class="path-metric">
-                        <IconBase name="circle" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▧</span>
                         {{ stats.paths.longestDistance.metrics.stationCount }} 站
                       </span>
                       <span class="path-metric">
-                        <IconBase name="shuffle" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▨</span>
                         {{ stats.paths.longestDistance.metrics.transferCount }} 次换乘
                       </span>
                     </div>
@@ -426,15 +425,15 @@ watch(
                     </div>
                     <div class="path-info__metrics">
                       <span class="path-metric">
-                        <IconBase name="shuffle" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▨</span>
                         {{ stats.paths.maxTransfers.metrics.transferCount }} 次换乘
                       </span>
                       <span class="path-metric">
-                        <IconBase name="map" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
                         {{ formatDistance(stats.paths.maxTransfers.metrics.totalMeters) }}
                       </span>
                       <span class="path-metric">
-                        <IconBase name="git-branch" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▤</span>
                         {{ stats.paths.maxTransfers.metrics.uniqueLinesCount }} 条线路
                       </span>
                     </div>
@@ -451,15 +450,15 @@ watch(
                     </div>
                     <div class="path-info__metrics">
                       <span class="path-metric">
-                        <IconBase name="git-branch" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▤</span>
                         {{ stats.paths.maxLines.metrics.uniqueLinesCount }} 条线路
                       </span>
                       <span class="path-metric">
-                        <IconBase name="map" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
                         {{ formatDistance(stats.paths.maxLines.metrics.totalMeters) }}
                       </span>
                       <span class="path-metric">
-                        <IconBase name="shuffle" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▨</span>
                         {{ stats.paths.maxLines.metrics.transferCount }} 次换乘
                       </span>
                     </div>
@@ -476,11 +475,11 @@ watch(
                     </div>
                     <div class="path-info__metrics">
                       <span class="path-metric">
-                        <IconBase name="circle" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▧</span>
                         {{ stats.paths.maxStations.metrics.stationCount }} 站
                       </span>
                       <span class="path-metric">
-                        <IconBase name="map" :size="12" />
+                        <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
                         {{ formatDistance(stats.paths.maxStations.metrics.totalMeters) }}
                       </span>
                     </div>

@@ -1,7 +1,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
-import IconBase from '../IconBase.vue'
 import { NTooltip } from 'naive-ui'
 
 const store = useProjectStore()
@@ -43,7 +42,7 @@ function deleteAnnotation() {
             <NTooltip placement="left">
               <template #trigger>
                 <button class="annotation-item__btn" type="button" @click.stop="deleteAnnotation">
-                  <IconBase name="x" :size="14" />
+                  <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
                 </button>
               </template>
               删除

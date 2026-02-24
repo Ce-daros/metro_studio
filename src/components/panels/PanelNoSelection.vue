@@ -1,7 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { NCollapse, NCollapseItem } from 'naive-ui'
-import IconBase from '../IconBase.vue'
 import { NTooltip } from 'naive-ui'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
@@ -66,7 +65,7 @@ watch(
       <NTooltip placement="bottom">
         <template #trigger>
           <button class="add-line-btn" @click="addLine">
-            <IconBase name="plus-circle" :size="14" />
+            <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
             新增线路
           </button>
         </template>

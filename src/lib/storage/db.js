@@ -143,6 +143,17 @@ function toSerializableProject(project) {
             cornerRadius: toFiniteNumber(normalized.layoutConfig.displayConfig.cornerRadius, 10),
           }
         : {},
+      paramReduction:
+        normalized.layoutConfig?.paramReduction && typeof normalized.layoutConfig.paramReduction === 'object'
+          ? {
+              enabled: Boolean(normalized.layoutConfig.paramReduction.enabled),
+              deltas: Array.isArray(normalized.layoutConfig.paramReduction.deltas)
+                ? normalized.layoutConfig.paramReduction.deltas
+                    .map((n) => toFiniteNumber(n, 0))
+                    .map((n) => Math.max(-3, Math.min(3, n)))
+                : [],
+            }
+          : { enabled: false, deltas: [] },
     },
     annotations: (normalized.annotations || []).map((a) => ({
       id: String(a.id || ''),

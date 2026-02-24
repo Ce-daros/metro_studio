@@ -1,0 +1,157 @@
+:root {
+  /* ── Typography ── */
+  --app-font-family: 'Inter', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --app-font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --app-font-display: 'Rajdhani', 'Inter', 'Roboto Condensed', 'Arial Narrow', 'PingFang SC', sans-serif;
+  --font-size-base: 14px;
+  --font-size-sm: 13px;
+  --font-size-xs: 12px;
+  --font-size-xxs: 10px;
+  font-family: var(--app-font-family);
+  line-height: 1.45;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+
+
+  /* ── Ark Core Palette ── */
+  --ark-bg-abyss: #020204;
+  --ark-bg-deep: #050508;
+  --ark-bg-base: #0a0a0f;
+  --ark-bg-raised: #101018;
+  --ark-bg-card: rgba(14, 14, 22, 0.82);
+  --ark-bg-surface: rgba(20, 18, 28, 0.72);
+
+  --ark-pink: #ff0ac0;
+  --ark-pink-light: #ff5cd8;
+  --ark-pink-hot: #ff2ed6;
+  --ark-pink-deep: #c4008e;
+  --ark-purple: #b520ff;
+  --ark-purple-light: #d06aff;
+  --ark-purple-deep: #8a10cc;
+  --ark-violet: #7b2fff;
+  --ark-cyan: #00f0ff;
+  --ark-cyan-dim: rgba(0, 240, 255, 0.15);
+
+  --ark-text: #f0f0ff;
+  --ark-text-bright: #ffffff;
+  --ark-text-muted: #8090b0;
+  --ark-text-dim: #4a5878;
+  --ark-text-ghost: #2a3448;
+
+  --ark-border: rgba(181, 32, 255, 0.40);
+  --ark-border-hot: var(--ark-pink);
+  --ark-border-dim: rgba(255, 10, 192, 0.14);
+  --ark-border-subtle: rgba(181, 32, 255, 0.18);
+
+  --ark-pink-glow: rgba(255, 10, 192, 0.40);
+  --ark-purple-glow: rgba(181, 32, 255, 0.35);
+  --ark-glow-intense: rgba(255, 10, 192, 0.65);
+
+  --ark-glass: rgba(10, 10, 18, 0.78);
+  --ark-glass-thick: rgba(8, 8, 14, 0.92);
+
+  --ark-grid: rgba(114, 124, 160, 0.07);
+  --ark-grid-bold: rgba(255, 10, 192, 0.10);
+
+  --ark-warning: #ff3070;
+  --ark-success: #00ffaa;
+  --ark-info: #6090ff;
+
+  /* ── Gradient Presets ── */
+  --ark-gradient-pink: linear-gradient(135deg, var(--ark-pink) 0%, var(--ark-purple) 100%);
+  --ark-gradient-purple: linear-gradient(135deg, var(--ark-purple) 0%, var(--ark-violet) 100%);
+  --ark-gradient-glow: linear-gradient(135deg, var(--ark-pink-glow) 0%, var(--ark-purple-glow) 100%);
+  --ark-gradient-surface: linear-gradient(145deg, rgba(181, 32, 255, 0.08) 0%, rgba(10, 10, 18, 0.92) 40%, rgba(255, 10, 192, 0.06) 100%);
+
+  /* ── Mapped tokens ── */
+  --app-bg: var(--ark-bg-abyss);
+  --app-shell-gradient:
+    radial-gradient(ellipse 80% 60% at 10% 5%, rgba(181, 32, 255, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 92% 88%, rgba(255, 10, 192, 0.16) 0%, transparent 45%),
+    radial-gradient(ellipse 40% 30% at 50% 50%, rgba(123, 47, 255, 0.06) 0%, transparent 50%),
+    linear-gradient(155deg, #020204 0%, #08081a 40%, #0e0e1c 100%);
+  --app-text: var(--ark-text);
+  --workspace-bg: var(--ark-bg-base);
+
+  /* ── Toolbar ── */
+  --toolbar-bg: var(--ark-glass);
+  --toolbar-header-bg: rgba(6, 6, 14, 0.88);
+  --toolbar-border: var(--ark-border);
+  --toolbar-card-bg: rgba(12, 12, 20, 0.90);
+  --toolbar-card-border: rgba(181, 32, 255, 0.50);
+  --toolbar-text: var(--ark-text);
+  --toolbar-muted: var(--ark-text-muted);
+  --toolbar-status: var(--ark-success);
+  --toolbar-hint: var(--ark-purple-light);
+  --toolbar-input-bg: rgba(5, 5, 10, 0.96);
+  --toolbar-input-border: rgba(100, 120, 170, 0.25);
+  --toolbar-input-text: var(--ark-text);
+  --toolbar-input-focus-border: var(--ark-pink);
+  --toolbar-scrollbar-thumb: linear-gradient(180deg, rgba(181, 32, 255, 0.70), rgba(255, 10, 192, 0.75));
+  --toolbar-divider: rgba(181, 32, 255, 0.25);
+  --toolbar-tab-bg: var(--ark-bg-deep);
+  --toolbar-tab-active-bg: rgba(255, 10, 192, 0.12);
+  --toolbar-tab-active-border: var(--ark-pink);
+  --toolbar-tab-active-text: #ffffff;
+  --toolbar-button-bg: rgba(6, 6, 12, 0.60);
+  --toolbar-button-border: rgba(181, 32, 255, 0.48);
+  --toolbar-button-hover-bg: rgba(255, 10, 192, 0.14);
+  --toolbar-button-text: var(--ark-text);
+  --toolbar-button-hover-border: rgba(255, 10, 192, 0.92);
+  --toolbar-primary-bg: var(--ark-pink);
+  --toolbar-primary-border: var(--ark-pink);
+  --toolbar-primary-text: #ffffff;
+  --toolbar-danger: var(--ark-warning);
+  --toolbar-danger-bg: rgba(255, 48, 112, 0.18);
+  --toolbar-danger-border: rgba(255, 48, 112, 0.85);
+  --toolbar-active-bg: rgba(181, 32, 255, 0.20);
+  --toolbar-active-border: rgba(181, 32, 255, 0.95);
+  --toolbar-item-bg: rgba(5, 5, 10, 0.88);
+  --toolbar-hover-bg: rgba(181, 32, 255, 0.08);
+  --toolbar-hover-border: rgba(181, 32, 255, 0.70);
+  --toolbar-badge-bg: rgba(5, 8, 18, 0.94);
+  --toolbar-badge-text: #b8d4ff;
+
+  /* ── Workspace panel ── */
+  --workspace-panel-bg: rgba(12, 12, 20, 0.85);
+  --workspace-panel-border: var(--ark-border);
+  --workspace-panel-header-bg: rgba(6, 6, 14, 0.85);
+  --workspace-panel-header-border: var(--ark-border);
+  --workspace-panel-text: var(--ark-text);
+  --workspace-panel-muted: var(--ark-text-muted);
+  --workspace-canvas-bg: var(--ark-bg-deep);
+
+  /* ── Design tokens ── */
+  --transition-instant: 0ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 100ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 280ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+
+  --shadow-sm: 0 0 0 1px rgba(181, 32, 255, 0.28), 0 0 12px rgba(181, 32, 255, 0.18);
+  --shadow-md: 0 0 0 1px rgba(181, 32, 255, 0.32), 0 0 20px rgba(255, 10, 192, 0.22), 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 0 0 1px rgba(181, 32, 255, 0.40), 0 0 32px rgba(255, 10, 192, 0.30), 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-hot: 0 0 0 1px var(--ark-pink), 0 0 20px var(--ark-pink-glow), 0 0 60px rgba(255, 10, 192, 0.15);
+
+  --focus-ring: 0 0 0 1px var(--ark-purple), 0 0 10px var(--ark-purple-glow);
+  --focus-ring-pink: 0 0 0 1px var(--ark-pink), 0 0 10px var(--ark-pink-glow);
+
+  --indicator-color: var(--ark-pink);
+  --indicator-width: 2px;
+
+  /* ── Clip-path chamfers ── */
+  --clip-chamfer-xs: polygon(4px 0, calc(100% - 4px) 0, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 0 calc(100% - 4px), 0 4px);
+  --clip-chamfer-sm: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px);
+  --clip-chamfer-md: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+  --clip-chamfer-lg: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0 calc(100% - 14px), 0 14px);
+  --clip-chamfer-tl: polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px);
+  --clip-chamfer-br: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+  --clip-chamfer-diag: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}

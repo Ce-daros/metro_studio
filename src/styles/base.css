@@ -1,0 +1,127 @@
+/* ── Global Reset ── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+::selection {
+  background: rgba(255, 10, 192, 0.30);
+  color: #ffffff;
+}
+
+/* ── Body & Atmosphere ── */
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--app-bg);
+  color: var(--app-text);
+  font-family: var(--app-font-family);
+  font-size: var(--font-size-base);
+  letter-spacing: 0.015em;
+  overflow: hidden;
+}
+
+/* Diagonal hatch pattern + gradient vignette */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 10, 192, 0.012) 0 1px,
+      transparent 1px 6px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(181, 32, 255, 0.010) 0 1px,
+      transparent 1px 6px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.008) 0 1px,
+      transparent 1px 80px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.008) 0 1px,
+      transparent 1px 80px
+    );
+}
+
+/* Atmospheric glow */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.30;
+  background:
+    radial-gradient(ellipse 50% 40% at 15% 10%, rgba(255, 10, 192, 0.25) 0, transparent 100%),
+    radial-gradient(ellipse 40% 35% at 85% 80%, rgba(181, 32, 255, 0.20) 0, transparent 100%),
+    radial-gradient(ellipse 30% 25% at 50% 45%, rgba(123, 47, 255, 0.10) 0, transparent 100%);
+}
+
+#app {
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Typography ── */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--app-font-display);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ark-text-bright);
+}
+
+h1 {
+  background: var(--ark-gradient-pink);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+input, select, textarea, button {
+  font-family: var(--app-font-mono);
+}
+
+/* ── Scrollbar ── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 10, 192, 0.65) rgba(5, 5, 10, 0.6);
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(5, 5, 10, 0.90);
+  border-left: 1px solid rgba(181, 32, 255, 0.12);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--toolbar-scrollbar-thumb);
+  border: none;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--ark-purple), var(--ark-pink));
+}
+
+*::-webkit-scrollbar-corner {
+  background: rgba(5, 5, 10, 0.90);
+}

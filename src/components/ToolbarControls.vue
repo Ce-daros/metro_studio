@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useAutoAnimate } from '@formkit/auto-animate/vue'
-import IconBase from './IconBase.vue'
 import ToolbarProjectTab from './toolbar/ToolbarProjectTab.vue'
 import ToolbarWorkflowTab from './toolbar/ToolbarWorkflowTab.vue'
 import ToolbarObjectTab from './toolbar/ToolbarObjectTab.vue'
@@ -27,10 +26,10 @@ const props = defineProps({
 const emit = defineEmits(['toggle-collapse'])
 
 const TAB_OPTIONS = [
-  { key: 'project', label: '项目', icon: 'folder' },
-  { key: 'workflow', label: '工具', icon: 'sliders' },
-  { key: 'object', label: '属性', icon: 'box' },
-  { key: 'publish', label: '导出', icon: 'share' },
+  { key: 'project', label: '项目', block: '▣' },
+  { key: 'workflow', label: '工具', block: '▧' },
+  { key: 'object', label: '属性', block: '▨' },
+  { key: 'publish', label: '导出', block: '▤' },
 ]
 const MODE_LABELS = {
   select: '选择/拖拽',
@@ -229,7 +228,7 @@ onMounted(async () => {
         :class="{ active: activeTab === tab.key }"
         @click="activeTab = tab.key"
       >
-        <IconBase :name="tab.icon" :size="14" />
+        <span class="toolbar__tab-block">{{ tab.block }}</span>
         <span>{{ tab.label }}</span>
       </button>
     </nav>
@@ -568,6 +567,12 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.toolbar__tab-block {
+  font-size: 14px;
+  color: var(--ark-pink);
+  line-height: 1;
 }
 
 @media (max-width: 1060px) {

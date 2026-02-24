@@ -4,7 +4,6 @@ import { useAutoAnimate } from '@formkit/auto-animate/vue'
 import { useProjectStore } from '../stores/projectStore'
 import { usePanelResize } from '../composables/usePanelResize'
 import { useAnimationSettings } from '../composables/useAnimationSettings.js'
-import IconBase from './IconBase.vue'
 import { NTooltip } from 'naive-ui'
 import PanelNoSelection from './panels/PanelNoSelection.vue'
 import PanelStationSingle from './panels/PanelStationSingle.vue'
@@ -75,13 +74,13 @@ function toggleCollapse() {
     <div class="properties-panel__header">
       <div class="properties-panel__header-indicator" :class="{ 'properties-panel__header-indicator--active': panelType !== 'none' }"></div>
       <template v-if="!collapsed">
-        <IconBase :name="panelIcon" :size="14" class="properties-panel__header-icon" />
+        <span class="properties-panel__block-icon">▣</span>
         <span class="properties-panel__title">{{ panelTitle }}</span>
       </template>
       <NTooltip placement="left">
         <template #trigger>
           <button class="properties-panel__collapse-btn ark-glitch-hover" type="button" @click="toggleCollapse">
-            <IconBase :name="collapsed ? 'chevron-left' : 'chevron-right'" :size="14" />
+            <span class="properties-panel__block-icon">{{ collapsed ? '◂' : '▸' }}</span>
           </button>
         </template>
         {{ collapsed ? '展开面板' : '折叠面板' }}
@@ -143,9 +142,11 @@ function toggleCollapse() {
   flex-shrink: 0;
 }
 
-.properties-panel__header-icon {
-  flex-shrink: 0;
+.properties-panel__block-icon {
+  font-size: 14px;
   color: var(--ark-pink);
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .properties-panel__title {

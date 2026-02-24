@@ -58,7 +58,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {RailLine[]} lines
  * @property {Array<{createdAt: string, score: number, breakdown: Record<string, number>}>} snapshots
  * @property {{stationLabels: Record<string, {dx:number,dy:number,anchor:string}>, edgeDirections: Record<string, number>}} layoutMeta
- * @property {{geoSeedScale: number}} layoutConfig
+ * @property {{geoSeedScale: number, displayConfig: object, paramReduction?: {enabled: boolean, deltas: number[]}}} layoutConfig
  * @property {{createdAt: string, updatedAt: string}} meta
  * @property {Array<{year: number, description: string}>} timelineEvents
  */
@@ -103,6 +103,10 @@ export function createEmptyProject(name = '新建工程') {
         edgeWidthScale: 1.0,
         edgeOpacity: 1.0,
         cornerRadius: 10,
+      },
+      paramReduction: {
+        enabled: false,
+        deltas: [],
       },
     },
     annotations: [],
@@ -169,6 +173,18 @@ export function normalizeProject(raw) {
                       : base.layoutConfig.displayConfig.cornerRadius,
                   }
                 : base.layoutConfig.displayConfig,
+            paramReduction:
+              raw.layoutConfig.paramReduction && typeof raw.layoutConfig.paramReduction === 'object'
+                ? {
+                    enabled: Boolean(raw.layoutConfig.paramReduction.enabled),
+                    deltas: Array.isArray(raw.layoutConfig.paramReduction.deltas)
+                      ? raw.layoutConfig.paramReduction.deltas
+                          .map((n) => Number(n))
+                          .filter((n) => Number.isFinite(n))
+                          .map((n) => Math.max(-3, Math.min(3, n)))
+                      : [],
+                  }
+                : base.layoutConfig.paramReduction,
           }
         : base.layoutConfig,
     annotations: Array.isArray(raw?.annotations)

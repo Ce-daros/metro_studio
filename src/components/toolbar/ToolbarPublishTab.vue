@@ -38,7 +38,7 @@ function getLineName(line, index) {
     <div class="toolbar__row">
       <button class="toolbar__btn" @click="guardedExport(() => store.exportOfficialSchematicPng())">导出官方导示图</button>
       <div class="hud-menu">
-        <button class="toolbar__btn">打包导出车辆 HUD 图 ▾</button>
+        <button class="toolbar__btn">导出车上 HUD 图 ▾</button>
         <div class="hud-menu__dropdown">
           <button class="hud-menu__item" @click="guardedExport(() => store.exportAllLineHudZip())">全部</button>
           <button

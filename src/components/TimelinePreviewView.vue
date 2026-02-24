@@ -2,7 +2,6 @@
 import { computed, ref } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
 import { useTimelinePlayback } from '../composables/useTimelinePlayback'
-import IconBase from './IconBase.vue'
 
 const props = defineProps({
   active: { type: Boolean, default: false },
@@ -73,7 +72,7 @@ const {
             :disabled="playbackState === 'loading'"
             @click="playbackState === 'idle' ? onPlay() : playbackState === 'playing' ? onPause() : null"
           >
-            <IconBase :name="playbackState === 'playing' ? 'pause' : 'play'" :size="14" />
+            <span style="font-size:14px;color:var(--ark-pink);line-height:1;">{{ playbackState === 'playing' ? '▨' : '▣' }}</span>
           </button>
 
           <button
@@ -83,7 +82,7 @@ const {
             title="停止"
             @click="onStop"
           >
-            <IconBase name="square" :size="12" />
+            <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
           </button>
         </div>
 
@@ -132,7 +131,7 @@ const {
           :title="isFullscreen ? '退出全屏' : '全屏'"
           @click="toggleFullscreen"
         >
-          <IconBase :name="isFullscreen ? 'minimize' : 'maximize'" :size="14" />
+          <span style="font-size:14px;color:var(--ark-pink);line-height:1;">{{ isFullscreen ? '▨' : '▣' }}</span>
         </button>
       </div>
     </header>
@@ -141,7 +140,7 @@ const {
       <canvas ref="canvasRef" class="preview-view__canvas" @click="onCanvasClick" />
 
       <div v-if="!hasData && !pseudoMode" class="preview-view__empty">
-        <IconBase name="clock" :size="32" />
+        <span style="font-size:32px;color:var(--ark-pink);line-height:1;">▣</span>
         <p>暂无标记年份的线段，无法预览时间轴动画</p>
         <p class="preview-view__empty-hint">在线段属性中设置"开通年份"后即可使用</p>
         <button
@@ -150,7 +149,7 @@ const {
           type="button"
           @click="startPseudoPreview"
         >
-          <IconBase name="play" :size="12" />
+          <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
           按线路顺序预览伪"发展史"
         </button>
       </div>

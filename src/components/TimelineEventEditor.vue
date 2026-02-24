@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import IconBase from './IconBase.vue'
 
 const store = useProjectStore()
 
@@ -55,7 +54,7 @@ function onKeyDown(event) {
 <template>
   <div class="timeline-events">
     <div class="timeline-events__header">
-      <IconBase name="clock" :size="14" />
+      <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
       <span>年份事件</span>
     </div>
 

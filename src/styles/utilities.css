@@ -1,0 +1,87 @@
+/* ════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ════════════════════════════════════════════════════════ */
+
+/* Text gradient */
+.ark-text-gradient {
+  background: var(--ark-gradient-pink);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow text */
+.ark-text-glow {
+  text-shadow:
+    0 0 6px var(--ark-pink-glow),
+    0 0 20px rgba(255, 10, 192, 0.15);
+}
+
+/* Pulsing element */
+.ark-pulse {
+  animation: ark-pulse 2.5s ease-in-out infinite;
+}
+
+/* Flicker effect */
+.ark-flicker {
+  animation: ark-flicker 8s linear infinite;
+}
+
+/* Border pulse */
+.ark-border-pulse {
+  animation: ark-border-pulse 3s ease-in-out infinite;
+}
+
+/* Data stream background */
+.ark-data-stream {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 18px,
+    rgba(255, 10, 192, 0.03) 18px,
+    rgba(255, 10, 192, 0.03) 19px
+  );
+  animation: ark-data-stream 8s linear infinite;
+}
+
+/* Status dot */
+.ark-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--ark-success);
+  box-shadow: 0 0 6px rgba(0, 255, 170, 0.50);
+  clip-path: var(--clip-chamfer-xs);
+  animation: ark-pulse 2s ease-in-out infinite;
+}
+
+.ark-status-dot--warning {
+  background: var(--ark-warning);
+  box-shadow: 0 0 6px rgba(255, 48, 112, 0.50);
+}
+
+.ark-status-dot--offline {
+  background: var(--ark-text-dim);
+  box-shadow: none;
+  animation: none;
+}
+
+/* Panel card */
+.ark-panel-card {
+  padding: 12px 14px;
+  background: var(--ark-gradient-surface);
+  border: 1px solid var(--ark-border);
+  clip-path: var(--clip-chamfer-sm);
+  position: relative;
+}
+
+.ark-panel-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 6px;
+  width: 24px;
+  height: 2px;
+  background: var(--ark-pink);
+  box-shadow: 0 0 6px var(--ark-pink-glow);
+}

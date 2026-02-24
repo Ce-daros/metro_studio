@@ -1,0 +1,21 @@
+/* ════════════════════════════════════════════════════════
+   TOGGLE STATES (方块选择动效)
+   ════════════════════════════════════════════════════════ */
+
+.ark-toggle-checked {
+  color: var(--ark-pink) !important;
+  animation: ark-square-select 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: drop-shadow(0 0 4px var(--ark-pink-glow));
+  text-shadow: 0 0 8px var(--ark-pink-glow);
+}
+
+.ark-toggle-unchecked {
+  color: var(--ark-text-dim) !important;
+  opacity: 0.45;
+  transition: opacity var(--transition-normal), color var(--transition-normal);
+}
+
+.ark-toggle-unchecked:hover {
+  color: var(--ark-purple) !important;
+  opacity: 0.70;
+}

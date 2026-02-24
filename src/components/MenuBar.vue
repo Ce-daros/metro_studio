@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { h } from 'vue'
-import IconBase from './IconBase.vue'
 import { NTooltip, NDropdown } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
 import { getDisplayLineName } from '../lib/lineNaming'
@@ -22,20 +21,22 @@ const fileInputRef = ref(null)
 
 const { menus, handleAction, uiTheme, toggleTheme } = useMenuBarActions(store, emit, { fileInputRef })
 
-function getFallbackMenuIcon(item) {
-  if (item.type === 'submenu') return 'menu'
-  if (item.type === 'toggle') return item.checked ? 'check-circle' : 'box'
-  return 'file'
-}
+const BLOCK_CHARS = { item: '▣', submenu: '▧', toggle_on: '▨', toggle_off: '▢' }
+const blockIcon = (char) => () => h('span', {
+  style: 'font-size:16px;color:var(--ark-pink);line-height:1;display:inline-flex;align-items:center;',
+}, char)
 
 function convertMenuItems(items) {
   return items.map((item, i) => {
     if (item.type === 'separator') return { type: 'divider', key: `sep_${i}` }
+    if (item.type === 'group') {
+      return { type: 'group', key: `group_${i}`, label: item.label, children: convertMenuItems(item.children) }
+    }
     const opt = { key: item.action || `submenu_${item.label}`, label: item.label, disabled: item.disabled }
-    if (item.type === 'toggle' && item.checked) opt.label = `✓ ${item.label}`
     if (item.shortcut) opt.label = `${item.label}    ${item.shortcut}`
-    const iconName = item.icon || getFallbackMenuIcon(item)
-    opt.icon = () => h(IconBase, { name: iconName, size: 16 })
+    if (item.type === 'toggle') opt.icon = blockIcon(item.checked ? BLOCK_CHARS.toggle_on : BLOCK_CHARS.toggle_off)
+    else if (item.type === 'submenu') opt.icon = blockIcon(BLOCK_CHARS.submenu)
+    else opt.icon = blockIcon(BLOCK_CHARS.item)
     if (item.type === 'submenu' && item.children) opt.children = convertMenuItems(item.children)
     return opt
   })
@@ -50,7 +51,7 @@ const lineNDropdownOptions = computed(() =>
   lines.value.map((line) => ({
     key: `line_${line.id}`,
     label: getDisplayLineName(line, 'zh') || line.nameZh || '未命名',
-    icon: () => h(IconBase, { name: 'route', size: 16 }),
+    icon: blockIcon('▣'),
   }))
 )
 
@@ -110,10 +111,10 @@ function setTimelinePreviewBasemapMode(mode) {
 }
 
 const viewButtons = [
-  { view: 'map', icon: 'map', label: '地图' },
-  { view: 'schematic', icon: 'layout', label: '示意图' },
-  { view: 'hud', icon: 'monitor', label: 'HUD' },
-  { view: 'preview', icon: 'film', label: '预览' },
+  { view: 'map', block: '▣', label: '地图' },
+  { view: 'schematic', block: '▧', label: '示意图' },
+  { view: 'hud', block: '▨', label: 'HUD' },
+  { view: 'preview', block: '▤', label: '预览' },
 ]
 
 function toggleMenu(key) {
@@ -205,7 +206,7 @@ function toggleNavigation() {
             @click="emit('show-search')"
             aria-label="搜索地点"
           >
-            <IconBase name="search" :size="16" />
+            <span class="menu-bar__block-icon">▣</span>
           </button>
         </template>
         搜索地点 (Ctrl+F)
@@ -220,7 +221,7 @@ function toggleNavigation() {
             @click="toggleNavigation"
             aria-label="导航"
           >
-            <IconBase name="navigation" :size="16" />
+            <span class="menu-bar__block-icon">▧</span>
           </button>
         </template>
         导航
@@ -245,7 +246,7 @@ function toggleNavigation() {
               :style="{ backgroundColor: activeLine?.color || '#555' }"
             />
             <span class="menu-bar__line-name">{{ activeLineName }}</span>
-            <IconBase name="chevron-down" :size="12" class="menu-bar__line-chevron" :class="{ 'menu-bar__line-chevron--open': lineDropdownOpen }" />
+            <span class="menu-bar__block-icon menu-bar__line-chevron" :class="{ 'menu-bar__line-chevron--open': lineDropdownOpen }">▾</span>
           </button>
         </NDropdown>
       </div>
@@ -308,7 +309,7 @@ function toggleNavigation() {
               type="button"
               @click="emit('set-view', btn.view)"
             >
-              <IconBase :name="btn.icon" :size="16" />
+              <span class="menu-bar__block-icon">{{ btn.block }}</span>
             </button>
           </template>
           {{ btn.label }}
@@ -666,6 +667,14 @@ function toggleNavigation() {
   background-size: 200% 100%;
   animation: line-flow 10s linear infinite;
   opacity: 0.84;
+}
+
+.menu-bar__block-icon {
+  font-size: 16px;
+  color: var(--ark-pink);
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
 }
 
 .menu-bar__machine-tag {

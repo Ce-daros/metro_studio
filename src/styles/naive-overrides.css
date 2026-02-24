@@ -1,0 +1,28 @@
+/* ════════════════════════════════════════════════════════
+   NAIVE-UI OVERRIDES
+   ════════════════════════════════════════════════════════ */
+
+.n-dropdown-menu,
+.n-base-select-menu,
+.n-popover,
+.n-dialog,
+.n-card,
+.n-modal,
+.n-message {
+  background: rgba(8, 8, 14, 0.95) !important;
+  border: 1px solid rgba(181, 32, 255, 0.50) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 10, 192, 0.18),
+    0 0 24px rgba(181, 32, 255, 0.25),
+    0 8px 32px rgba(0, 0, 0, 0.50) !important;
+  color: var(--ark-text) !important;
+  clip-path: var(--clip-chamfer-sm) !important;
+}
+
+.n-dropdown-option:hover {
+  background: rgba(255, 10, 192, 0.14) !important;
+}
+
+.n-dropdown-option.n-dropdown-option--pending {
+  background: rgba(181, 32, 255, 0.12) !important;
+}

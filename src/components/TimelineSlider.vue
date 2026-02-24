@@ -1,7 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
-import IconBase from './IconBase.vue'
 
 const store = useProjectStore()
 
@@ -107,7 +106,7 @@ const eventDescription = computed(() => {
         title="启用时间轴"
         @click="enableTimeline"
       >
-        <IconBase name="clock" :size="14" />
+        <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
         <span>时间轴</span>
       </button>
 
@@ -118,7 +117,7 @@ const eventDescription = computed(() => {
           :title="playbackState === 'playing' ? '暂停' : '播放'"
           @click="onPlayPause"
         >
-          <IconBase :name="playbackState === 'playing' ? 'pause' : 'play'" :size="14" />
+          <span style="font-size:14px;color:var(--ark-pink);line-height:1;">{{ playbackState === 'playing' ? '▨' : '▣' }}</span>
         </button>
 
         <button
@@ -128,7 +127,7 @@ const eventDescription = computed(() => {
           title="停止"
           @click="onStop"
         >
-          <IconBase name="square" :size="12" />
+          <span style="font-size:12px;color:var(--ark-pink);line-height:1;">▣</span>
         </button>
 
         <div class="timeline-slider__track-wrapper">
@@ -185,7 +184,7 @@ const eventDescription = computed(() => {
           title="关闭时间轴"
           @click="disableTimeline"
         >
-          <IconBase name="x" :size="14" />
+          <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
         </button>
       </template>
     </div>

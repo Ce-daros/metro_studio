@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from 'vue'
-import IconBase from './IconBase.vue'
 import { NTooltip } from 'naive-ui'
 import { usePanelResize } from '../composables/usePanelResize'
 import SchematicControls from './SchematicControls.vue'
@@ -21,14 +20,14 @@ function toggleCollapse() {
     <div class="layout-controls-panel__header">
       <div class="layout-controls-panel__header-indicator"></div>
       <template v-if="!collapsed">
-        <IconBase name="sliders" :size="14" class="layout-controls-panel__header-icon" />
+        <span class="layout-controls-panel__block-icon">▣</span>
         <span class="layout-controls-panel__title">排版控制</span>
         <span class="layout-controls-panel__meta">AUTO-LYT</span>
       </template>
       <NTooltip :text="collapsed ? '展开面板' : '折叠面板'" placement="left">
         <template #trigger>
           <button class="layout-controls-panel__collapse-btn ark-glitch-hover" type="button" @click="toggleCollapse">
-            <IconBase :name="collapsed ? 'chevron-left' : 'chevron-right'" :size="14" />
+            <span class="layout-controls-panel__block-icon">{{ collapsed ? '◂' : '▸' }}</span>
           </button>
         </template>
         {{ collapsed ? '展开面板' : '折叠面板' }}
@@ -98,9 +97,11 @@ function toggleCollapse() {
   flex-shrink: 0;
 }
 
-.layout-controls-panel__header-icon {
-  flex-shrink: 0;
+.layout-controls-panel__block-icon {
+  font-size: 14px;
   color: var(--ark-pink);
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .layout-controls-panel__title {

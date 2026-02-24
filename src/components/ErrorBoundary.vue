@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onErrorCaptured } from 'vue'
-import IconBase from './IconBase.vue'
 
 const hasError = ref(false)
 const errorMessage = ref('')
@@ -21,7 +20,7 @@ function reload() {
   <slot v-if="!hasError" />
   <div v-else class="error-boundary">
     <div class="error-boundary__content">
-      <IconBase name="alert-triangle" :size="32" class="error-boundary__icon" />
+      <span class="error-boundary__block-icon">▣</span>
       <p class="error-boundary__title">视图渲染出错</p>
       <p class="error-boundary__message">{{ errorMessage }}</p>
       <button class="error-boundary__reload" @click="reload">重新加载</button>
@@ -49,8 +48,10 @@ function reload() {
   text-align: center;
 }
 
-.error-boundary__icon {
-  color: var(--toolbar-muted);
+.error-boundary__block-icon {
+  font-size: 32px;
+  color: var(--ark-pink);
+  line-height: 1;
   margin-bottom: 4px;
 }
 
