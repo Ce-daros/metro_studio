@@ -11,7 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
-
+.env.example
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -36,3 +36,4 @@ metro_male.wav
 1.txt
 .skills
 /plan
+video
