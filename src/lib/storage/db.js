@@ -74,6 +74,7 @@ function toSerializableProject(project) {
         id: String(station.id || ''),
         nameZh: String(station.nameZh || ''),
         nameEn: String(station.nameEn || ''),
+        nameEnFixed: Boolean(station.nameEnFixed),
         lngLat,
         displayPos,
         isInterchange: Boolean(station.isInterchange),

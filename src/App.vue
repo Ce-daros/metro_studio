@@ -30,6 +30,7 @@ import NoProjectWelcome from './components/NoProjectWelcome.vue'
 import HelpView from './components/HelpView.vue'
 import ExportActualRouteDialog from './components/ExportActualRouteDialog.vue'
 import QuickNamingDialog from './components/QuickNamingDialog.vue'
+import EnglishReviewDialog from './components/EnglishReviewDialog.vue'
 import { useProjectStore } from './stores/projectStore'
 import { useAutoSave } from './composables/useAutoSave'
 import { useDialog } from './composables/useDialog.js'
@@ -37,6 +38,7 @@ import { useAnimationSettings } from './composables/useAnimationSettings.js'
 import { useShortcuts } from './composables/useShortcuts.js'
 import { useMapSearch } from './composables/useMapSearch.js'
 import { setRenameTrigger, setQuickNamingMapGetter, useQuickNaming, exitQuickNaming } from './composables/useQuickNaming.js'
+import { setEnglishReviewTrigger, setEnglishReviewMapGetter, useEnglishReview, exitEnglishReview } from './composables/useEnglishReview.js'
 import { isTrial, TRIAL_LIMITS } from './composables/useLicense'
 import { findCityPresetById } from './lib/osm/cityPresets'
 import { loadLatestProjectFromDb } from './lib/storage/db'
@@ -57,6 +59,9 @@ provide('stationRenameTrigger', stationRenameTrigger)
 const { quickNamingActive } = useQuickNaming()
 setRenameTrigger(stationRenameTrigger)
 
+const { englishReviewActive } = useEnglishReview()
+setEnglishReviewTrigger(stationRenameTrigger)
+
 function showUpgradeDialog(msg) {
   upgradeMessage.value = msg
   upgradeVisible.value = true
@@ -75,6 +80,10 @@ escapeCallbacks.add(() => {
     exitQuickNaming()
     return true
   }
+  if (englishReviewActive.value) {
+    exitEnglishReview()
+    return true
+  }
   return false
 })
 
@@ -88,6 +97,7 @@ const statisticsVisible = ref(false)
 const aboutVisible = ref(false)
 const batchNameEditVisible = ref(false)
 const quickNamingVisible = ref(false)
+const englishReviewVisible = ref(false)
 const ttsDialogVisible = ref(false)
 const upgradeVisible = ref(false)
 const upgradeMessage = ref('')
@@ -351,6 +361,7 @@ const { rebuildBindings } = useShortcuts({
   'tool.routeDraw': () => store.setMode('route-draw'),
   'tool.styleBrush': () => store.setMode('style-brush'),
   'tool.boxSelect': () => store.setMode('box-select'),
+  'tool.boxSelectEdges': () => store.setMode('box-select-edges'),
   'tool.anchorEdit': () => store.setMode('anchor-edit'),
   'tool.annotation': () => store.setMode('annotation'),
 
@@ -402,6 +413,7 @@ onBeforeUnmount(() => {
         @show-about="aboutVisible = true"
         @show-batch-name-edit="batchNameEditVisible = true"
         @show-quick-naming="quickNamingVisible = true"
+        @show-english-review="englishReviewVisible = true"
         @show-search="openSearchDialogWithProvince"
         @show-help="(cat) => { helpInitCategory = cat; helpVisible = true }"
         @show-landuse-legend="landuseLegendVisible = true"
@@ -474,6 +486,7 @@ onBeforeUnmount(() => {
   <UpgradeDialog :visible="upgradeVisible" :message="upgradeMessage" @close="upgradeVisible = false" />
   <BatchNameEditDialog :visible="batchNameEditVisible" @close="batchNameEditVisible = false" />
   <QuickNamingDialog :visible="quickNamingVisible" @close="quickNamingVisible = false" />
+  <EnglishReviewDialog :visible="englishReviewVisible" @close="englishReviewVisible = false" />
   <StationTTSDialog ref="ttsDialogRef" :project="store.project" :visible="ttsDialogVisible" @close="ttsDialogVisible = false" />
   <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" :stations="store.project?.stations || []" :lines="store.project?.lines || []" @close="closeSearchDialog" @select="onSearchResultSelect" />
   <LanduseLegend :visible="landuseLegendVisible" @close="landuseLegendVisible = false" />

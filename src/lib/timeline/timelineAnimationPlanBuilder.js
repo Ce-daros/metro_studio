@@ -383,20 +383,38 @@ export function buildTimelineAnimationPlan(project) {
   const lineMap = new Map((project.lines || []).map(l => [l.id, l]))
   const edgeMap = new Map((project.edges || []).map(e => [e.id, e]))
 
-  // Collect years
-  const yearSet = new Set()
+  // Collect unique year+phase combinations (同一年多期不合并)
+  const yearPhaseSet = new Set()
   for (const edge of project.edges || []) {
-    if (edge.openingYear != null) yearSet.add(edge.openingYear)
+    if (edge.openingYear != null) {
+      const phase = edge.phase || ''
+      yearPhaseSet.add(`${edge.openingYear}|${phase}`)
+    }
   }
-  const years = [...yearSet].sort((a, b) => a - b)
-  if (!years.length) return { years: [], yearPlans: new Map() }
+  // Sort by year, then by phase
+  const sortedYearPhases = [...yearPhaseSet].sort((a, b) => {
+    const [yearA, phaseA] = a.split('|')
+    const [yearB, phaseB] = b.split('|')
+    if (yearA !== yearB) return Number(yearA) - Number(yearB)
+    return phaseA.localeCompare(phaseB, 'zh')
+  })
+  if (!sortedYearPhases.length) return { years: [], yearPlans: new Map() }
 
-  // Group edges by year
-  const edgesByYear = new Map()
-  for (const year of years) edgesByYear.set(year, [])
+  // Parse back to {year, phase} objects for year markers
+  const years = sortedYearPhases.map(key => {
+    const [yearStr, phase] = key.split('|')
+    return { year: Number(yearStr), phase }
+  })
+
+  // Group edges by year+phase
+  const edgesByYearPhase = new Map()
+  for (const key of sortedYearPhases) edgesByYearPhase.set(key, [])
   for (const edge of project.edges || []) {
-    if (edge.openingYear != null && edgesByYear.has(edge.openingYear)) {
-      edgesByYear.get(edge.openingYear).push(edge)
+    if (edge.openingYear != null) {
+      const key = `${edge.openingYear}|${edge.phase || ''}`
+      if (edgesByYearPhase.has(key)) {
+        edgesByYearPhase.get(key).push(edge)
+      }
     }
   }
 
@@ -405,8 +423,11 @@ export function buildTimelineAnimationPlan(project) {
   const cumulativeStationIds = new Set()
   const cumulativeEdges = []
 
-  for (const year of years) {
-    const yearEdges = edgesByYear.get(year) || []
+  for (let i = 0; i < sortedYearPhases.length; i++) {
+    const key = sortedYearPhases[i]
+    const [yearStr, phase] = key.split('|')
+    const year = Number(yearStr)
+    const yearEdges = edgesByYearPhase.get(key) || []
     const prevStationIds = new Set(cumulativeStationIds)
     const prevEdges = [...cumulativeEdges]
 
@@ -556,8 +577,9 @@ export function buildTimelineAnimationPlan(project) {
       ? { minLng: focusMinLng, minLat: focusMinLat, maxLng: focusMaxLng, maxLat: focusMaxLat }
       : null
 
-    yearPlans.set(year, {
+    yearPlans.set(i, {
       year,
+      phase,
       lineDrawPlans,
       newStationIds,
       cumulativeStationIds: new Set(cumulativeStationIds),

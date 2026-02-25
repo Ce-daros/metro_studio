@@ -47,12 +47,16 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
 
   /** Current year display label -- in pseudo mode, show line name from renderer. */
   const currentYearLabel = computed(() => {
-    if (!pseudoMode.value || currentYear.value == null) return currentYear.value
+    if (currentYear.value == null) return null
+    // Format year only (without phase), regardless of whether year is an object or number
+    const yearNum = typeof currentYear.value === 'object' ? currentYear.value.year : currentYear.value
+    const formattedYear = `${yearNum}年`
+    if (!pseudoMode.value) return formattedYear
     const labels = renderer?.lineLabels
     if (labels && labels.has(currentYear.value)) {
       return labels.get(currentYear.value).nameZh
     }
-    return `#${currentYear.value}`
+    return `#${formattedYear}`
   })
 
   const progressPercent = computed(() => {

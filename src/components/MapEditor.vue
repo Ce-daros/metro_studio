@@ -42,6 +42,7 @@ import { useAnimationSettings } from '../composables/useAnimationSettings.js'
 import { DEFAULT_MAP_CENTER } from '../lib/constants'
 import { setMapGetter, setStoreGetter } from '../composables/useMapSearch.js'
 import { setQuickNamingMapGetter } from '../composables/useQuickNaming.js'
+import { setEnglishReviewMapGetter } from '../composables/useEnglishReview.js'
 import TimelineSlider from './TimelineSlider.vue'
 import MapContextMenu from './map-editor/MapContextMenu.vue'
 import MapLineSelectionMenu from './map-editor/MapLineSelectionMenu.vue'
@@ -101,14 +102,15 @@ const {
   mergeEdgesAtContextStation,
   aiTranslateContextStationEnglishFromContext,
   selectContextEdgeLineStations,
+  setLineSelectionMenuOpener,
 } = useMapContextMenu({
   store,
   mapContainerRef: mapContainer,
   contextMenuRef,
   getMap,
-  openLineSelectionMenu,
 })
 
+// Initialize lineSelectionMenu and link it to contextMenu
 const {
   lineSelectionMenu,
   closeLineSelectionMenu,
@@ -120,6 +122,9 @@ const {
   mapContainerRef: mapContainer,
   closeContextMenu,
 })
+
+// Link openLineSelectionMenu to contextMenu
+setLineSelectionMenuOpener(openLineSelectionMenu)
 
 const lineSelectionMenuStyle = computed(() => ({
   left: `${lineSelectionMenu.x}px`,
@@ -478,6 +483,7 @@ onMounted(() => {
 
   setMapGetter(getMap)
   setQuickNamingMapGetter(getMap)
+  setEnglishReviewMapGetter(getMap)
   setStoreGetter(() => store)
 
   map.addControl(new maplibregl.NavigationControl(), 'top-right')

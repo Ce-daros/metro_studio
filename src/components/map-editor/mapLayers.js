@@ -375,7 +375,14 @@ export function ensureMapLayers(map, store) {
           ['coalesce', ['get', 'nameZh'], ''],
         ],
         'text-font': ['Noto Sans CJK SC Regular', 'Noto Sans Regular'],
-        'text-size': 12,
+        'text-size': [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          8, 14,
+          12, 12,
+          16, 11
+        ],
         'text-offset': [
           'case',
           ['==', ['get', 'isInterchange'], true],
@@ -500,7 +507,9 @@ function clampPopulationYear(year) {
 }
 
 export function getPopulationYearFromStore(store) {
-  const sourceYear = store?.timelineFilterYear ?? store?.currentEditYear ?? DEFAULT_POP_YEAR
+  // Prefer currentEditYear (右上角建设年份) over timelineFilterYear (底部时间轴)
+  // 当用户调整建设年份时，应该立即反映在人口热力图上
+  const sourceYear = store?.currentEditYear ?? store?.timelineFilterYear ?? DEFAULT_POP_YEAR
   return clampPopulationYear(sourceYear)
 }
 
@@ -582,10 +591,19 @@ let _currentPopYear = DEFAULT_POP_YEAR
 function updateOrAddSource(map, srcId, tileUrl, attr) {
   const existing = map.getSource(srcId)
   if (existing) {
-    existing.setTiles([tileUrl])
-  } else {
-    map.addSource(srcId, { type: 'raster', tileSize: 512, attribution: attr, tiles: [tileUrl] })
+    // Find all layers using this source
+    const layersUsingSource = map.getStyle().layers.filter(layer => layer.source === srcId)
+    // Remove all layers that use this source first
+    for (const layer of layersUsingSource) {
+      if (map.getLayer(layer.id)) {
+        map.removeLayer(layer.id)
+      }
+    }
+    // Now we can safely remove the source
+    map.removeSource(srcId)
   }
+  map.addSource(srcId, { type: 'raster', tileSize: 512, attribution: attr, tiles: [tileUrl] })
+  return true // Return flag to indicate layer needs re-creation
 }
 
 export function ensurePopulationLayer(map, year) {
@@ -597,31 +615,27 @@ export function ensurePopulationLayer(map, year) {
 
   // 1km layer: zoom 0–8
   const src1km = 'worldpop-density-1km'
-  try { updateOrAddSource(map, src1km, worldpopTileUrl('1km', yr), attr) }
-  catch (e) { console.error('Failed to setup 1km population source:', e); return }
-  if (!map.getLayer(LAYER_POPULATION_1KM)) {
-    try {
-      const layerDef = { id: LAYER_POPULATION_1KM, type: 'raster', source: src1km,
-        maxzoom: 9, paint: { 'raster-opacity': 0.35 },
-      }
-      if (beforeLayer) map.addLayer(layerDef, beforeLayer)
-      else map.addLayer(layerDef)
-    } catch (e) { console.error('Failed to add 1km population layer:', e) }
-  }
+  const needsRecreate1km = updateOrAddSource(map, src1km, worldpopTileUrl('1km', yr), attr)
+  // Always recreate the layer since updateOrAddSource now removes it
+  try {
+    const layerDef = { id: LAYER_POPULATION_1KM, type: 'raster', source: src1km,
+      maxzoom: 9, paint: { 'raster-opacity': 0.35 },
+    }
+    if (beforeLayer) map.addLayer(layerDef, beforeLayer)
+    else map.addLayer(layerDef)
+  } catch (e) { console.error('Failed to add 1km population layer:', e) }
 
   // 100m layer: zoom 9+
   const src100m = 'worldpop-density-100m'
-  try { updateOrAddSource(map, src100m, worldpopTileUrl('100m', yr), attr) }
-  catch (e) { console.error('Failed to setup 100m population source:', e); return }
-  if (!map.getLayer(LAYER_POPULATION_100M)) {
-    try {
-      const layerDef = { id: LAYER_POPULATION_100M, type: 'raster', source: src100m,
-        minzoom: 9, paint: { 'raster-opacity': 0.35 },
-      }
-      if (beforeLayer) map.addLayer(layerDef, beforeLayer)
-      else map.addLayer(layerDef)
-    } catch (e) { console.error('Failed to add 100m population layer:', e) }
-  }
+  updateOrAddSource(map, src100m, worldpopTileUrl('100m', yr), attr)
+  // Always recreate the layer since updateOrAddSource now removes it
+  try {
+    const layerDef = { id: LAYER_POPULATION_100M, type: 'raster', source: src100m,
+      minzoom: 9, paint: { 'raster-opacity': 0.35 },
+    }
+    if (beforeLayer) map.addLayer(layerDef, beforeLayer)
+    else map.addLayer(layerDef)
+  } catch (e) { console.error('Failed to add 100m population layer:', e) }
 
   normalizeOverlayOrder(map)
 }
@@ -637,7 +651,8 @@ export function removePopulationLayer(map) {
 export function setPopulationYear(map, year) {
   if (!map) return
   const nextYear = clampPopulationYear(year)
-  if (nextYear === _currentPopYear && map.getSource('worldpop-density-1km')) return
+  // Always update the population layer, even if year is the same
+  // This ensures the tiles are refreshed properly
   ensurePopulationLayer(map, nextYear)
 }
 

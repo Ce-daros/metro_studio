@@ -41,7 +41,7 @@ export function collectBounds(project) {
  * segment's end, preventing camera oscillation on ring lines.
  *
  * @param {Object} animationPlan — the plan from buildTimelineAnimationPlan / buildPseudoTimelineAnimationPlan
- * @param {number[]} years — sorted array of years to include
+ * @param {number[]|Array<{year: number, phase: string}>} years — sorted array of years to include (may be {year, phase} objects)
  * @returns {{ segments: Array, stationReveals: Array, yearMarkers: Array, totalLengthMeters: number }}
  */
 export function buildContinuousPlan(animationPlan, years) {
@@ -50,8 +50,8 @@ export function buildContinuousPlan(animationPlan, years) {
   }
 
   let totalLengthMeters = 0
-  for (const year of years) {
-    const yp = animationPlan.yearPlans.get(year)
+  for (let i = 0; i < years.length; i++) {
+    const yp = animationPlan.yearPlans.get(i)
     if (!yp) continue
     for (const lp of yp.lineDrawPlans) {
       totalLengthMeters += lp.totalLength
@@ -67,12 +67,13 @@ export function buildContinuousPlan(animationPlan, years) {
   const revealedStations = new Set()
   let cumulativeLength = 0
 
-  for (const year of years) {
-    const yp = animationPlan.yearPlans.get(year)
+  for (let i = 0; i < years.length; i++) {
+    const yp = animationPlan.yearPlans.get(i)
     if (!yp) continue
 
+    const yearData = years[i]
     const yearStartProgress = cumulativeLength / totalLengthMeters
-    yearMarkers.push({ year, globalStart: yearStartProgress, yearPlan: yp })
+    yearMarkers.push({ year: yearData, globalStart: yearStartProgress, yearPlan: yp })
 
     for (const lp of yp.lineDrawPlans) {
       // Track the last endpoint of the previous segment within this line
@@ -109,7 +110,7 @@ export function buildContinuousPlan(animationPlan, years) {
           globalEnd,
           fromStationId: fromId,
           toStationId: toId,
-          year,
+          year: typeof yearData === 'object' ? yearData.year : yearData,
         })
 
         if (!revealedStations.has(fromId)) {

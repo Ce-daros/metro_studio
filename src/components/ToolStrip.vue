@@ -19,6 +19,7 @@ const TOOL_SHORTCUT_MAP = {
   'route-draw': 'tool.routeDraw',
   'style-brush': 'tool.styleBrush',
   'box-select': 'tool.boxSelect',
+  'box-select-edges': 'tool.boxSelectEdges',
   'anchor-edit': 'tool.anchorEdit',
   'annotation': 'tool.annotation',
 }
@@ -36,7 +37,8 @@ const tools = computed(() => {
     { mode: 'add-edge', icon: 'git-branch', label: '添加线段' },
     { mode: 'route-draw', icon: 'route', label: '连续布线' },
     { mode: 'style-brush', icon: 'paintbrush', label: '样式刷' },
-    { mode: 'box-select', icon: 'box-select', label: '框选' },
+    { mode: 'box-select', icon: 'box-select', label: '框选站点' },
+    { mode: 'box-select-edges', icon: 'box-select', label: '框选线段' },
     { mode: 'anchor-edit', icon: 'edit-3', label: '锚点' },
     { mode: 'annotation', icon: 'message-square', label: '注释' },
   ].map((t) => ({

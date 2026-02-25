@@ -10,6 +10,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {string} id
  * @property {string} nameZh
  * @property {string} nameEn
+ * @property {boolean} nameEnFixed - 英文名是否已固定（不会被 AI 翻译覆盖）
  * @property {[number, number]} lngLat
  * @property {[number, number]} displayPos
  * @property {boolean} isInterchange

@@ -4,18 +4,32 @@ import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { NTooltip } from 'naive-ui'
 import { useQuickNaming, advanceQuickNaming } from '../../composables/useQuickNaming'
+import { useEnglishReview, advanceEnglishReview } from '../../composables/useEnglishReview'
 
 const store = useProjectStore()
 const nameZhInputRef = ref(null)
+const nameEnInputRef = ref(null)
 const { quickNamingActive } = useQuickNaming()
+const { englishReviewActive } = useEnglishReview()
 
 const renameTrigger = inject('stationRenameTrigger', ref(0))
 
-watch(renameTrigger, async () => {
-  if (!selectedStation.value || !nameZhInputRef.value) return
+// 名称固定状态
+const isNameEnFixed = computed(() => selectedStation.value?.nameEnFixed || false)
+
+watch(renameTrigger, async (value) => {
+  if (!selectedStation.value) return
   await nextTick()
-  nameZhInputRef.value.focus()
-  nameZhInputRef.value.select()
+  // 如果是 'english' 字符串，聚焦英文名输入框
+  if (value === 'english') {
+    nameEnInputRef.value?.focus()
+    nameEnInputRef.value?.select()
+  } else if (typeof value === 'number') {
+    // 否则聚焦中文名输入框（快速命名模式）
+    if (!nameZhInputRef.value) return
+    nameZhInputRef.value.focus()
+    nameZhInputRef.value.select()
+  }
 })
 
 const selectedStation = computed(() => {
@@ -70,8 +84,29 @@ function onNameZhKeydown(e) {
   }
 }
 
+function onNameEnKeydown(e) {
+  if (e.key === 'Enter' && englishReviewActive.value) {
+    e.preventDefault()
+    // 保存英文名并自动固定
+    if (selectedStation.value) {
+      store.updateStationName(selectedStation.value.id, {
+        nameZh: stationForm.nameZh,
+        nameEn: stationForm.nameEn,
+      })
+      // 自动固定英文名
+      store.setStationNameEnFixed(selectedStation.value.id, true)
+    }
+    advanceEnglishReview()
+  }
+}
+
 function deleteStation() {
   store.deleteSelectedStations()
+}
+
+function toggleNameEnFixed() {
+  if (!selectedStation.value) return
+  store.toggleStationNameEnFixed(selectedStation.value.id)
 }
 
 watch(
@@ -112,7 +147,7 @@ watch(
 
     <div class="pp-fields">
       <input ref="nameZhInputRef" v-model="stationForm.nameZh" class="pp-input" placeholder="车站中文名" @keydown="onNameZhKeydown" />
-      <input v-model="stationForm.nameEn" class="pp-input" placeholder="Station English Name" />
+      <input ref="nameEnInputRef" v-model="stationForm.nameEn" class="pp-input" placeholder="Station English Name" @keydown="onNameEnKeydown" />
     </div>
 
     <div class="pp-actions">
@@ -128,6 +163,21 @@ watch(
             <button class="pp-btn pp-btn--danger" @click="deleteStation">删除</button>
           </template>
           删除站点
+        </NTooltip>
+      </div>
+      <div class="pp-row">
+        <NTooltip placement="bottom">
+          <template #trigger>
+            <button
+              class="pp-btn"
+              :class="isNameEnFixed ? 'pp-btn--active' : ''"
+              style="flex:1"
+              @click="toggleNameEnFixed"
+            >
+              {{ isNameEnFixed ? '🔓 已固定' : '🔒 固定英文名' }}
+            </button>
+          </template>
+          {{ isNameEnFixed ? '英文名已固定，AI 翻译不会覆盖' : '固定英文名，防止被 AI 翻译覆盖' }}
         </NTooltip>
       </div>
     </div>
@@ -180,5 +230,11 @@ watch(
   background: rgba(255, 45, 120, 0.1);
   border: 1px solid rgba(255, 45, 120, 0.3);
   color: var(--ark-pink);
+}
+
+.pp-btn--active {
+  background: rgba(255, 45, 120, 0.15) !important;
+  border-color: var(--ark-pink) !important;
+  color: var(--ark-pink) !important;
 }
 </style>

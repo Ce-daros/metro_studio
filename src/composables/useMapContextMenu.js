@@ -6,6 +6,12 @@ import {
 } from '../components/map-editor/constants'
 import { useDialog } from './useDialog.js'
 
+// 用于延迟引用 openLineSelectionMenu 函数
+let openLineSelectionMenuRef = null
+export function setLineSelectionMenuOpener(fn) {
+  openLineSelectionMenuRef = fn
+}
+
 /**
  * Context menu state and operations for the map editor.
  *
@@ -14,9 +20,8 @@ import { useDialog } from './useDialog.js'
  * @param {import('vue').Ref<HTMLElement|null>} deps.mapContainerRef - Ref to the map container element
  * @param {import('vue').Ref<HTMLElement|null>} deps.contextMenuRef - Ref to the context menu element
  * @param {() => maplibregl.Map|null} deps.getMap - Getter for the map instance
- * @param {Function} deps.openLineSelectionMenu - Function to open line selection menu
  */
-export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getMap, openLineSelectionMenu }) {
+export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getMap }) {
   const { confirm, prompt } = useDialog()
 
   const contextMenu = reactive({
@@ -193,8 +198,10 @@ export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getM
   }
 
   async function aiTranslateContextStationEnglishFromContext() {
-    if (!contextStation.value?.id) return
-    const stationId = contextStation.value.id
+    // Use contextMenu.stationId directly instead of contextStation.value?.id
+    // to avoid issues when the computed returns null
+    if (!contextMenu.stationId) return
+    const stationId = contextMenu.stationId
     closeContextMenu()
     try {
       await store.retranslateStationEnglishNamesByIdsWithAi([stationId])
@@ -224,8 +231,8 @@ export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getM
           color: line?.color || '#2563EB',
         }
       })
-      if (typeof openLineSelectionMenu === 'function') {
-        openLineSelectionMenu({
+      if (typeof openLineSelectionMenuRef === 'function') {
+        openLineSelectionMenuRef({
           x: contextMenu.x,
           y: contextMenu.y,
           lineOptions,
@@ -259,5 +266,6 @@ export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getM
     mergeEdgesAtContextStation,
     aiTranslateContextStationEnglishFromContext,
     selectContextEdgeLineStations,
+    setLineSelectionMenuOpener,
   }
 }

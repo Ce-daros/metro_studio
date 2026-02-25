@@ -2,8 +2,11 @@ export function getInterchangeMarkerZoomScale(zoom) {
   const minZoom = 3
   const maxZoom = 18
   const clamped = Math.min(maxZoom, Math.max(minZoom, Number.isFinite(zoom) ? zoom : 4))
-  const scale = 2 ** ((clamped - 12) / 2.4)
-  return Math.min(2.4, Math.max(0.35, scale))
+  // Adjusted scaling curve: more aggressive shrinking at low zoom levels
+  // At zoom 3: scale ≈ 0.06, at zoom 12: scale = 1.0, at zoom 18: scale ≈ 4.0
+  const scale = 2 ** ((clamped - 12) / 2.2)
+  // Much lower minimum scale to prevent markers from being too large at low zoom
+  return Math.min(2.4, Math.max(0.06, scale))
 }
 
 export function buildInterchangeMarkerEntries({

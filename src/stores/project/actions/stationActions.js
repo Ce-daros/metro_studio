@@ -19,6 +19,7 @@ export const stationActions = {
       id: createId('station'),
       nameZh: `新站 ${nextIndex}`,
       nameEn: `Station ${nextIndex}`,
+      nameEnFixed: false,
       lngLat: [...lngLat],
       displayPos: estimateDisplayPositionFromLngLat(this.project.stations, lngLat),
       isInterchange: false,
@@ -179,6 +180,25 @@ export const stationActions = {
     this.recomputeStationLineMembership()
     this.clearSelection()
     this.touchProject(`已删除 ${removing.size} 个未命名新站`)
+  },
+
+  toggleStationNameEnFixed(stationId) {
+    if (!this.project) return
+    const station = this.project.stations.find((s) => s.id === stationId)
+    if (!station) return
+    station.nameEnFixed = !station.nameEnFixed
+    this.touchProject(station.nameEnFixed ? `已固定英文名: ${station.nameZh}` : `已取消固定英文名: ${station.nameZh}`)
+  },
+
+  setStationNameEnFixed(stationId, fixed) {
+    if (!this.project) return
+    const station = this.project.stations.find((s) => s.id === stationId)
+    if (!station) return
+    const wasFixed = Boolean(station.nameEnFixed)
+    station.nameEnFixed = Boolean(fixed)
+    if (wasFixed !== station.nameEnFixed) {
+      this.touchProject(station.nameEnFixed ? `已固定英文名: ${station.nameZh}` : `已取消固定英文名: ${station.nameZh}`)
+    }
   },
 
   deleteStation(stationId) {

@@ -38,8 +38,8 @@ defineExpose({ menuEl })
   <div
     v-if="visible"
     class="map-editor__context-mask"
-    @mousedown="emit('overlay-mousedown')"
-    @contextmenu.prevent="emit('overlay-mousedown')"
+    @mousedown="emit('overlay-mousedown', $event)"
+    @contextmenu.prevent="emit('overlay-mousedown', $event)"
   >
     <div
       ref="menuEl"

@@ -2,7 +2,7 @@ import { postLLMChat } from "./openrouterClient";
 import { getAiConfig } from "./aiConfig";
 import { extractJsonObject } from "./jsonUtils";
 
-const TRANSLATION_BATCH_SIZE = 18;
+const TRANSLATION_BATCH_SIZE = 30;
 
 const STATION_TRANSLATION_SCHEMA = {
   type: "object",

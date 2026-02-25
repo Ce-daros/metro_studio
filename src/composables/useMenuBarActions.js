@@ -187,6 +187,8 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'item', label: 'AI 翻译选中站英文', action: 'aiTranslateSelected', icon: 'languages', disabled: !store.selectedStationIds.length || store.isStationEnglishRetranslating },
     { type: 'item', label: '按规范重译全图英文', action: 'aiTranslateAll', icon: 'languages', disabled: !store.project?.stations?.length || store.isStationEnglishRetranslating },
     { type: 'separator' },
+    { type: 'item', label: '批量审查AI英文站名', action: 'englishReview', icon: 'check-circle', disabled: !store.project?.lines?.length },
+    { type: 'separator' },
     { type: 'item', label: '报站生成', action: 'ttsGeneration', icon: 'volume-2' },
   ])
 
@@ -400,6 +402,7 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'about') { emit('show-about'); return }
     if (action === 'batchNameEdit') { emit('show-batch-name-edit'); return }
     if (action === 'quickNaming') { emit('show-quick-naming'); return }
+    if (action === 'englishReview') { emit('show-english-review'); return }
     if (action === 'purchase') { window.open(PURCHASE_URL, '_blank'); return }
     if (action === 'helpGuide') { emit('show-help', 'guide'); return }
     if (action === 'helpFeat') { emit('show-help', 'feat'); return }

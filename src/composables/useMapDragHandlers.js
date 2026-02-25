@@ -106,6 +106,9 @@ export function useMapDragHandlers({
         ),
       ]
 
+      // 判断是否是专门的线段框选模式
+      const isEdgeSelectMode = store.mode === 'box-select-edges'
+
       if (store.styleBrush.active) {
         if (store.styleBrush.sourceType === 'station' && pickedStationIds.length) {
           store.applyStyleToStations(pickedStationIds)
@@ -114,29 +117,43 @@ export function useMapDragHandlers({
         }
       } else {
         if (pickedStationIds.length || pickedEdgeIds.length) {
-          if (append) {
-            if (modifierType === 'shift' && pickedStationIds.length) {
-              store.selectStations(pickedStationIds, { replace: false, keepEdges: false })
-            } else if (modifierType === 'ctrl' && pickedEdgeIds.length) {
-              store.selectEdges(pickedEdgeIds, { replace: false, keepStations: false })
-            } else if (modifierType === 'none') {
-              if (pickedStationIds.length) {
-                store.selectStations(pickedStationIds, { replace: false, keepEdges: true })
-              }
-              if (pickedEdgeIds.length) {
-                store.selectEdges(pickedEdgeIds, { replace: false, keepStations: true })
-              }
-            }
-          } else {
-            if (modifierType === 'shift' && pickedStationIds.length) {
-              store.setSelectedStations(pickedStationIds)
-            } else if (modifierType === 'ctrl' && pickedEdgeIds.length) {
-              store.setSelectedEdges(pickedEdgeIds)
-            } else if (modifierType === 'none') {
-              if (pickedStationIds.length) {
-                store.setSelectedStations(pickedStationIds)
+          if (isEdgeSelectMode) {
+            // 专门选择线段模式：只选择线段
+            if (pickedEdgeIds.length) {
+              if (append) {
+                store.selectEdges(pickedEdgeIds, { replace: false, keepStations: false })
               } else {
                 store.setSelectedEdges(pickedEdgeIds)
+              }
+            } else if (!append) {
+              store.clearSelection()
+            }
+          } else {
+            // 原有逻辑：根据修饰键选择
+            if (append) {
+              if (modifierType === 'shift' && pickedStationIds.length) {
+                store.selectStations(pickedStationIds, { replace: false, keepEdges: false })
+              } else if (modifierType === 'ctrl' && pickedEdgeIds.length) {
+                store.selectEdges(pickedEdgeIds, { replace: false, keepStations: false })
+              } else if (modifierType === 'none') {
+                if (pickedStationIds.length) {
+                  store.selectStations(pickedStationIds, { replace: false, keepEdges: true })
+                }
+                if (pickedEdgeIds.length) {
+                  store.selectEdges(pickedEdgeIds, { replace: false, keepStations: true })
+                }
+              }
+            } else {
+              if (modifierType === 'shift' && pickedStationIds.length) {
+                store.setSelectedStations(pickedStationIds)
+              } else if (modifierType === 'ctrl' && pickedEdgeIds.length) {
+                store.setSelectedEdges(pickedEdgeIds)
+              } else if (modifierType === 'none') {
+                if (pickedStationIds.length) {
+                  store.setSelectedStations(pickedStationIds)
+                } else {
+                  store.setSelectedEdges(pickedEdgeIds)
+                }
               }
             }
           }
@@ -167,14 +184,16 @@ export function useMapDragHandlers({
     const map = getMap()
     closeContextMenu()
 
-    if (store.mode !== 'select' && store.mode !== 'box-select') return
+    if (store.mode !== 'select' && store.mode !== 'box-select' && store.mode !== 'box-select-edges') return
     if (interactionState.isBoxSelecting()) return
     const mouseEvent = event.originalEvent
     if (mouseEvent?.button !== 0) return
     const isShift = Boolean(mouseEvent?.shiftKey)
     const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
     const modifier = isShift || isCtrl
-    if (!modifier && store.mode !== 'box-select') return
+
+    // 在专门的框选模式下，不需要按修饰键
+    if (!modifier && store.mode !== 'box-select' && store.mode !== 'box-select-edges') return
 
     const hitAnchors = map.queryRenderedFeatures(event.point, { layers: [LAYER_EDGE_ANCHORS_HIT] })
     const hitStations = map.queryRenderedFeatures(event.point, { layers: [LAYER_STATIONS] })
@@ -183,8 +202,13 @@ export function useMapDragHandlers({
     if (hitStations.length) return
     if (hitEdges.length) return
 
-    const modifierType = isShift ? 'shift' : isCtrl ? 'ctrl' : 'none'
-    interactionState.startBoxSelection(event.point.x, event.point.y, modifier, modifierType)
+    // 在 box-select-edges 模式下，强制使用 ctrl 修饰键行为
+    let effectiveModifierType = isShift ? 'shift' : isCtrl ? 'ctrl' : 'none'
+    if (store.mode === 'box-select-edges') {
+      effectiveModifierType = 'ctrl'
+    }
+
+    interactionState.startBoxSelection(event.point.x, event.point.y, modifier, effectiveModifierType)
     map.getCanvas().style.cursor = 'crosshair'
     map.dragPan.disable()
   }

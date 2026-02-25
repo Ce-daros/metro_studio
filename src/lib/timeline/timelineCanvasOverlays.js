@@ -122,10 +122,10 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
   const padH = 36 * s
   const lineGap = 22 * s
 
-  // Build main text: either custom event text, or "线路名 期次（区间）"
+  // Build main text: either custom event text, or "线路名（区间）"
   let mainText = text || ''
   if (!mainText && nameZh) {
-    mainText = `${nameZh}${phase ? ' ' + phase : ''}`
+    mainText = nameZh  // Only show line name, not phase
     if (intervalFrom && intervalTo) {
       mainText += `（${intervalFrom}—${intervalTo}）`
     } else if (deltaKm != null && deltaKm > 0) {

@@ -1,5 +1,6 @@
 /**
  * 将线网工程导出为人类可读的纯文本格式
+ * 按年份分组，显示每年开通的各期线路
  */
 
 const STATUS_LABELS = {
@@ -18,15 +19,71 @@ const STYLE_LABELS = {
 import { getOrderedStationIds } from '../lineGraph'
 
 /**
+ * 格式化距离显示
+ * @param {number} meters 米
+ * @returns {string} 格式化后的距离
+ */
+function formatDistance(meters) {
+  if (meters >= 1000) {
+    return `${(meters / 1000).toFixed(1)} km`
+  }
+  return `${Math.round(meters)} m`
+}
+
+/**
+ * 按年份分组统计，每年包含各期线路
+ * @param {import('../projectModel').RailProject} project
+ * @returns {Map<number|null, Array<{phase: string, lineName: string, fromStation: string, toStation: string, distance: number}>>}
+ */
+function buildYearStats(project) {
+  const stationMap = new Map(project.stations.map((s) => [s.id, s]))
+  const lineMap = new Map(project.lines.map((l) => [l.id, l]))
+  const edgeMap = new Map(project.edges.map((e) => [e.id, e]))
+
+  // 按年份分组
+  const yearMap = new Map() // year -> Array of {phase, lineName, fromStation, toStation, distance}
+
+  for (const line of project.lines || []) {
+    const lineEdges = line.edgeIds.map((id) => edgeMap.get(id)).filter(Boolean)
+    const lineName = line.nameZh || line.nameEn || line.id
+
+    // 获取有序站点
+    const orderedIds = getOrderedStationIds(line, edgeMap)
+    if (!orderedIds.length) continue
+
+    // 构建站点ID到站名的映射
+    const getStationName = (id) => {
+      const s = stationMap.get(id)
+      return s ? (s.nameZh || s.nameEn || '未命名') : '???'
+    }
+
+    // 按边获取区间信息
+    for (const edge of lineEdges) {
+      const year = edge.openingYear
+      const phase = edge.phase || ''
+      const distance = edge.lengthMeters || 0
+
+      const fromStation = getStationName(edge.fromStationId)
+      const toStation = getStationName(edge.toStationId)
+
+      const entry = { phase, lineName, fromStation, toStation, distance }
+
+      if (!yearMap.has(year)) {
+        yearMap.set(year, [])
+      }
+      yearMap.get(year).push(entry)
+    }
+  }
+
+  return yearMap
+}
+
+/**
  * @param {import('../projectModel').RailProject} project
  * @returns {string} 人类可读的纯文本
  */
 export function serializeProjectAsText(project) {
   if (!project) return ''
-
-  const stationMap = new Map(project.stations.map((s) => [s.id, s]))
-  const edgeMap = new Map(project.edges.map((e) => [e.id, e]))
-  const lineMap = new Map(project.lines.map((l) => [l.id, l]))
 
   const out = []
 
@@ -34,50 +91,67 @@ export function serializeProjectAsText(project) {
   if (project.region?.name) out.push(`城市/区域: ${project.region.name}`)
   out.push('')
 
-  for (let i = 0; i < project.lines.length; i++) {
-    const line = project.lines[i]
-    const statusLabel = STATUS_LABELS[line.status] || line.status
-    const styleLabel = STYLE_LABELS[line.style] || line.style
-    const header = line.nameZh || line.nameEn || `线路 ${i + 1}`
-    const meta = [statusLabel, styleLabel, line.color].filter(Boolean).join(' | ')
+  // 按年份统计
+  const yearMap = buildYearStats(project)
+  let totalNetworkDistance = 0
 
-    out.push(`━━ ${header}（${meta}）${line.isLoop ? ' ◎环线' : ''} ━━`)
+  // 获取排序后的年份列表
+  const sortedYears = Array.from(yearMap.keys())
+    .filter((y) => y != null)
+    .sort((a, b) => a - b)
+  // 把 null（未定年份）放到最后
+  if (yearMap.has(null)) sortedYears.push(null)
 
-    const orderedIds = getOrderedStationIds(line, edgeMap)
-    if (!orderedIds.length) {
-      out.push('  （暂无车站）')
-    } else {
-      const names = orderedIds.map((id) => {
-        const s = stationMap.get(id)
-        return s ? (s.nameZh || s.nameEn || '未命名') : '???'
-      })
-      const connector = line.isLoop ? ' → ' : ' — '
-      const text = names.join(connector)
-      out.push(line.isLoop ? `  ${text} → …` : `  ${text}`)
-      out.push(`  共 ${orderedIds.length} 站`)
+  for (const year of sortedYears) {
+    const entries = yearMap.get(year) || []
+    if (!entries.length) continue
+
+    const yearLabel = year == null ? '未定年份' : `${year}年`
+    out.push(`━━ ${yearLabel} ━━`)
+
+    // 按线路分组，同一线路的同期合并
+    const linePhaseMap = new Map() // key: "lineId|phase", value: {lineName, intervals: [], distance}
+
+    for (const { phase, lineName, fromStation, toStation, distance } of entries) {
+      // 使用线路名作为key（简单处理）
+      const key = `${lineName}|${phase}`
+      if (!linePhaseMap.has(key)) {
+        linePhaseMap.set(key, { lineName, phase, intervals: [], distance: 0 })
+      }
+      const data = linePhaseMap.get(key)
+      data.intervals.push(`${fromStation}—${toStation}`)
+      data.distance += distance
+      totalNetworkDistance += distance
     }
+
+    // 按线路名排序
+    const sortedEntries = Array.from(linePhaseMap.values()).sort((a, b) => {
+      const nameCompare = a.lineName.localeCompare(b.lineName, 'zh')
+      if (nameCompare !== 0) return nameCompare
+      return a.phase.localeCompare(b.phase, 'zh')
+    })
+
+    for (const { lineName, phase, intervals, distance } of sortedEntries) {
+      const intervalStr = intervals.join('、')
+      const phaseLabel = phase ? `${lineName}${phase}（${intervalStr}）` : `${lineName}（${intervalStr}）`
+      out.push(`  ${phaseLabel}: ${formatDistance(distance)}`)
+    }
+
     out.push('')
   }
 
-  // 换乘站汇总
-  const interchangeStations = project.stations.filter((s) => s.isInterchange)
-  if (interchangeStations.length) {
-    out.push('━━ 换乘站 ━━')
-    for (const s of interchangeStations) {
-      const belongLines = s.lineIds
-        .map((lid) => lineMap.get(lid))
-        .filter(Boolean)
-        .map((l) => l.nameZh || l.nameEn)
-      const transferLines = (s.transferLineIds || [])
-        .filter((lid) => !s.lineIds.includes(lid))
-        .map((lid) => lineMap.get(lid))
-        .filter(Boolean)
-        .map((l) => l.nameZh || l.nameEn)
-      const allLines = [...new Set([...belongLines, ...transferLines])]
-      out.push(`  ${s.nameZh || s.nameEn}: ${allLines.join(' ↔ ')}`)
-    }
+  // 如果没有任何年份信息
+  if (yearMap.size === 0) {
+    out.push('  （暂无标记年份的线路）')
     out.push('')
   }
+
+  // 线网总里程
+  out.push(`━━ 线网统计 ━━`)
+  out.push(`  线路总数: ${project.lines?.length || 0} 条`)
+  out.push(`  车站总数: ${project.stations?.length || 0} 座`)
+  out.push(`  线网总里程: ${formatDistance(totalNetworkDistance)}`)
+  out.push('')
 
   out.push(`导出时间: ${new Date().toLocaleString('zh-CN')}`)
   return out.join('\n')

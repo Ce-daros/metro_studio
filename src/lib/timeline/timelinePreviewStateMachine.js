@@ -52,7 +52,7 @@ export class TimelinePreviewEngine {
     this._onStateChange = onStateChange
     this._onYearChange = onYearChange
 
-    this._speed = 1
+    this._speed = 1.5
     this._zoomOffset = 2.5
     this._state = 'idle'
     this._rafId = null
@@ -178,12 +178,6 @@ export class TimelinePreviewEngine {
       this._lineLabels = pseudoPlan.lineLabels || new Map()
       this._eventMap = new Map()
     } else {
-      const yearSet = new Set()
-      for (const edge of project?.edges || []) {
-        if (edge.openingYear != null) yearSet.add(edge.openingYear)
-      }
-      this._years = [...yearSet].sort((a, b) => a - b)
-
       this._eventMap = new Map()
       for (const evt of project?.timelineEvents || []) {
         this._eventMap.set(evt.year, evt.description)
@@ -191,6 +185,7 @@ export class TimelinePreviewEngine {
 
       this._lineLabels = new Map()
       this._animationPlan = buildTimelineAnimationPlan(project)
+      this._years = this._animationPlan.years
     }
 
     this._continuousPlan = buildContinuousPlan(this._animationPlan, this._years)
@@ -607,7 +602,12 @@ export class TimelinePreviewEngine {
       this._emitYearChange()
     }
 
-    const yearLabel = this._pseudoMode ? (this._lineLabels.get(year)?.nameZh || `#${year}`) : year
+    // Format year label (only show year, not phase)
+    const yearLabel = this._pseudoMode
+      ? (this._lineLabels.get(year)?.nameZh || `#${year}`)
+      : (typeof year === 'object' && year !== null
+          ? `${year.year}年`
+          : `${year}年`)
 
     // Year transition animation
     if (yearLabel !== this._prevYearLabel && this._prevYearLabel != null) {
@@ -820,7 +820,7 @@ export class TimelinePreviewEngine {
     if (this._camTravelUntil > now) {
       this._phaseStart += now - this._lastPlayingTick
       this._lastPlayingTick = now
-      const CAM_TRAVEL_MS = 1000
+      const CAM_TRAVEL_MS = 1200 / (this._speed || 1)  // Adjust for speed
       if (!this._camTravelFrom) {
         this._camTravelFrom = { ...this._smoothCamera || this._camera }
       }
@@ -870,19 +870,65 @@ export class TimelinePreviewEngine {
       // Freeze: use a progress slightly past the boundary so last station is revealed
       const freezeProgress = curLineFirstSeg ? curLineFirstSeg.globalStart + 1e-4 : rawProgress
       this._isLinePaused = true
-      this._yearPauseUntil = now + 600  // Reduced from 1200ms to 600ms
+
+      // Calculate pause duration based on line length
+      // Short lines need more time to read the info
+      // Pause time is also affected by playback speed for consistent rhythm
+      const MIN_PAUSE_MS = 1200  // minimum pause for very short lines
+      const BASE_PAUSE_MS = 800   // base pause for normal lines
+      const LINE_LENGTH_THRESHOLD_MS = 3000  // if line draws in less than 3s, use extended pause
+      const speed = this._speed || 1
+
+      const continuousPlan = this._continuousPlan
+      const lineSegments = continuousPlan?.segments?.filter(s => s.lineId === this._pauseLastLineId) || []
+      const lineDurationMs = lineSegments.length * (this._getTotalDrawMs() / continuousPlan?.segments?.length || 1000)
+
+      // Check if this is a rapid sequence of short lines in the same year/phase
+      // If so, INCREASE pause time to give viewer more time to read the info
+      const currentYearIndex = this._findCurrentYear(rawProgress).index
+      const prevYearIndex = this._yearPauseLastIndex
+      const sameYear = currentYearIndex === prevYearIndex
+
+      let pauseMs
+      if (lineDurationMs < LINE_LENGTH_THRESHOLD_MS) {
+        // For short lines, use extended pause to ensure info is visible
+        pauseMs = MIN_PAUSE_MS / speed
+        // For very short lines in the same year, increase pause further
+        // This is the extreme case: 4 stations in 4 phases within one year
+        if (sameYear && lineDurationMs < 1500) {
+          // Very short line in same year: EXTEND pause for readability
+          pauseMs = (MIN_PAUSE_MS * 1.5) / speed  // 1800ms instead of 1200ms
+        }
+      } else {
+        pauseMs = BASE_PAUSE_MS / speed
+      }
+
+      this._yearPauseUntil = now + pauseMs
       this._yearPauseProgress = freezeProgress
       this._pauseLastLineId = curLineId
       this._yearPauseLastIndex = index
       this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
 
       // Camera travel to new line's start
-      const CAM_TRAVEL_MS = 1000  // Increased from 800ms to 1000ms for smoother transition
-      if (curLineFirstSeg?.waypoints?.length) {
+      // Camera travel time is also affected by playback speed
+      // Reduce camera movement for rapid sequences to maintain flow
+      const shouldMoveCamera = !sameYear || lineDurationMs >= 2000
+      if (shouldMoveCamera && curLineFirstSeg?.waypoints?.length) {
+        const CAM_TRAVEL_MS = 1200 / speed  // Adjust for speed
         const [lng, lat] = curLineFirstSeg.waypoints[0]
         this._camTravelFrom = null
         this._camTravelTarget = { centerLng: lng, centerLat: lat, zoom: this._fullCamera.zoom + this._zoomOffset }
         this._camTravelUntil = this._yearPauseUntil + CAM_TRAVEL_MS
+      } else {
+        // Reduce or skip camera movement for very rapid sequences
+        // Use shorter travel time for better flow
+        if (curLineFirstSeg?.waypoints?.length) {
+          const CAM_TRAVEL_MS = 600 / speed  // Half the normal time
+          const [lng, lat] = curLineFirstSeg.waypoints[0]
+          this._camTravelFrom = null
+          this._camTravelTarget = { centerLng: lng, centerLat: lat, zoom: this._fullCamera.zoom + this._zoomOffset }
+          this._camTravelUntil = this._yearPauseUntil + CAM_TRAVEL_MS
+        }
       }
 
       this._renderContinuousFrame(freezeProgress, now)

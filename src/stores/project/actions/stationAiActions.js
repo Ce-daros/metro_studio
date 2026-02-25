@@ -5,13 +5,18 @@ export const stationAiActions = {
     if (!this.project) return { updatedCount: 0, total: 0, failedCount: 0 }
     if (this.isStationEnglishRetranslating) return { updatedCount: 0, total: 0, failedCount: 0 }
 
-    const stations = Array.isArray(this.project.stations)
-      ? this.project.stations.map((station) => ({
-          stationId: station.id,
-          nameZh: station.nameZh,
-          nameEn: station.nameEn,
-        }))
-      : []
+    const stations = (Array.isArray(this.project.stations)
+      ? this.project.stations
+      : [])
+      .filter((station) => {
+        // 跳过已固定英文名的站点
+        return !station.nameEnFixed
+      })
+      .map((station) => ({
+        stationId: station.id,
+        nameZh: station.nameZh,
+        nameEn: station.nameEn,
+      }))
     const total = stations.length
     if (!total) return { updatedCount: 0, total: 0, failedCount: 0 }
 
@@ -39,7 +44,7 @@ export const stationAiActions = {
         },
       })
 
-      const stationById = new Map(this.project.stations.map((station) => [station.id, station]))
+      const stationById = new Map(this.project.stations.map((station) => [String(station.id), station]))
       let updatedCount = 0
       for (const update of result.updates || []) {
         const station = stationById.get(update.stationId)
@@ -91,8 +96,8 @@ export const stationAiActions = {
     const stations = (Array.isArray(this.project.stations) ? this.project.stations : [])
       .filter((station) => {
         if (!idSet.has(station.id)) return false
-        const en = String(station.nameEn || '').trim()
-        return !en || /[\u3400-\u9fff]/.test(en)
+        // 跳过已固定英文名的站点
+        return !station.nameEnFixed
       })
       .map((station) => ({
         stationId: station.id,
@@ -126,7 +131,7 @@ export const stationAiActions = {
         },
       })
 
-      const stationById = new Map(this.project.stations.map((station) => [station.id, station]))
+      const stationById = new Map(this.project.stations.map((station) => [String(station.id), station]))
       let updatedCount = 0
       for (const update of result.updates || []) {
         const station = stationById.get(update.stationId)

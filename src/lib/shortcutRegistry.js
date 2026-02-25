@@ -34,7 +34,8 @@ const DEFAULT_SHORTCUTS = [
   { id: 'tool.addEdge',      label: '添加线段工具', defaultBinding: 'E', category: '工具', when: 'mapEditor' },
   { id: 'tool.routeDraw',    label: '连续布线工具', defaultBinding: 'R', category: '工具', when: 'mapEditor' },
   { id: 'tool.styleBrush',   label: '样式刷工具', defaultBinding: 'M', category: '工具', when: 'mapEditor' },
-  { id: 'tool.boxSelect',    label: '框选工具',   defaultBinding: 'B', category: '工具', when: 'mapEditor' },
+  { id: 'tool.boxSelect',    label: '框选站点工具',   defaultBinding: 'B', category: '工具', when: 'mapEditor' },
+  { id: 'tool.boxSelectEdges', label: '框选线段工具', defaultBinding: 'Shift+B', category: '工具', when: 'mapEditor' },
   { id: 'tool.anchorEdit',   label: '锚点编辑',   defaultBinding: 'P', category: '工具', when: 'mapEditor' },
   { id: 'tool.annotation',   label: '注释工具',   defaultBinding: 'N', category: '工具', when: 'mapEditor' },
 
