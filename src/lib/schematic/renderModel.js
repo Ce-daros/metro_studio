@@ -83,6 +83,9 @@ export function buildSchematicRenderModel(project, options = {}) {
 
       trackOffsets.forEach((trackOffset, trackIndex) => {
         const shifted = basePolyline.map(([x, y]) => [x + nx * (offset + trackOffset), y + ny * (offset + trackOffset)])
+        const trackDasharray = Array.isArray(lineStyle.trackDasharrays)
+          ? (lineStyle.trackDasharrays[trackIndex] ?? lineStyle.dasharray)
+          : lineStyle.dasharray
         edgePaths.push({
           id: `${edge.id}_${lineId}_${index}_${trackIndex}`,
           lineId,
@@ -90,7 +93,7 @@ export function buildSchematicRenderModel(project, options = {}) {
           color: line.color || '#2563EB',
           width: trackWidth,
           opacity: finalOpacity,
-          dasharray: lineStyle.dasharray,
+          dasharray: trackDasharray,
           lineCap: lineStyle.lineCap,
           pathD: polylineToRoundedPath(shifted, cornerRadius),
           status: line.status || 'open',

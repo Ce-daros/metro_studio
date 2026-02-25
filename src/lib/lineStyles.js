@@ -1,16 +1,14 @@
-/** @typedef {'solid'|'dashed'|'dotted'|'double-solid'|'double-dashed'|'double-dotted-square'} LineStyleId */
+/** @typedef {'metro'|'commuter'|'light-rail'|'tram'} LineStyleId */
 
 /** @type {LineStyleId} */
-export const DEFAULT_LINE_STYLE = 'solid'
+export const DEFAULT_LINE_STYLE = 'metro'
 
 /** @type {{id: LineStyleId, label: string}[]} */
 export const LINE_STYLE_OPTIONS = [
-  { id: 'solid', label: '实线' },
-  { id: 'dashed', label: '虚线' },
-  { id: 'dotted', label: '点线' },
-  { id: 'double-solid', label: '双线' },
-  { id: 'double-dashed', label: '双虚线' },
-  { id: 'double-dotted-square', label: '双方点线' },
+  { id: 'metro', label: '地铁' },
+  { id: 'commuter', label: '市郊铁路' },
+  { id: 'light-rail', label: '轻轨' },
+  { id: 'tram', label: '有轨电车' },
 ]
 
 const lineStyleById = new Map(LINE_STYLE_OPTIONS.map((item) => [item.id, item]))
@@ -23,48 +21,43 @@ export function isLineStyle(value) {
 /** @param {string} value @returns {LineStyleId} */
 export function normalizeLineStyle(value) {
   const normalized = String(value || '')
-  return isLineStyle(normalized) ? normalized : DEFAULT_LINE_STYLE
+  if (isLineStyle(normalized)) return normalized
+  // 旧数据迁移：无语义化线形降级到最接近的制式
+  if (normalized === 'double-solid' || normalized === 'double-dashed' || normalized === 'double-dotted-square') return 'commuter'
+  if (normalized === 'dashed' || normalized === 'dotted') return 'metro'
+  return DEFAULT_LINE_STYLE
 }
 
-/** @param {string} styleId @returns {{dasharray: string, lineCap: string, trackOffsets: number[], trackWidthScale: number}} */
+/**
+ * @param {string} styleId
+ * @returns {{dasharray: string, lineCap: string, trackOffsets: number[], trackWidthScale: number, trackDasharrays?: string[]}}
+ * trackDasharrays: per-track dasharray overrides (same length as trackOffsets); if absent, all tracks use dasharray
+ */
 export function getLineStyleSchematic(styleId) {
   switch (normalizeLineStyle(styleId)) {
-    case 'dashed':
-      return {
-        dasharray: '14 9',
-        lineCap: 'round',
-        trackOffsets: [0],
-        trackWidthScale: 1,
-      }
-    case 'dotted':
-      return {
-        dasharray: '1 8',
-        lineCap: 'round',
-        trackOffsets: [0],
-        trackWidthScale: 1,
-      }
-    case 'double-solid':
+    case 'metro':
       return {
         dasharray: '',
         lineCap: 'round',
-        trackOffsets: [-3.1, 3.1],
-        trackWidthScale: 0.45,
+        trackOffsets: [0],
+        trackWidthScale: 1,
       }
-    case 'double-dashed':
+    case 'commuter':
       return {
-        dasharray: '10 8',
+        dasharray: '',
         lineCap: 'round',
-        trackOffsets: [-3.1, 3.1],
-        trackWidthScale: 0.45,
+        trackOffsets: [-4.2, 4.2],
+        trackWidthScale: 0.38,
       }
-    case 'double-dotted-square':
+    case 'light-rail':
+    case 'tram':
       return {
-        dasharray: '1 12',
-        lineCap: 'square',
-        trackOffsets: [-3.3, 3.3],
-        trackWidthScale: 0.5,
+        dasharray: '',
+        lineCap: 'round',
+        trackOffsets: [-3.6, 0, 3.6],
+        trackWidthScale: 0.38,
+        trackDasharrays: ['', '8 6', ''],
       }
-    case 'solid':
     default:
       return {
         dasharray: '',
@@ -78,42 +71,28 @@ export function getLineStyleSchematic(styleId) {
 /** @param {string} styleId @returns {{dasharray: number[], lineCap: string, lineWidth: number, lineGapWidth: number}} */
 export function getLineStyleMap(styleId) {
   switch (normalizeLineStyle(styleId)) {
-    case 'dashed':
-      return {
-        dasharray: [2.2, 1.5],
-        lineCap: 'round',
-        lineWidth: 5,
-        lineGapWidth: 0,
-      }
-    case 'dotted':
-      return {
-        dasharray: [0.2, 1.7],
-        lineCap: 'round',
-        lineWidth: 5,
-        lineGapWidth: 0,
-      }
-    case 'double-solid':
+    case 'metro':
       return {
         dasharray: [1, 0],
         lineCap: 'round',
-        lineWidth: 2.35,
-        lineGapWidth: 3.9,
+        lineWidth: 5,
+        lineGapWidth: 0,
       }
-    case 'double-dashed':
+    case 'commuter':
       return {
-        dasharray: [1.5, 1.3],
+        dasharray: [1, 0],
         lineCap: 'round',
-        lineWidth: 2.35,
-        lineGapWidth: 3.9,
+        lineWidth: 2.0,
+        lineGapWidth: 5.0,
       }
-    case 'double-dotted-square':
+    case 'light-rail':
+    case 'tram':
       return {
-        dasharray: [0.6, 2.2],
-        lineCap: 'square',
-        lineWidth: 2.7,
-        lineGapWidth: 4.3,
+        dasharray: [1, 0],
+        lineCap: 'round',
+        lineWidth: 1.8,
+        lineGapWidth: 3.6,
       }
-    case 'solid':
     default:
       return {
         dasharray: [1, 0],

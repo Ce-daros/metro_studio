@@ -26,7 +26,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {string} toStationId
  * @property {[number, number][]} waypoints
  * @property {string[]} sharedByLineIds
- * @property {('solid'|'dashed'|'dotted'|'double-solid'|'double-dashed'|'double-dotted-square') | null} lineStyleOverride
+ * @property {('metro'|'commuter'|'light-rail'|'tram') | null} lineStyleOverride
  * @property {number} lengthMeters
  * @property {boolean} isCurved
  * @property {number|null} openingYear
@@ -41,7 +41,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {string} nameEn
  * @property {string} color
  * @property {('open'|'construction'|'proposed')} status
- * @property {('solid'|'dashed'|'dotted'|'double-solid'|'double-dashed'|'double-dotted-square')} style
+ * @property {('metro'|'commuter'|'light-rail'|'tram')} style
  * @property {boolean} isLoop
  * @property {string[]} edgeIds
  */

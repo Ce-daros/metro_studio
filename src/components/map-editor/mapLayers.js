@@ -218,7 +218,6 @@ export function ensureMapLayers(map, store) {
       id: LAYER_EDGES,
       type: 'line',
       source: SOURCE_EDGES,
-      filter: ['!=', ['get', 'lineStyle'], 'double-dotted-square'],
       paint: edgePaint,
       layout: {
         'line-cap': edgeLayerCaps.nonSquare,
@@ -232,7 +231,7 @@ export function ensureMapLayers(map, store) {
       id: LAYER_EDGES_SQUARE,
       type: 'line',
       source: SOURCE_EDGES,
-      filter: ['==', ['get', 'lineStyle'], 'double-dotted-square'],
+      filter: ['boolean', false],
       paint: edgePaint,
       layout: {
         'line-cap': edgeLayerCaps.square,
