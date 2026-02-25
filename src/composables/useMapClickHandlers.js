@@ -25,7 +25,7 @@ function isLineDrawMode(store) {
   return store.mode === 'add-edge' || store.mode === 'route-draw'
 }
 
-export function useMapClickHandlers({ store, getMap, closeContextMenu, openLineSelectionMenu, interactionState }) {
+export function useMapClickHandlers({ store, getMap, closeContextMenu, openContextMenu, openLineSelectionMenu, interactionState }) {
   function handleStationClick(event) {
     if (store.navigation?.active) return
     closeContextMenu()

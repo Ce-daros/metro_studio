@@ -20,6 +20,7 @@ export function useMapEventHandlers({
     store,
     getMap,
     closeContextMenu,
+    openContextMenu,
     openLineSelectionMenu,
     interactionState,
   })
