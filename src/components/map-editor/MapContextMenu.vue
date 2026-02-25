@@ -27,6 +27,7 @@ const emit = defineEmits([
   'split-edge',
   'merge-edges',
   'ai-translate',
+  'select-line-stations',
 ])
 
 const menuEl = ref(null)
@@ -99,6 +100,7 @@ defineExpose({ menuEl })
           <button @click="emit('delete-edge')" :disabled="!contextMenu.edgeId">删除该线段</button>
         </div>
         <div class="map-editor__context-row">
+          <button @click="emit('select-line-stations')" :disabled="!contextMenu.edgeId">选中该线路所有站点</button>
           <button @click="emit('clear-anchors')" :disabled="!contextMenu.edgeId">清空该线段锚点</button>
         </div>
       </div>

@@ -3,9 +3,11 @@ import { computed, inject, nextTick, reactive, ref, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { NTooltip } from 'naive-ui'
+import { useQuickNaming, advanceQuickNaming } from '../../composables/useQuickNaming'
 
 const store = useProjectStore()
 const nameZhInputRef = ref(null)
+const { quickNamingActive } = useQuickNaming()
 
 const renameTrigger = inject('stationRenameTrigger', ref(0))
 
@@ -60,6 +62,14 @@ function applyStationRename() {
   })
 }
 
+function onNameZhKeydown(e) {
+  if (e.key === 'Enter' && quickNamingActive.value) {
+    e.preventDefault()
+    applyStationRename()
+    advanceQuickNaming()
+  }
+}
+
 function deleteStation() {
   store.deleteSelectedStations()
 }
@@ -101,7 +111,7 @@ watch(
     </div>
 
     <div class="pp-fields">
-      <input ref="nameZhInputRef" v-model="stationForm.nameZh" class="pp-input" placeholder="车站中文名" />
+      <input ref="nameZhInputRef" v-model="stationForm.nameZh" class="pp-input" placeholder="车站中文名" @keydown="onNameZhKeydown" />
       <input v-model="stationForm.nameEn" class="pp-input" placeholder="Station English Name" />
     </div>
 

@@ -512,6 +512,17 @@ export function buildTimelineAnimationPlan(project) {
         phase = [...phases.entries()].sort((a, b) => b[1] - a[1])[0][0]
       }
 
+      // Compute interval station names (first and last station of this draw plan)
+      let intervalFrom = '', intervalTo = ''
+      if (segments.length > 0) {
+        const firstSeg = segments[0]
+        const lastSeg = segments[segments.length - 1]
+        const fromSt = stationMap.get(firstSeg.fromStationId)
+        const toSt = stationMap.get(lastSeg.toStationId)
+        intervalFrom = fromSt?.nameZh || fromSt?.name || ''
+        intervalTo = toSt?.nameZh || toSt?.name || ''
+      }
+
       lineDrawPlans.push({
         lineId,
         color: line.color || '#2563EB',
@@ -519,6 +530,8 @@ export function buildTimelineAnimationPlan(project) {
         nameEn: line.nameEn || '',
         style: line.style || 'solid',
         phase,
+        intervalFrom,
+        intervalTo,
         segments,
         totalLength,
         stationReveals,
@@ -698,12 +711,25 @@ export function buildPseudoTimelineAnimationPlan(project) {
       }
     }
 
+    // Compute interval station names
+    let intervalFrom = '', intervalTo = ''
+    if (segments.length > 0) {
+      const firstSeg = segments[0]
+      const lastSeg = segments[segments.length - 1]
+      const fromSt = stationMap.get(firstSeg.fromStationId)
+      const toSt = stationMap.get(lastSeg.toStationId)
+      intervalFrom = fromSt?.nameZh || fromSt?.name || ''
+      intervalTo = toSt?.nameZh || toSt?.name || ''
+    }
+
     const lineDrawPlans = [{
       lineId: line.id,
       color: line.color || '#2563EB',
       nameZh: getDisplayLineName(line, 'zh') || line.nameZh || '',
       nameEn: line.nameEn || '',
       style: line.style || 'solid',
+      intervalFrom,
+      intervalTo,
       segments,
       totalLength,
       stationReveals,

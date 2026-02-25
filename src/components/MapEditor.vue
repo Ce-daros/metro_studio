@@ -41,6 +41,7 @@ import { useMapReachability } from '../composables/useMapReachability.js'
 import { useAnimationSettings } from '../composables/useAnimationSettings.js'
 import { DEFAULT_MAP_CENTER } from '../lib/constants'
 import { setMapGetter, setStoreGetter } from '../composables/useMapSearch.js'
+import { setQuickNamingMapGetter } from '../composables/useQuickNaming.js'
 import TimelineSlider from './TimelineSlider.vue'
 import MapContextMenu from './map-editor/MapContextMenu.vue'
 import MapLineSelectionMenu from './map-editor/MapLineSelectionMenu.vue'
@@ -99,11 +100,13 @@ const {
   splitEdgeAtContext,
   mergeEdgesAtContextStation,
   aiTranslateContextStationEnglishFromContext,
+  selectContextEdgeLineStations,
 } = useMapContextMenu({
   store,
   mapContainerRef: mapContainer,
   contextMenuRef,
   getMap,
+  openLineSelectionMenu,
 })
 
 const {
@@ -474,6 +477,7 @@ onMounted(() => {
   lockMapNorthUp()
 
   setMapGetter(getMap)
+  setQuickNamingMapGetter(getMap)
   setStoreGetter(() => store)
 
   map.addControl(new maplibregl.NavigationControl(), 'top-right')
@@ -774,6 +778,7 @@ watch(
         @split-edge="splitEdgeAtContext"
         @merge-edges="mergeEdgesAtContextStation"
         @ai-translate="aiTranslateContextStationEnglishFromContext"
+        @select-line-stations="selectContextEdgeLineStations"
       />
 
       <MapLineSelectionMenu

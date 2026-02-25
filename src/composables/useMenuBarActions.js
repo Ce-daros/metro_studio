@@ -177,6 +177,7 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'item', label: '删除选中对象', action: 'deleteSelectedObjects', shortcut: shortcutOf('edit.delete'), icon: 'trash', disabled: !(store.selectedStationIds.length || store.selectedEdgeIds?.length) },
       { type: 'separator' },
       { type: 'item', label: '批量编辑站名', action: 'batchNameEdit', icon: 'edit', disabled: !store.project?.stations?.length },
+      { type: 'item', label: '快速站点命名', action: 'quickNaming', icon: 'type', disabled: !store.project?.lines?.length },
       { type: 'separator' },
       { type: 'item', label: '删除所有未命名新站', action: 'deleteNewStations', icon: 'trash', disabled: !store.project?.stations?.some((s) => s.nameZh?.startsWith('新站 ')) },
     ]
@@ -238,6 +239,15 @@ export function useMenuBarActions(store, emit, refs) {
       children: [
         { type: 'item', label: '导出官方导示图', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
         { type: 'item', label: '导出车上 HUD 图', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
+      ],
+    },
+    { type: 'separator' },
+    {
+      type: 'group',
+      label: '文本',
+      children: [
+        { type: 'item', label: '导出文本文件', action: 'exportTextFile', icon: 'file-text', disabled: !store.project },
+        { type: 'item', label: '复制文本到剪贴板', action: 'exportTextClipboard', icon: 'clipboard', disabled: !store.project },
       ],
     },
   ])
@@ -389,6 +399,7 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'statisticsMore') { emit('show-statistics'); return }
     if (action === 'about') { emit('show-about'); return }
     if (action === 'batchNameEdit') { emit('show-batch-name-edit'); return }
+    if (action === 'quickNaming') { emit('show-quick-naming'); return }
     if (action === 'purchase') { window.open(PURCHASE_URL, '_blank'); return }
     if (action === 'helpGuide') { emit('show-help', 'guide'); return }
     if (action === 'helpFeat') { emit('show-help', 'feat'); return }
@@ -416,6 +427,8 @@ export function useMenuBarActions(store, emit, refs) {
       exportShareSmall: () => store.exportShareSmallPng(),
       exportSchematic: () => store.exportOfficialSchematicPng(),
       exportHudZip: () => store.exportAllLineHudZip(),
+      exportTextFile: () => store.exportProjectText(),
+      exportTextClipboard: () => store.copyProjectText(),
       exportFile: () => store.exportProjectFile(),
       persistToDb: () => store.persistNow(),
       aiTranslateSelected: () => store.retranslateSelectedStationEnglishNamesWithAi(),

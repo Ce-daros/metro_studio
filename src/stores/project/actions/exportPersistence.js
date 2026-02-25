@@ -2,6 +2,7 @@ import {
   downloadAllLineHudZip,
   downloadOfficialSchematicPng,
 } from '../../../lib/export/exportSchematic'
+import { downloadProjectText, copyProjectTextToClipboard } from '../../../lib/export/exportText'
 import { TILE_SOURCES } from '../../../components/map-editor/mapStyle'
 import { createStandaloneHighResExporter } from '../../../composables/useMapExport'
 import { saveProjectToDb, setLatestProject } from '../../../lib/storage/db'
@@ -246,6 +247,22 @@ const exportPersistenceActions = {
     if (!this.project) return
     const result = await downloadAllLineHudZip(this.project, lineId ? { lineId } : {})
     this.statusText = `车辆 HUD 图已打包导出（${result.exportedCount} 张）`
+  },
+
+  async exportProjectText() {
+    if (!this.project) return
+    downloadProjectText(this.project)
+    this.statusText = '线网文本已导出'
+  },
+
+  async copyProjectText() {
+    if (!this.project) return
+    try {
+      await copyProjectTextToClipboard(this.project)
+      this.statusText = '线网文本已复制到剪贴板'
+    } catch {
+      this.statusText = '复制失败，请重试'
+    }
   },
 
   async persistNow() {

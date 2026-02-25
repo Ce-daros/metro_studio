@@ -50,6 +50,10 @@ function getLineName(line, index) {
         </div>
       </div>
     </div>
+    <div class="toolbar__row">
+      <button class="toolbar__btn" @click="guardedExport(() => store.exportProjectText())">导出文本</button>
+      <button class="toolbar__btn" @click="guardedExport(() => store.copyProjectText())">复制文本</button>
+    </div>
   </section>
 </template>
 

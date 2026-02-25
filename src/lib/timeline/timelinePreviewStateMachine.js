@@ -431,6 +431,8 @@ export class TimelinePreviewEngine {
       phase: activeLp.phase || '',
       deltaKm: totalNewKm,
       activeLineId: activeLp.lineId,
+      intervalFrom: activeLp.intervalFrom || '',
+      intervalTo: activeLp.intervalTo || '',
     }
   }
 
@@ -678,6 +680,8 @@ export class TimelinePreviewEngine {
         phase: lineInfo?.phase || '',
         deltaKm: (lineInfo?.activeLineId && cumulativeLineStats.find(e => e.lineId === lineInfo.activeLineId)?.km) || lineInfo?.deltaKm || 0,
         slideT: this._bannerSlideT,
+        intervalFrom: lineInfo?.intervalFrom || '',
+        intervalTo: lineInfo?.intervalTo || '',
       })
     }
 
@@ -816,12 +820,13 @@ export class TimelinePreviewEngine {
     if (this._camTravelUntil > now) {
       this._phaseStart += now - this._lastPlayingTick
       this._lastPlayingTick = now
-      const CAM_TRAVEL_MS = 800
+      const CAM_TRAVEL_MS = 1000
       if (!this._camTravelFrom) {
         this._camTravelFrom = { ...this._smoothCamera || this._camera }
       }
       const t = 1 - (this._camTravelUntil - now) / CAM_TRAVEL_MS
-      const ease = t * t * (3 - 2 * t)
+      // Use easeInOutCubic for smoother camera movement
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
       const from = this._camTravelFrom
       const to = this._camTravelTarget
       if (from && to) {
@@ -865,14 +870,14 @@ export class TimelinePreviewEngine {
       // Freeze: use a progress slightly past the boundary so last station is revealed
       const freezeProgress = curLineFirstSeg ? curLineFirstSeg.globalStart + 1e-4 : rawProgress
       this._isLinePaused = true
-      this._yearPauseUntil = now + 1200
+      this._yearPauseUntil = now + 600  // Reduced from 1200ms to 600ms
       this._yearPauseProgress = freezeProgress
       this._pauseLastLineId = curLineId
       this._yearPauseLastIndex = index
       this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
 
       // Camera travel to new line's start
-      const CAM_TRAVEL_MS = 800
+      const CAM_TRAVEL_MS = 1000  // Increased from 800ms to 1000ms for smoother transition
       if (curLineFirstSeg?.waypoints?.length) {
         const [lng, lat] = curLineFirstSeg.waypoints[0]
         this._camTravelFrom = null

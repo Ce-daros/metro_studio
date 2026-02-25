@@ -29,12 +29,14 @@ import LanduseLegend from './components/LanduseLegend.vue'
 import NoProjectWelcome from './components/NoProjectWelcome.vue'
 import HelpView from './components/HelpView.vue'
 import ExportActualRouteDialog from './components/ExportActualRouteDialog.vue'
+import QuickNamingDialog from './components/QuickNamingDialog.vue'
 import { useProjectStore } from './stores/projectStore'
 import { useAutoSave } from './composables/useAutoSave'
 import { useDialog } from './composables/useDialog.js'
 import { useAnimationSettings } from './composables/useAnimationSettings.js'
 import { useShortcuts } from './composables/useShortcuts.js'
 import { useMapSearch } from './composables/useMapSearch.js'
+import { setRenameTrigger, setQuickNamingMapGetter, useQuickNaming, exitQuickNaming } from './composables/useQuickNaming.js'
 import { isTrial, TRIAL_LIMITS } from './composables/useLicense'
 import { findCityPresetById } from './lib/osm/cityPresets'
 import { loadLatestProjectFromDb } from './lib/storage/db'
@@ -52,6 +54,9 @@ provide('autoSaveSaveNow', saveNow)
 const stationRenameTrigger = ref(0)
 provide('stationRenameTrigger', stationRenameTrigger)
 
+const { quickNamingActive } = useQuickNaming()
+setRenameTrigger(stationRenameTrigger)
+
 function showUpgradeDialog(msg) {
   upgradeMessage.value = msg
   upgradeVisible.value = true
@@ -65,6 +70,14 @@ const escapeCallbacks = new Set()
 provide('registerEscapeCallback', (cb) => escapeCallbacks.add(cb))
 provide('unregisterEscapeCallback', (cb) => escapeCallbacks.delete(cb))
 
+escapeCallbacks.add(() => {
+  if (quickNamingActive.value) {
+    exitQuickNaming()
+    return true
+  }
+  return false
+})
+
 
 const WORKSPACE_VIEW_STORAGE_KEY = 'metro_studio_workspace_active_view'
 const activeView = ref('map')
@@ -74,6 +87,7 @@ const shortcutSettingsVisible = ref(false)
 const statisticsVisible = ref(false)
 const aboutVisible = ref(false)
 const batchNameEditVisible = ref(false)
+const quickNamingVisible = ref(false)
 const ttsDialogVisible = ref(false)
 const upgradeVisible = ref(false)
 const upgradeMessage = ref('')
@@ -387,6 +401,7 @@ onBeforeUnmount(() => {
         @show-statistics="statisticsVisible = true"
         @show-about="aboutVisible = true"
         @show-batch-name-edit="batchNameEditVisible = true"
+        @show-quick-naming="quickNamingVisible = true"
         @show-search="openSearchDialogWithProvince"
         @show-help="(cat) => { helpInitCategory = cat; helpVisible = true }"
         @show-landuse-legend="landuseLegendVisible = true"
@@ -458,6 +473,7 @@ onBeforeUnmount(() => {
   <AboutDialog :visible="aboutVisible" @close="aboutVisible = false" />
   <UpgradeDialog :visible="upgradeVisible" :message="upgradeMessage" @close="upgradeVisible = false" />
   <BatchNameEditDialog :visible="batchNameEditVisible" @close="batchNameEditVisible = false" />
+  <QuickNamingDialog :visible="quickNamingVisible" @close="quickNamingVisible = false" />
   <StationTTSDialog ref="ttsDialogRef" :project="store.project" :visible="ttsDialogVisible" @close="ttsDialogVisible = false" />
   <MapSearchDialog :visible="searchVisible" :viewbox="mapViewbox" :target-province="targetProvince" :stations="store.project?.stations || []" :lines="store.project?.lines || []" @close="closeSearchDialog" @select="onSearchResultSelect" />
   <LanduseLegend :visible="landuseLegendVisible" @close="landuseLegendVisible = false" />

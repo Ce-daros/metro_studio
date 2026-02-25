@@ -10,7 +10,7 @@ const props = defineProps({
   activeView: { type: String, default: 'map' },
 })
 
-const emit = defineEmits(['set-view', 'action', 'show-project-list', 'show-ai-config', 'show-tts-dialog', 'show-shortcut-settings', 'show-statistics', 'show-about', 'show-batch-name-edit', 'show-search', 'show-help', 'show-landuse-legend'])
+const emit = defineEmits(['set-view', 'action', 'show-project-list', 'show-ai-config', 'show-tts-dialog', 'show-shortcut-settings', 'show-statistics', 'show-about', 'show-batch-name-edit', 'show-quick-naming', 'show-search', 'show-help', 'show-landuse-legend'])
 
 const store = useProjectStore()
 const openMenuKey = ref(null)

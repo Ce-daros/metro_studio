@@ -115,26 +115,31 @@ export function renderOverlayStats(ctx, stats, alpha, width, height) {
 
 export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, opts = {}) {
   if (alpha <= 0) return
-  const { nameZh, nameEn, phase, deltaKm, slideT = 1 } = opts
+  const { nameZh, nameEn, phase, deltaKm, slideT = 1, intervalFrom, intervalTo } = opts
   const s = uiScale(width, height)
 
   const swatchW = 8 * s
   const padH = 36 * s
   const lineGap = 22 * s
 
-  // Build main text: either custom event text, or "线路名 开通运营 (+km)"
+  // Build main text: either custom event text, or "线路名 期次（区间）"
   let mainText = text || ''
   if (!mainText && nameZh) {
-    mainText = `${nameZh}${phase ? ' ' + phase : ''} 开通运营`
-    if (deltaKm != null && deltaKm > 0) {
-      mainText += ` (+${deltaKm.toFixed(1)}km)`
+    mainText = `${nameZh}${phase ? ' ' + phase : ''}`
+    if (intervalFrom && intervalTo) {
+      mainText += `（${intervalFrom}—${intervalTo}）`
+    } else if (deltaKm != null && deltaKm > 0) {
+      mainText += ` 开通运营 (+${deltaKm.toFixed(1)}km)`
+    } else {
+      mainText += ' 开通运营'
     }
   }
   if (!mainText) return
 
   const CJK_FONT = '微软雅黑, "Source Han Sans SC", "Microsoft YaHei", sans-serif'
   const nameFont = `700 ${42 * s}px ${CJK_FONT}`
-  const phaseFont = `700 ${30 * s}px ${CJK_FONT}`
+  const phaseFont = `700 ${26 * s}px ${CJK_FONT}`
+  const intervalFont = `600 ${36 * s}px ${CJK_FONT}`
   const opFont = `400 ${42 * s}px ${CJK_FONT}`
   const subFont = `500 ${24 * s}px "Roboto Condensed", "Arial Narrow", sans-serif`
 
@@ -144,8 +149,20 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
     const sp = 14 * s
     ctx.font = nameFont; mainW += ctx.measureText(nameZh).width
     if (phase) { ctx.font = phaseFont; mainW += sp + ctx.measureText(phase).width }
-    const opText = deltaKm != null && deltaKm > 0 ? `+${deltaKm.toFixed(1)}km` : ''
-    if (opText) { ctx.font = opFont; mainW += sp + ctx.measureText(opText).width }
+    // Interval text (e.g. "（XXX—XXX）") or fallback to +km
+    let intervalText = ''
+    if (intervalFrom && intervalTo) {
+      intervalText = `（${intervalFrom}—${intervalTo}）`
+      ctx.font = intervalFont
+      // No spacing before interval text
+      if (intervalText) { mainW += ctx.measureText(intervalText).width }
+    } else {
+      const opText = deltaKm != null && deltaKm > 0 ? `+${deltaKm.toFixed(1)}km` : ''
+      intervalText = opText
+      ctx.font = opFont
+      // Keep spacing for +km text
+      if (intervalText) { mainW += sp + ctx.measureText(intervalText).width }
+    }
   } else {
     ctx.font = nameFont; mainW = ctx.measureText(mainText).width
   }
@@ -194,7 +211,19 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
 
   if (nameZh) {
     const sp = 14 * s
-    const opText = deltaKm != null && deltaKm > 0 ? `+${deltaKm.toFixed(1)}km` : ''
+    let intervalText = ''
+    let intervalTextFont = phaseFont
+    let useIntervalSpacing = true
+    if (intervalFrom && intervalTo) {
+      intervalText = `（${intervalFrom}—${intervalTo}）`
+      intervalTextFont = intervalFont
+      useIntervalSpacing = false  // No spacing before interval
+    } else {
+      const opText = deltaKm != null && deltaKm > 0 ? `+${deltaKm.toFixed(1)}km` : ''
+      intervalText = opText
+      intervalTextFont = opFont
+      useIntervalSpacing = true  // Keep spacing for +km
+    }
     let cx = textX
     ctx.font = nameFont
     ctx.fillText(nameZh, cx, mainY)
@@ -202,11 +231,14 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
     if (phase) {
       ctx.font = phaseFont
       ctx.fillText(phase, cx, mainY)
-      cx += ctx.measureText(phase).width + sp
+      cx += ctx.measureText(phase).width
+      if (useIntervalSpacing) cx += sp
     }
-    if (opText) {
-      ctx.font = opFont
-      ctx.fillText(opText, cx, mainY)
+    if (intervalText) {
+      ctx.font = intervalTextFont
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+      ctx.fillText(intervalText, cx, mainY)
+      ctx.fillStyle = '#ffffff'
     }
   } else {
     ctx.font = nameFont

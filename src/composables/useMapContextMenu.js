@@ -14,8 +14,9 @@ import { useDialog } from './useDialog.js'
  * @param {import('vue').Ref<HTMLElement|null>} deps.mapContainerRef - Ref to the map container element
  * @param {import('vue').Ref<HTMLElement|null>} deps.contextMenuRef - Ref to the context menu element
  * @param {() => maplibregl.Map|null} deps.getMap - Getter for the map instance
+ * @param {Function} deps.openLineSelectionMenu - Function to open line selection menu
  */
-export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getMap }) {
+export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getMap, openLineSelectionMenu }) {
   const { confirm, prompt } = useDialog()
 
   const contextMenu = reactive({
@@ -203,6 +204,37 @@ export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getM
     }
   }
 
+  function selectContextEdgeLineStations() {
+    if (!contextMenu.edgeId) return
+    const edge = store.project?.edges?.find((e) => e.id === contextMenu.edgeId)
+    if (!edge?.sharedByLineIds?.length) return
+
+    const lineIds = edge.sharedByLineIds
+    if (lineIds.length === 1) {
+      store.selectLineStationsOnly(lineIds[0])
+      closeContextMenu()
+    } else {
+      // Multiple lines, show line selection menu
+      const lineMap = new Map((store.project?.lines || []).map((l) => [l.id, l]))
+      const lineOptions = lineIds.map((lineId) => {
+        const line = lineMap.get(lineId)
+        return {
+          lineId,
+          nameZh: line?.nameZh || line?.name || lineId,
+          color: line?.color || '#2563EB',
+        }
+      })
+      if (typeof openLineSelectionMenu === 'function') {
+        openLineSelectionMenu({
+          x: contextMenu.x,
+          y: contextMenu.y,
+          lineOptions,
+          stationsOnly: true,
+        })
+      }
+    }
+  }
+
   return {
     contextMenu,
     contextMenuStyle,
@@ -226,5 +258,6 @@ export function useMapContextMenu({ store, mapContainerRef, contextMenuRef, getM
     splitEdgeAtContext,
     mergeEdgesAtContextStation,
     aiTranslateContextStationEnglishFromContext,
+    selectContextEdgeLineStations,
   }
 }
