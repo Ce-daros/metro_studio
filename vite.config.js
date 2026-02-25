@@ -47,9 +47,6 @@ export default defineConfig({
       },
       mangle: {
         toplevel: true,
-        properties: {
-          regex: /^_(?!_)/,
-        },
       },
       format: {
         comments: false,
