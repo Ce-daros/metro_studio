@@ -84,19 +84,18 @@ export function buildLineDasharrayExpression() {
 
 export function ensureSources(map, store) {
   if (!map) return
+  console.log('[MAP-DEBUG] ensureSources called, project edges:', store.project?.edges?.length, 'stations:', store.project?.stations?.length)
 
   if (!map.getSource(SOURCE_STATIONS)) {
-    map.addSource(SOURCE_STATIONS, {
-      type: 'geojson',
-      data: buildStationsGeoJson(store.project, store.selectedStationIds),
-    })
+    const data = buildStationsGeoJson(store.project, store.selectedStationIds)
+    console.log('[MAP-DEBUG] adding station source, features:', data.features.length)
+    map.addSource(SOURCE_STATIONS, { type: 'geojson', data })
   }
 
   if (!map.getSource(SOURCE_EDGES)) {
-    map.addSource(SOURCE_EDGES, {
-      type: 'geojson',
-      data: buildEdgesGeoJson(store.project, null, store.selectedEdgeIds),
-    })
+    const data = buildEdgesGeoJson(store.project, null, store.selectedEdgeIds)
+    console.log('[MAP-DEBUG] adding edge source, features:', data.features.length)
+    map.addSource(SOURCE_EDGES, { type: 'geojson', data })
   }
 
   if (!map.getSource(SOURCE_EDGE_ANCHORS)) {
@@ -160,11 +159,16 @@ export function updateMapData(map, store) {
   const edgeSource = map.getSource(SOURCE_EDGES)
   const anchorSource = map.getSource(SOURCE_EDGE_ANCHORS)
   const filterYear = store.timelineFilterYear
+  console.log('[MAP-DEBUG] updateMapData called, stationSource:', !!stationSource, 'edgeSource:', !!edgeSource, 'filterYear:', filterYear)
   if (stationSource) {
-    stationSource.setData(buildStationsGeoJson(store.project, store.selectedStationIds, filterYear))
+    const geo = buildStationsGeoJson(store.project, store.selectedStationIds, filterYear)
+    console.log('[MAP-DEBUG] station features:', geo.features.length)
+    stationSource.setData(geo)
   }
   if (edgeSource) {
-    edgeSource.setData(buildEdgesGeoJson(store.project, filterYear, store.selectedEdgeIds))
+    const geo = buildEdgesGeoJson(store.project, filterYear, store.selectedEdgeIds)
+    console.log('[MAP-DEBUG] edge features:', geo.features.length, 'raw edges:', store.project?.edges?.length)
+    edgeSource.setData(geo)
   }
   if (anchorSource) {
     anchorSource.setData(buildEdgeAnchorsGeoJson(store.project, store.selectedEdgeId, store.selectedEdgeAnchor))
@@ -187,6 +191,7 @@ export function updateMapData(map, store) {
 
 export function ensureMapLayers(map, store) {
   if (!map) return
+  console.log('[MAP-DEBUG] ensureMapLayers called, existing LAYER_EDGES:', !!map.getLayer(LAYER_EDGES), 'existing LAYER_STATIONS:', !!map.getLayer(LAYER_STATIONS))
 
   if (!map.getLayer(LAYER_EDGES_HIT)) {
     map.addLayer({
