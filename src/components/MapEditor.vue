@@ -279,6 +279,21 @@ const mapLegendLines = computed(() => {
   })
 })
 
+const interchangeVisibleStations = computed(() => {
+  const allStations = store.project?.stations || []
+  if (store.timelineFilterYear == null) return allStations
+  const allEdges = store.project?.edges || []
+  const visibleEdges = allEdges.filter(
+    (edge) => edge.openingYear == null || edge.openingYear <= store.timelineFilterYear,
+  )
+  const visibleStationIds = new Set()
+  for (const edge of visibleEdges) {
+    visibleStationIds.add(edge.fromStationId)
+    visibleStationIds.add(edge.toStationId)
+  }
+  return allStations.filter((s) => visibleStationIds.has(s.id))
+})
+
 function updateAnnotationPositions() {
   annotationMarkersKey.value++
   interchangeMarkersKey.value++
@@ -780,7 +795,7 @@ watch(
       />
 
       <MapInterchangeMarkers
-        :stations="store.project?.stations || []"
+        :stations="interchangeVisibleStations"
         :line-by-id="store.lineById"
         :markers-key="interchangeMarkersKey"
         :get-marker-style="getInterchangeMarkerStyle"
