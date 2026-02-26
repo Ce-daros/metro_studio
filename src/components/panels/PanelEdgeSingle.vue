@@ -162,7 +162,7 @@ watch(
 
     <div class="pp-fields">
       <select v-model="edgeBatchForm.targetLineId" class="pp-select" :disabled="!edgeReassignTargets.length">
-        <option value="">目标线路（保持不变）</option>
+        <option value="">所属线路（保持不变）</option>
         <option v-for="line in edgeReassignTargets" :key="`eb_line_${line.id}`" :value="line.id">
           {{ displayLineName(line) }}
         </option>
@@ -174,7 +174,7 @@ watch(
       <select v-model="edgeBatchForm.curveMode" class="pp-select">
         <option value="keep">曲线状态（保持不变）</option>
         <option value="curved">设为曲线</option>
-        <option value="straight">设为直线（清锚点）</option>
+        <option value="straight">设为直线（清控制点）</option>
       </select>
       <input v-model="edgeBatchForm.openingYear" type="number" class="pp-input" placeholder="开通年份" min="1900" max="2100" step="1" />
       <input v-model="edgeBatchForm.phase" type="text" class="pp-input" placeholder="分期标签，如：一期" />
@@ -184,9 +184,9 @@ watch(
       <div class="pp-row" style="margin-top:0">
         <NTooltip placement="bottom">
           <template #trigger>
-            <button class="pp-btn pp-btn--primary" style="flex:1" :disabled="!canApplyBatch" @click="applyBatch">应用</button>
+            <button class="pp-btn pp-btn--primary" style="flex:1" :disabled="!canApplyBatch" @click="applyBatch">保存</button>
           </template>
-          应用属性
+          保存属性
         </NTooltip>
         <NTooltip placement="bottom">
           <template #trigger>

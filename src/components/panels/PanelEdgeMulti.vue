@@ -82,7 +82,7 @@ watch(
 
     <div class="pp-fields">
       <select v-model="edgeBatchForm.targetLineId" class="pp-select" :disabled="!edgeReassignTargets.length">
-        <option value="">目标线路（保持不变）</option>
+        <option value="">所属线路（保持不变）</option>
         <option v-for="line in edgeReassignTargets" :key="`ebm_line_${line.id}`" :value="line.id">
           {{ displayLineName(line) }}
         </option>
@@ -99,9 +99,9 @@ watch(
       <div class="pp-row" style="margin-top:0">
         <NTooltip placement="bottom">
           <template #trigger>
-            <button class="pp-btn pp-btn--primary" style="flex:1" :disabled="!canApplyBatch" @click="applyBatch">应用</button>
+            <button class="pp-btn pp-btn--primary" style="flex:1" :disabled="!canApplyBatch" @click="applyBatch">批量应用</button>
           </template>
-          应用批量属性
+          批量应用属性
         </NTooltip>
         <NTooltip placement="bottom">
           <template #trigger>

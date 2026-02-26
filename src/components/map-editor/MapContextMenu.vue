@@ -50,9 +50,7 @@ defineExpose({ menuEl })
     >
       <h3>{{ contextTargetLabel }}菜单</h3>
       <p class="map-editor__context-meta">模式: {{ mode }} | 已选: {{ hasSelection ? '是' : '否' }}</p>
-      <p v-if="contextMenu.stationId" class="map-editor__context-meta">站点: {{ contextMenu.stationId }}</p>
-      <p v-if="contextMenu.edgeId" class="map-editor__context-meta">线段: {{ contextMenu.edgeId }}</p>
-      <p v-if="contextMenu.anchorIndex != null" class="map-editor__context-meta">锚点序号: {{ contextMenu.anchorIndex }}</p>
+      <p v-if="contextMenu.anchorIndex != null" class="map-editor__context-meta">控制点序号: {{ contextMenu.anchorIndex }}</p>
       <p v-if="contextMenu.lngLat" class="map-editor__context-meta">
         坐标: {{ contextMenu.lngLat[0].toFixed(6) }}, {{ contextMenu.lngLat[1].toFixed(6) }}
       </p>
@@ -62,8 +60,8 @@ defineExpose({ menuEl })
         <div class="map-editor__context-row">
           <button @click="emit('set-mode', 'select')">选择/拖拽</button>
           <button @click="emit('set-mode', 'add-station')">添加站点</button>
-          <button @click="emit('set-mode', 'add-edge')">添加线段</button>
-          <button @click="emit('set-mode', 'route-draw')">连续布线</button>
+          <button @click="emit('set-mode', 'add-edge')">连接两站</button>
+          <button @click="emit('set-mode', 'route-draw')">连续画线</button>
         </div>
       </div>
 
@@ -96,25 +94,25 @@ defineExpose({ menuEl })
         <p>线段操作</p>
         <div class="map-editor__context-row">
           <button @click="emit('split-edge')" :disabled="!contextMenu.edgeId || !contextMenu.lngLat">在此处插入站点</button>
-          <button @click="emit('add-anchor')" :disabled="!contextMenu.edgeId || !contextMenu.lngLat">在此加锚点</button>
+          <button @click="emit('add-anchor')" :disabled="!contextMenu.edgeId || !contextMenu.lngLat">在此加控制点</button>
           <button @click="emit('delete-edge')" :disabled="!contextMenu.edgeId">删除该线段</button>
         </div>
         <div class="map-editor__context-row">
           <button @click="emit('select-line-stations')" :disabled="!contextMenu.edgeId">选中该线路所有站点</button>
-          <button @click="emit('clear-anchors')" :disabled="!contextMenu.edgeId">清空该线段锚点</button>
+          <button @click="emit('clear-anchors')" :disabled="!contextMenu.edgeId">清空该线段控制点</button>
         </div>
       </div>
 
       <div v-if="contextMenu.targetType === 'anchor'" class="map-editor__context-section">
-        <p>锚点操作</p>
+        <p>控制点操作</p>
         <div class="map-editor__context-row">
           <button @click="emit('remove-anchor')" :disabled="contextMenu.anchorIndex == null || !contextMenu.edgeId">
-            删除该锚点
+            删除该控制点
           </button>
-          <button @click="emit('add-anchor')" :disabled="!contextMenu.edgeId || !contextMenu.lngLat">在此加锚点</button>
+          <button @click="emit('add-anchor')" :disabled="!contextMenu.edgeId || !contextMenu.lngLat">在此加控制点</button>
         </div>
         <div class="map-editor__context-row">
-          <button @click="emit('clear-anchors')" :disabled="!contextMenu.edgeId">清空该线段锚点</button>
+          <button @click="emit('clear-anchors')" :disabled="!contextMenu.edgeId">清空该线段控制点</button>
         </div>
       </div>
     </div>

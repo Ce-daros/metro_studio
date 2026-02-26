@@ -275,7 +275,7 @@ watch(
                         </td>
                       </tr>
                       <tr>
-                        <td class="stats-label">车站总数</td>
+                        <td class="stats-label">站点总数</td>
                         <td class="stats-value">{{ stations.length }} 座</td>
                       </tr>
                       <tr>

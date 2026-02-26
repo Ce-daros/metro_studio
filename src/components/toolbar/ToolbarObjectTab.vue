@@ -58,7 +58,7 @@ const {
         :disabled="!store.project?.stations?.length || store.isStationEnglishRetranslating"
         @click="retranslateAllStationEnglishNames"
       >
-        {{ store.isStationEnglishRetranslating ? '全图英文重译中...' : '按规范重译全图英文' }}
+        {{ store.isStationEnglishRetranslating ? '全图英文重译中...' : 'AI 重新翻译所有英文站名' }}
       </button>
     </div>
     <div v-if="stationEnglishRetranslateProgress.total > 0" class="toolbar__progress">
@@ -77,8 +77,7 @@ const {
       </p>
     </div>
     <template v-if="selectedStation && selectedStationCount === 1">
-      <p class="toolbar__hint">当前站点 ID: {{ selectedStation.id }}</p>
-      <input v-model="stationForm.nameZh" class="toolbar__input" placeholder="车站中文名" />
+      <input v-model="stationForm.nameZh" class="toolbar__input" placeholder="站点中文名" />
       <input v-model="stationForm.nameEn" class="toolbar__input" placeholder="Station English Name" />
       <div class="toolbar__row">
         <button class="toolbar__btn toolbar__btn--primary" @click="applyStationRename">保存站名</button>
@@ -130,7 +129,6 @@ const {
     <template v-if="selectedEdgeCount > 0">
       <p class="toolbar__hint">已选线段: {{ selectedEdgeCount }} 条</p>
       <template v-if="selectedEdgeCount === 1 && selectedEdge">
-        <p class="toolbar__hint">线段 ID: {{ selectedEdge.id }}</p>
         <p class="toolbar__hint">
           连接:
           {{ selectedEdgeStations.from?.nameZh || selectedEdge.fromStationId }}
@@ -146,7 +144,7 @@ const {
         </ul>
       </template>
 
-      <label class="toolbar__label">目标线路（批量）</label>
+      <label class="toolbar__label">所属线路（批量）</label>
       <select v-model="edgeBatchForm.targetLineId" class="toolbar__select" :disabled="!edgeReassignTargets.length">
         <option value="">保持不变</option>
         <option v-for="line in edgeReassignTargets" :key="`edge_batch_line_${line.id}`" :value="line.id">
@@ -166,18 +164,18 @@ const {
       <select v-model="edgeBatchForm.curveMode" class="toolbar__select">
         <option value="keep">保持不变</option>
         <option value="curved">设为曲线</option>
-        <option value="straight">设为直线（清锚点）</option>
+        <option value="straight">设为直线（清控制点）</option>
       </select>
 
       <div class="toolbar__row">
         <button class="toolbar__btn toolbar__btn--primary" :disabled="!edgeSelectionCanApplyBatch" @click="applySelectedEdgesBatch">
-          应用批量属性
+          批量应用
         </button>
         <button class="toolbar__btn" @click="resetEdgeBatchForm">重置批量项</button>
         <button class="toolbar__btn toolbar__btn--danger" @click="deleteSelectedEdge">删除选中线段</button>
       </div>
     </template>
-    <p v-else class="toolbar__hint">在真实地图中点击或框选线段后，可执行批量属性编辑。</p>
+    <p v-else class="toolbar__hint">在地图中点击或框选线段后，可执行批量属性编辑。</p>
   </section>
 
   <!-- Line properties -->

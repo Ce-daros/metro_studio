@@ -66,7 +66,7 @@ function deleteAnchor() {
         </ul>
       </div>
       <div class="pp-kv">
-        <span class="pp-kv-label">锚点</span>
+        <span class="pp-kv-label">控制点</span>
         <span class="pp-kv-value">第 {{ anchor.anchorIndex }} / {{ totalAnchors }} 个</span>
       </div>
     </div>
@@ -74,9 +74,9 @@ function deleteAnchor() {
     <div class="pp-actions">
       <NTooltip placement="bottom">
         <template #trigger>
-          <button class="pp-btn pp-btn--danger" style="width:100%" @click="deleteAnchor">删除锚点</button>
+          <button class="pp-btn pp-btn--danger" style="width:100%" @click="deleteAnchor">删除控制点</button>
         </template>
-        删除锚点
+        删除控制点
       </NTooltip>
     </div>
   </div>

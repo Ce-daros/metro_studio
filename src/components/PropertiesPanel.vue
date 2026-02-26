@@ -42,7 +42,7 @@ const panelType = computed(() => {
 const panelTitle = computed(() => {
   switch (panelType.value) {
     case 'annotation': return '注释'
-    case 'anchor': return '锚点'
+    case 'anchor': return '控制点'
     case 'edge-multi': return `线段（${selectedEdgeCount.value}）`
     case 'edge-single': return '线段'
     case 'station-single': return '站点'

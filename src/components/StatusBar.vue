@@ -40,12 +40,12 @@ const lastSavedLabel = computed(() => {
 const MODE_LABELS = {
   select: '选择/拖拽',
   'add-station': '添加站点',
-  'add-edge': '添加线段',
-  'route-draw': '连续布线',
+  'add-edge': '连接两站',
+  'route-draw': '连续画线',
   'style-brush': '样式刷',
   'box-select': '框选',
   'quick-link': '快速连线',
-  'anchor-edit': '锚点编辑',
+  'anchor-edit': '控制点编辑',
   'delete-mode': '删除',
   'measure': '测量',
   'measure-two-point': '两点测量',
@@ -63,7 +63,7 @@ const selectionSummary = computed(() => {
   const parts = []
   if (stationCount > 0) parts.push(`${stationCount} 站点`)
   if (edgeCount > 0) parts.push(`${edgeCount} 线段`)
-  if (anchorSelected > 0) parts.push(`${anchorSelected} 锚点`)
+  if (anchorSelected > 0) parts.push(`${anchorSelected} 控制点`)
 
   return parts.length > 0 ? parts.join(', ') : '无选中'
 })

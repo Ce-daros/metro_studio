@@ -197,11 +197,11 @@ async function startExport() {
         <option v-for="item in basemapOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
       </select>
 
-      <label class="export-route-dialog__label" for="actual-route-station-mode">车站显示</label>
+      <label class="export-route-dialog__label" for="actual-route-station-mode">站点显示</label>
       <select id="actual-route-station-mode" v-model="stationVisibilityMode" class="export-route-dialog__input" :disabled="isExporting">
         <option value="interchange">仅显示换乘站</option>
-        <option value="none">隐藏所有车站</option>
-        <option value="all">显示所有车站</option>
+        <option value="none">隐藏所有站点</option>
+        <option value="all">显示所有站点</option>
       </select>
 
       <p class="export-route-dialog__hint">

@@ -25,11 +25,11 @@ function getLineName(line, index) {
   <section class="toolbar__section">
     <h3>发布导出</h3>
     <p class="toolbar__section-intro">按目标输出格式导出当前工程成果。</p>
-    <label class="toolbar__label">车站显示</label>
+    <label class="toolbar__label">站点显示</label>
     <select v-model="exportStationVisibilityMode" class="toolbar__input">
       <option value="interchange">仅显示换乘站</option>
-      <option value="none">隐藏所有车站</option>
-      <option value="all">显示所有车站</option>
+      <option value="none">隐藏所有站点</option>
+      <option value="all">显示所有站点</option>
     </select>
     <div class="toolbar__row">
       <button class="toolbar__btn" @click="store.openActualRouteExportDialog()">导出大图</button>
@@ -38,7 +38,7 @@ function getLineName(line, index) {
     <div class="toolbar__row">
       <button class="toolbar__btn" @click="guardedExport(() => store.exportOfficialSchematicPng())">导出官方导示图</button>
       <div class="hud-menu">
-        <button class="toolbar__btn">导出车上 HUD 图 ▾</button>
+        <button class="toolbar__btn">导出车载屏幕图 ▾</button>
         <div class="hud-menu__dropdown">
           <button class="hud-menu__item" @click="guardedExport(() => store.exportAllLineHudZip())">全部</button>
           <button

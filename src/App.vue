@@ -146,6 +146,8 @@ async function setActiveView(viewKey) {
     window.localStorage.setItem(WORKSPACE_VIEW_STORAGE_KEY, viewKey)
   } catch { /* noop */ }
 
+  store.setMode('select')
+
   await nextTick()
 
   clearInterval(progressInterval)
@@ -210,8 +212,8 @@ async function handleMenuAction(action) {
       const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
       if (!isEmptyProject) {
         const ok = await confirm({ 
-          title: '导入线网', 
-          message: '导入济南 OSM 线网将创建一个新工程，当前工程将被保留。是否继续？', 
+          title: '从城市模板创建',
+          message: '导入济南 OSM 线网将创建一个新工程，当前工程将被保留。是否继续？',
           confirmText: '继续导入',
           cancelText: '取消'
         })
@@ -237,9 +239,9 @@ async function handleMenuAction(action) {
     } else {
       const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
       if (!isEmptyProject) {
-        const ok = await confirm({ 
-          title: '导入线网', 
-          message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`, 
+        const ok = await confirm({
+          title: '从城市模板创建',
+          message: `导入 ${cityName} 地铁线网将创建一个新工程，当前工程将被保留。是否继续？`,
           confirmText: '继续导入',
           cancelText: '取消'
         })

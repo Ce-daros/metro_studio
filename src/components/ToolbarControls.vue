@@ -34,11 +34,11 @@ const TAB_OPTIONS = [
 const MODE_LABELS = {
   select: '选择/拖拽',
   'add-station': '添加站点',
-  'add-edge': '添加线段',
-  'route-draw': '连续布线',
+  'add-edge': '连接两站',
+  'route-draw': '连续画线',
   'box-select': '框选',
   'quick-link': '快速连线',
-  'anchor-edit': '锚点编辑',
+  'anchor-edit': '控制点编辑',
   'delete-mode': '删除',
   'measure': '测量',
   'measure-two-point': '两点测量',
@@ -89,7 +89,7 @@ const currentProjectId = computed(() => store.project?.id || '')
 const activeModeLabel = computed(() => MODE_LABELS[store.mode] || store.mode)
 
 const activeObjectLabel = computed(() => {
-  if (store.selectedEdgeAnchor) return '锚点'
+  if (store.selectedEdgeAnchor) return '控制点'
   if (selectedEdgeCount.value > 1) return `多线段（${selectedEdgeCount.value}）`
   if (selectedEdge.value) return '线段'
   if (selectedStationCount.value === 1) return '站点'
@@ -100,13 +100,17 @@ const activeObjectLabel = computed(() => {
 
 const contextSummary = computed(() => {
   if (store.selectedEdgeAnchor) {
-    return `锚点 ${store.selectedEdgeAnchor.anchorIndex}（线段 ${store.selectedEdgeAnchor.edgeId}）`
+    return `控制点 ${store.selectedEdgeAnchor.anchorIndex}`
   }
   if (selectedEdgeCount.value > 1) {
     return `已选 ${selectedEdgeCount.value} 条线段`
   }
   if (selectedEdge.value) {
-    return `线段 ${selectedEdge.value.id}`
+    const fromStation = store.project?.stations?.find((s) => s.id === selectedEdge.value.fromStationId)
+    const toStation = store.project?.stations?.find((s) => s.id === selectedEdge.value.toStationId)
+    const fromName = fromStation?.nameZh || '未命名'
+    const toName = toStation?.nameZh || '未命名'
+    return `线段 ${fromName} ↔ ${toName}`
   }
   if (selectedStationCount.value === 1) {
     const station = store.project?.stations?.find((s) => s.id === store.selectedStationId)

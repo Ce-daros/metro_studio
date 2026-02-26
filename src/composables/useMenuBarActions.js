@@ -146,13 +146,14 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'item', label: '重命名工程', action: 'renameProject', icon: 'edit', disabled: !store.project },
       { type: 'item', label: '删除当前工程', action: 'deleteProject', icon: 'trash', disabled: !store.project },
       { type: 'separator' },
-      { type: 'submenu', label: '导入线网', icon: 'route', disabled: isTrial.value, children: [
+      { type: 'submenu', label: '从城市模板创建', icon: 'route', disabled: isTrial.value, children: [
         { type: 'item', label: '导入济南 OSM 线网', action: 'importOsm', icon: 'route', disabled: importing || isTrial.value },
         { type: 'separator' },
         { type: 'submenu', label: '中国城市', icon: 'git-branch', children: buildChineseCityMenuItems(importing) },
         { type: 'submenu', label: '国际城市', icon: 'git-branch', children: buildInternationalCityMenuItems(importing) },
       ]},
       { type: 'separator' },
+      ...(isTrial.value ? [{ type: 'item', label: '购买正式版', action: 'purchase', icon: 'star' }] : []),
       { type: 'item', label: '返回菜单', action: 'closeProject', icon: 'home', disabled: !store.project },
     ]
   })
@@ -176,21 +177,18 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'separator' },
       { type: 'item', label: '删除选中对象', action: 'deleteSelectedObjects', shortcut: shortcutOf('edit.delete'), icon: 'trash', disabled: !(store.selectedStationIds.length || store.selectedEdgeIds?.length) },
       { type: 'separator' },
-      { type: 'item', label: '批量编辑站名', action: 'batchNameEdit', icon: 'edit', disabled: !store.project?.stations?.length },
-      { type: 'item', label: '快速站点命名', action: 'quickNaming', icon: 'type', disabled: !store.project?.lines?.length },
+      { type: 'submenu', label: '站名工具', icon: 'type', children: [
+        { type: 'item', label: '批量编辑站名', action: 'batchNameEdit', icon: 'edit', disabled: !store.project?.stations?.length },
+        { type: 'item', label: '快速站点命名', action: 'quickNaming', icon: 'type', disabled: !store.project?.lines?.length },
+        { type: 'item', label: 'AI 翻译选中站英文', action: 'aiTranslateSelected', icon: 'languages', disabled: !store.selectedStationIds.length || store.isStationEnglishRetranslating },
+        { type: 'item', label: 'AI 重新翻译所有英文站名', action: 'aiTranslateAll', icon: 'languages', disabled: !store.project?.stations?.length || store.isStationEnglishRetranslating },
+        { type: 'item', label: '批量审查英文站名', action: 'englishReview', icon: 'check-circle', disabled: !store.project?.lines?.length },
+        { type: 'item', label: '报站生成', action: 'ttsGeneration', icon: 'volume-2' },
+      ]},
       { type: 'separator' },
       { type: 'item', label: '删除所有未命名新站', action: 'deleteNewStations', icon: 'trash', disabled: !store.project?.stations?.some((s) => s.nameZh?.startsWith('新站 ')) },
     ]
   })
-
-  const aiMenuItems = computed(() => [
-    { type: 'item', label: 'AI 翻译选中站英文', action: 'aiTranslateSelected', icon: 'languages', disabled: !store.selectedStationIds.length || store.isStationEnglishRetranslating },
-    { type: 'item', label: '按规范重译全图英文', action: 'aiTranslateAll', icon: 'languages', disabled: !store.project?.stations?.length || store.isStationEnglishRetranslating },
-    { type: 'separator' },
-    { type: 'item', label: '批量审查AI英文站名', action: 'englishReview', icon: 'check-circle', disabled: !store.project?.lines?.length },
-    { type: 'separator' },
-    { type: 'item', label: '报站生成', action: 'ttsGeneration', icon: 'volume-2' },
-  ])
 
   const overlayMode = computed(() => {
     if (store.overlayLayers.includes('population')) return 'population'
@@ -216,42 +214,14 @@ export function useMenuBarActions(store, emit, refs) {
   ])
 
   const exportMenuItems = computed(() => [
-    {
-      type: 'group',
-      label: '真实图',
-      children: [
-        {
-          type: 'submenu',
-          label: '设置',
-          icon: 'settings',
-          children: [
-            { type: 'toggle', label: '显示所有车站', checked: store.exportStationVisibilityMode === 'all', action: 'stationVisAll', icon: 'eye' },
-            { type: 'toggle', label: '仅显示换乘站', checked: store.exportStationVisibilityMode === 'interchange', action: 'stationVisInterchange', icon: 'eye' },
-            { type: 'toggle', label: '隐藏所有车站', checked: store.exportStationVisibilityMode === 'none', action: 'stationVisNone', icon: 'eye-off' },
-          ],
-        },
-        { type: 'item', label: '导出大图', action: 'exportActualRouteHighRes', icon: 'map', disabled: !store.project },
-        { type: 'item', label: '导出小图', action: 'exportShareSmall', icon: 'share', disabled: !store.project },
-      ],
-    },
+    { type: 'item', label: '导出线路图（大图）', action: 'exportActualRouteHighRes', icon: 'map', disabled: !store.project },
+    { type: 'item', label: '导出线路图（小图）', action: 'exportShareSmall', icon: 'share', disabled: !store.project },
     { type: 'separator' },
-    {
-      type: 'group',
-      label: '模拟图',
-      children: [
-        { type: 'item', label: '导出官方导示图', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
-        { type: 'item', label: '导出车上 HUD 图', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
-      ],
-    },
+    { type: 'item', label: '导出示意图', action: 'exportSchematic', icon: 'layout', disabled: !store.project },
+    { type: 'item', label: '导出车载屏幕图', action: 'exportHudZip', icon: 'monitor', disabled: !store.project },
     { type: 'separator' },
-    {
-      type: 'group',
-      label: '文本',
-      children: [
-        { type: 'item', label: '导出文本文件', action: 'exportTextFile', icon: 'file-text', disabled: !store.project },
-        { type: 'item', label: '复制文本到剪贴板', action: 'exportTextClipboard', icon: 'clipboard', disabled: !store.project },
-      ],
-    },
+    { type: 'item', label: '导出文本文件', action: 'exportTextFile', icon: 'file-text', disabled: !store.project },
+    { type: 'item', label: '复制文本到剪贴板', action: 'exportTextClipboard', icon: 'clipboard', disabled: !store.project },
   ])
 
   const settingsMenuItems = computed(() => [
@@ -261,14 +231,7 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'toggle', label: '横向色块', checked: store.interchangeMarkerStyle === 'bar', action: 'interchangeMarkerStyleBar', icon: 'layers' },
       { type: 'toggle', label: '黑圈扇区', checked: store.interchangeMarkerStyle === 'pie', action: 'interchangeMarkerStylePie', icon: 'target' },
     ] },
-    { type: 'separator' },
-    { type: 'item', label: 'AI 配置', action: 'aiConfig', icon: 'settings' },
-    { type: 'item', label: '配置 Protomaps API Key', action: 'configProtomapsKey', icon: 'key' },
-    { type: 'item', label: '配置 LocationIQ API Key', action: 'configLocationIqKey', icon: 'key' },
-    ...(isTrial.value ? [{ type: 'item', label: '输入激活码', action: 'activationCode', icon: 'key' }] : []),
-    { type: 'separator' },
     { type: 'toggle', label: '启用动画', checked: animationsEnabled.value, action: 'toggleAnimations', icon: 'zap' },
-    { type: 'separator' },
     { type: 'submenu', label: '地图瓦片类型', icon: 'layers', children: [
       { type: 'toggle', label: 'OpenStreetMap 标准', checked: store.mapTileType === 'osm', action: 'mapTileOsm', icon: 'map' },
       { type: 'separator' },
@@ -283,6 +246,14 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'toggle', label: 'Wikimedia 维基', checked: store.mapTileType === 'wikimedia', action: 'mapTileWikimedia', icon: 'globe' },
       { type: 'toggle', label: 'OpenTopoMap 地形图', checked: store.mapTileType === 'topo', action: 'mapTileTopo', icon: 'mountain' },
     ]},
+    { type: 'separator' },
+    { type: 'submenu', label: 'API 配置', icon: 'settings', children: [
+      { type: 'item', label: 'AI 配置', action: 'aiConfig', icon: 'settings' },
+      { type: 'item', label: '配置 Protomaps API Key', action: 'configProtomapsKey', icon: 'key' },
+      { type: 'item', label: '配置 LocationIQ API Key', action: 'configLocationIqKey', icon: 'key' },
+    ]},
+    { type: 'separator' },
+    ...(isTrial.value ? [{ type: 'item', label: '输入激活码', action: 'activationCode', icon: 'key' }] : []),
   ])
 
   const statisticsMenuItems = computed(() => {
@@ -305,7 +276,6 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'separator' },
     { type: 'item', label: '你知道吗', action: 'doYouKnow', icon: 'zap' },
     { type: 'separator' },
-    ...(isTrial.value ? [{ type: 'item', label: '购买正式版', action: 'purchase', icon: 'star' }] : []),
     { type: 'item', label: '关于项目', action: 'about', icon: 'info' },
   ])
 
@@ -313,7 +283,6 @@ export function useMenuBarActions(store, emit, refs) {
     { key: 'file', label: '文件', items: fileMenuItems.value },
     { key: 'edit', label: '编辑', items: editMenuItems.value },
     { key: 'view', label: '视图', items: viewMenuItems.value },
-    { key: 'ai', label: 'AI', items: aiMenuItems.value },
     { key: 'export', label: '导出', items: exportMenuItems.value },
     { key: 'statistics', label: '统计', items: statisticsMenuItems.value },
     { key: 'settings', label: '设置', items: settingsMenuItems.value },
@@ -456,7 +425,6 @@ export function useMenuBarActions(store, emit, refs) {
     menus,
     fileMenuItems,
     editMenuItems,
-    aiMenuItems,
     exportMenuItems,
     handleAction,
     applyUiTheme,

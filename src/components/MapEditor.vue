@@ -854,7 +854,7 @@ watch(
       />
 
       <p v-if="showHint" class="map-editor__hint">
-        Shift + 拖拽框选站点 | Ctrl/⌘ + 拖拽框选线段 | Alt + 点击线段选中整条线路 | Delete 删除站点/线段/锚点 | Ctrl/Cmd+A 全选站点 | Ctrl/Cmd+Z 撤销 |
+        Shift + 拖拽框选站点 | Ctrl/⌘ + 拖拽框选线段 | Alt + 点击线段选中整条线路 | Delete 删除站点/线段/控制点 | Ctrl/Cmd+A 全选站点 | Ctrl/Cmd+Z 撤销 |
         Ctrl/Cmd+Shift+Z 或 Ctrl/Cmd+Y 重做 | Esc 取消待连接起点/关闭菜单
       </p>
 

@@ -62,10 +62,10 @@ function redoEdit() {
         <template #trigger>
           <button class="toolbar__btn" :class="{ active: store.mode === 'route-draw' }" @click="store.setMode('route-draw')">
             <IconBase name="route" :size="14" />
-            <span>连续布线</span>
+            <span>连续画线</span>
           </button>
         </template>
-        连续布线模式 (R)
+        连续画线模式 (R)
       </NTooltip>
       <NTooltip>
         <template #trigger>
@@ -102,10 +102,10 @@ function redoEdit() {
         <template #trigger>
           <button class="toolbar__btn" :class="{ active: store.mode === 'anchor-edit' }" @click="store.setMode('anchor-edit')">
             <IconBase name="edit-3" :size="14" />
-            <span>锚点</span>
+            <span>弯曲控制点</span>
           </button>
         </template>
-        锚点编辑 (P)
+        控制点编辑 (P)
       </NTooltip>
     </div>
     <div class="toolbar__row">

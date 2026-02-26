@@ -34,12 +34,12 @@ const tools = computed(() => {
   return [
     { mode: 'select', icon: 'cursor', label: '选择' },
     { mode: 'add-station', icon: 'plus-circle', label: '添加站点' },
-    { mode: 'add-edge', icon: 'git-branch', label: '添加线段' },
-    { mode: 'route-draw', icon: 'route', label: '连续布线' },
+    { mode: 'add-edge', icon: 'git-branch', label: '连接两站' },
+    { mode: 'route-draw', icon: 'route', label: '连续画线' },
     { mode: 'style-brush', icon: 'paintbrush', label: '样式刷' },
     { mode: 'box-select', icon: 'box-select', label: '框选站点' },
     { mode: 'box-select-edges', icon: 'box-select', label: '框选线段' },
-    { mode: 'anchor-edit', icon: 'edit-3', label: '锚点' },
+    { mode: 'anchor-edit', icon: 'edit-3', label: '弯曲控制点' },
     { mode: 'annotation', icon: 'message-square', label: '注释' },
   ].map((t) => ({
     ...t,

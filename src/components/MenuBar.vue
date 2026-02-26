@@ -135,7 +135,7 @@ function setTimelinePreviewBasemapMode(mode) {
 const viewButtons = [
   { view: 'map', block: '▣', label: '地图' },
   { view: 'schematic', block: '▧', label: '示意图' },
-  { view: 'hud', block: '▨', label: 'HUD' },
+  { view: 'hud', block: '▨', label: '车载屏幕' },
   { view: 'preview', block: '▤', label: '预览' },
 ]
 

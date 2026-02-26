@@ -25,7 +25,7 @@ const DEFAULT_SHORTCUTS = [
   // 视图
   { id: 'view.map',       label: '地图视图',   defaultBinding: '1', category: '视图', when: 'global' },
   { id: 'view.schematic', label: '示意图视图', defaultBinding: '2', category: '视图', when: 'global' },
-  { id: 'view.hud',       label: 'HUD 视图',   defaultBinding: '3', category: '视图', when: 'global' },
+  { id: 'view.hud',       label: '车载屏幕视图',   defaultBinding: '3', category: '视图', when: 'global' },
   { id: 'view.preview',   label: '预览视图',   defaultBinding: '4', category: '视图', when: 'global' },
 
   // 工具（仅地图视图生效）

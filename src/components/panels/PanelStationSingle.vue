@@ -145,7 +145,7 @@ watch(
     </div>
 
     <div class="pp-fields">
-      <input ref="nameZhInputRef" v-model="stationForm.nameZh" class="pp-input" placeholder="车站中文名" @keydown="onNameZhKeydown" />
+      <input ref="nameZhInputRef" v-model="stationForm.nameZh" class="pp-input" placeholder="站点中文名" @keydown="onNameZhKeydown" />
       <input ref="nameEnInputRef" v-model="stationForm.nameEn" class="pp-input" placeholder="Station English Name" @keydown="onNameEnKeydown" />
     </div>
 
@@ -173,10 +173,10 @@ watch(
               style="flex:1"
               @click="toggleNameEnFixed"
             >
-              {{ isNameEnFixed ? '🔓 已固定' : '🔒 固定英文名' }}
+              {{ isNameEnFixed ? '🔓 已锁定' : '🔒 锁定英文名' }}
             </button>
           </template>
-          {{ isNameEnFixed ? '英文名已固定，AI 翻译不会覆盖' : '固定英文名，防止被 AI 翻译覆盖' }}
+          {{ isNameEnFixed ? '英文名已锁定，AI 翻译不会覆盖' : '锁定英文名，防止被 AI 翻译覆盖' }}
         </NTooltip>
       </div>
     </div>
