@@ -98,6 +98,7 @@ export class TimelinePreviewEngine {
     // Camera travel phase (after hold, before new line draws)
     this._camTravelUntil = 0
     this._camTravelFrom = null
+    this._camTravelStart = 0
     this._camTravelTarget = null
 
     // Outro: holdLast → zoomOut → holdFull → idle
@@ -116,6 +117,8 @@ export class TimelinePreviewEngine {
     // Event banner slide-in
     this._bannerSlideT = 0
     this._bannerSlideYear = null
+    this._bannerSlideStartTime = 0
+    this._bannerSlideStartTime = 0
     this._BANNER_SLIDE_DURATION = 0.01
 
     // Tip glow pulse
@@ -263,7 +266,7 @@ export class TimelinePreviewEngine {
 
     const dt = Math.min((now || performance.now()) - this._lastFrameTime, 100)
     this._lastFrameTime = now || performance.now()
-    const t = 1 - Math.pow(2, -dt / this._CAMERA_SMOOTH_HALF_LIFE)
+    const t = 1 - Math.pow(2, -dt / (this._CAMERA_SMOOTH_HALF_LIFE / this._speed))
 
     this._smoothCamera = {
       centerLng: this._smoothCamera.centerLng + (target.centerLng - this._smoothCamera.centerLng) * t,
@@ -410,9 +413,28 @@ export class TimelinePreviewEngine {
     // Find the line currently being drawn based on globalProgress
     let activeLp = yp.lineDrawPlans[0]
     if (globalProgress != null) {
+      const markerYearNum = typeof marker.year === 'object' ? marker.year.year : marker.year
+      // 找到当前正在绘制的 segment
+      let currentSeg = null
       for (const seg of this._continuousPlan.segments) {
-        if (seg.globalStart > globalProgress) break
-        if (seg.year === marker.year) activeLp = yp.lineDrawPlans.find(lp => lp.lineId === seg.lineId) || activeLp
+        if (seg.globalStart <= globalProgress && seg.globalEnd > globalProgress) {
+          if (seg.year === markerYearNum) {
+            currentSeg = seg
+            break
+          }
+        }
+      }
+      // 如果找到了当前正在绘制的 segment，使用它的线路
+      if (currentSeg) {
+        activeLp = yp.lineDrawPlans.find(lp => lp.lineId === currentSeg.lineId) || activeLp
+      } else {
+        // 否则找到这一年最后绘制的 segment
+        for (const seg of this._continuousPlan.segments) {
+          if (seg.globalStart > globalProgress) break
+          if (seg.year === markerYearNum) {
+            activeLp = yp.lineDrawPlans.find(lp => lp.lineId === seg.lineId) || activeLp
+          }
+        }
       }
     }
 
@@ -454,6 +476,7 @@ export class TimelinePreviewEngine {
     this._isLinePaused = false
     this._camTravelUntil = 0
     this._camTravelFrom = null
+    this._camTravelStart = 0
     this._camTravelTarget = null
     this._outroPhase = null
     this._outroStart = 0
@@ -469,6 +492,7 @@ export class TimelinePreviewEngine {
     this._targetLineStats = new Map()
     this._bannerSlideT = 0
     this._bannerSlideYear = null
+    this._bannerSlideStartTime = 0
     this._tipGlowPhase = 0
     this._setState('playing')
     this._emitYearChange()
@@ -590,9 +614,12 @@ export class TimelinePreviewEngine {
       }
     }
 
+    // Hide station labels during zoomOut and holdFull phases
+    const hideLabels = this._outroPhase === 'zoomOut' || this._outroPhase === 'holdFull'
     renderStations(this._ctx, revealedIds, this._camera, this._logicalWidth, this._logicalHeight, this._stationMap, {
       alpha: 0.9,
       stationAnimState: this._stationAnimState,
+      showLabels: !hideLabels,
     })
 
     // ─── Overlays ───────────────────────────────────────────────
@@ -606,8 +633,8 @@ export class TimelinePreviewEngine {
     const yearLabel = this._pseudoMode
       ? (this._lineLabels.get(year)?.nameZh || `#${year}`)
       : (typeof year === 'object' && year !== null
-          ? `${year.year}年`
-          : `${year}年`)
+          ? `${year.year}`
+          : `${year}`)
 
     // Year transition animation
     if (yearLabel !== this._prevYearLabel && this._prevYearLabel != null) {
@@ -656,23 +683,24 @@ export class TimelinePreviewEngine {
       yearLocalT = yearSpan > 0 ? (globalProgress - curMarker.globalStart) / yearSpan : 0
     }
 
-    // Event banner slide-in
+    // Event banner slide-in (wall-clock driven)
     if (curMarker) {
       const eventText = this._eventMap.get(year)
       const lineInfo = this._getCurrentYearLineInfo(index, globalProgress)
       const bannerKey = `${year}:${lineInfo?.activeLineId}`
       if (this._bannerSlideYear !== bannerKey) {
         this._bannerSlideYear = bannerKey
-        this._bannerSlideT = 0
+        this._bannerSlideStartTime = now
       }
-      if (yearLocalT < 0.075) {
-        this._bannerSlideT = Math.min(1, yearLocalT / 0.075)
-      } else if (yearLocalT > 0.925) {
-        this._bannerSlideT = Math.max(0, (1 - yearLocalT) / 0.075)
-      } else {
-        this._bannerSlideT = 1
+      const BANNER_SLIDE_MS = 350
+      const bannerElapsed = now - (this._bannerSlideStartTime || now)
+      this._bannerSlideT = Math.min(1, bannerElapsed / BANNER_SLIDE_MS)
+      // Fade out near end of year
+      if (yearLocalT > 0.925) {
+        this._bannerSlideT = Math.min(this._bannerSlideT, Math.max(0, (1 - yearLocalT) / 0.075))
       }
-      const lineColor = lineInfo?.color || this._continuousPlan.segments.find(s => s.year === year)?.color || '#2563EB'
+      const yearNum = typeof year === 'object' ? year.year : year
+      const lineColor = lineInfo?.color || this._continuousPlan.segments.find(s => s.year === yearNum)?.color || '#2563EB'
 
       renderOverlayEvent(this._ctx, eventText || null, lineColor, overlayAlpha, this._logicalWidth, this._logicalHeight, {
         nameZh: lineInfo?.nameZh || '',
@@ -685,27 +713,28 @@ export class TimelinePreviewEngine {
       })
     }
 
-    // Compute per-line appearance progress for slide-in animation
+    // Compute per-line appearance progress for slide-in animation (wall-clock driven)
     const lineAppearProgress = new Map()
-    const APPEAR_SPAN = 0.055 // globalProgress units for the animation
+    const APPEAR_MS = 400 // milliseconds for the slide-in animation
     for (let i = 0; i <= index && i < this._continuousPlan.yearMarkers.length; i++) {
       const marker = this._continuousPlan.yearMarkers[i]
       for (const lp of marker.yearPlan.lineDrawPlans) {
         if (i < index) {
           lineAppearProgress.set(lp.lineId, 1)
         } else {
-          // Record first time this line's segments start drawing
+          // Record wall-clock time when this line first appears
           if (!this._lineFirstSeen.has(lp.lineId)) {
-            const firstSeg = this._continuousPlan.segments.find(s => s.lineId === lp.lineId && s.year === marker.year)
+            const markerYearNum = typeof marker.year === 'object' ? marker.year.year : marker.year
+            const firstSeg = this._continuousPlan.segments.find(s => s.lineId === lp.lineId && s.year === markerYearNum)
             if (firstSeg && globalProgress >= firstSeg.globalStart) {
-              this._lineFirstSeen.set(lp.lineId, firstSeg.globalStart)
+              this._lineFirstSeen.set(lp.lineId, now)
             }
           }
           const seenAt = this._lineFirstSeen.get(lp.lineId)
           if (seenAt == null) {
             lineAppearProgress.set(lp.lineId, 0)
           } else {
-            lineAppearProgress.set(lp.lineId, easeOutCubic(Math.min((globalProgress - seenAt) / APPEAR_SPAN, 1)))
+            lineAppearProgress.set(lp.lineId, easeOutCubic(Math.min((now - seenAt) / APPEAR_MS, 1)))
           }
         }
       }
@@ -815,16 +844,24 @@ export class TimelinePreviewEngine {
       this._renderContinuousFrame(this._yearPauseProgress, now)
       return
     }
+    // Pause just ended: compensate the sub-frame gap (lastPlayingTick → deadline)
+    if (this._yearPauseUntil > 0 && this._camTravelUntil <= 0) {
+      const gap = this._yearPauseUntil - this._lastPlayingTick
+      if (gap > 0) this._phaseStart += gap
+      this._lastPlayingTick = this._yearPauseUntil
+      this._yearPauseUntil = 0
+    }
 
     // Camera travel phase: after hold, pan to next line's start before drawing resumes
     if (this._camTravelUntil > now) {
       this._phaseStart += now - this._lastPlayingTick
       this._lastPlayingTick = now
-      const CAM_TRAVEL_MS = 1200 / (this._speed || 1)  // Adjust for speed
       if (!this._camTravelFrom) {
         this._camTravelFrom = { ...this._smoothCamera || this._camera }
+        this._camTravelStart = now
       }
-      const t = 1 - (this._camTravelUntil - now) / CAM_TRAVEL_MS
+      const camTravelMs = this._camTravelUntil - this._camTravelStart
+      const t = camTravelMs > 0 ? Math.min(1, (now - this._camTravelStart) / camTravelMs) : 1
       // Use easeInOutCubic for smoother camera movement
       const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
       const from = this._camTravelFrom
@@ -838,6 +875,15 @@ export class TimelinePreviewEngine {
       }
       this._renderContinuousFrame(this._yearPauseProgress, now)
       return
+    }
+    // Camera travel just ended: compensate the sub-frame gap between the last
+    // compensated tick and the travel deadline. Without this, ~1 frame leaks per
+    // line-switch, accumulating into premature completion at high speeds.
+    if (this._camTravelUntil > 0) {
+      const gap = this._camTravelUntil - this._lastPlayingTick
+      if (gap > 0) this._phaseStart += gap
+      this._lastPlayingTick = this._camTravelUntil
+      this._camTravelUntil = 0
     }
     this._isLinePaused = false
     this._lastPlayingTick = now
@@ -873,34 +919,27 @@ export class TimelinePreviewEngine {
 
       // Calculate pause duration based on line length
       // Short lines need more time to read the info
-      // Pause time is also affected by playback speed for consistent rhythm
-      const MIN_PAUSE_MS = 1200  // minimum pause for very short lines
-      const BASE_PAUSE_MS = 800   // base pause for normal lines
-      const LINE_LENGTH_THRESHOLD_MS = 3000  // if line draws in less than 3s, use extended pause
-      const speed = this._speed || 1
+      // Pause/travel durations are constant regardless of playback speed
+      const MIN_PAUSE_MS = 1200
+      const BASE_PAUSE_MS = 800
+      const LINE_LENGTH_THRESHOLD_MS = 3000
 
       const continuousPlan = this._continuousPlan
       const lineSegments = continuousPlan?.segments?.filter(s => s.lineId === this._pauseLastLineId) || []
       const lineDurationMs = lineSegments.length * (this._getTotalDrawMs() / continuousPlan?.segments?.length || 1000)
 
-      // Check if this is a rapid sequence of short lines in the same year/phase
-      // If so, INCREASE pause time to give viewer more time to read the info
       const currentYearIndex = this._findCurrentYear(rawProgress).index
       const prevYearIndex = this._yearPauseLastIndex
       const sameYear = currentYearIndex === prevYearIndex
 
       let pauseMs
       if (lineDurationMs < LINE_LENGTH_THRESHOLD_MS) {
-        // For short lines, use extended pause to ensure info is visible
-        pauseMs = MIN_PAUSE_MS / speed
-        // For very short lines in the same year, increase pause further
-        // This is the extreme case: 4 stations in 4 phases within one year
+        pauseMs = MIN_PAUSE_MS
         if (sameYear && lineDurationMs < 1500) {
-          // Very short line in same year: EXTEND pause for readability
-          pauseMs = (MIN_PAUSE_MS * 1.5) / speed  // 1800ms instead of 1200ms
+          pauseMs = MIN_PAUSE_MS * 1.5
         }
       } else {
-        pauseMs = BASE_PAUSE_MS / speed
+        pauseMs = BASE_PAUSE_MS
       }
 
       this._yearPauseUntil = now + pauseMs
@@ -910,20 +949,16 @@ export class TimelinePreviewEngine {
       this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
 
       // Camera travel to new line's start
-      // Camera travel time is also affected by playback speed
-      // Reduce camera movement for rapid sequences to maintain flow
       const shouldMoveCamera = !sameYear || lineDurationMs >= 2000
       if (shouldMoveCamera && curLineFirstSeg?.waypoints?.length) {
-        const CAM_TRAVEL_MS = 1200 / speed  // Adjust for speed
+        const CAM_TRAVEL_MS = 1200
         const [lng, lat] = curLineFirstSeg.waypoints[0]
         this._camTravelFrom = null
         this._camTravelTarget = { centerLng: lng, centerLat: lat, zoom: this._fullCamera.zoom + this._zoomOffset }
         this._camTravelUntil = this._yearPauseUntil + CAM_TRAVEL_MS
       } else {
-        // Reduce or skip camera movement for very rapid sequences
-        // Use shorter travel time for better flow
         if (curLineFirstSeg?.waypoints?.length) {
-          const CAM_TRAVEL_MS = 600 / speed  // Half the normal time
+          const CAM_TRAVEL_MS = 600
           const [lng, lat] = curLineFirstSeg.waypoints[0]
           this._camTravelFrom = null
           this._camTravelTarget = { centerLng: lng, centerLat: lat, zoom: this._fullCamera.zoom + this._zoomOffset }

@@ -22,12 +22,12 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
   const currentYear = ref(null)
   const yearIndex = ref(0)
   const totalYears = ref(0)
-  const playbackSpeed = ref(1)
+  const playbackSpeed = ref(2.5)
   const zoomOffset = ref(2.5)
   const isFullscreen = ref(false)
   const loadingProgress = ref({ loaded: 0, total: 0 })
 
-  const speedOptions = [0.2, 0.5, 0.8, 1, 1.5, 2, 3, 5]
+  const speedOptions = [1, 1.5, 2.5, 3,  5]
 
   /** Whether the project has edges (lines with geometry) at all -- needed for pseudo mode. */
   const hasEdges = computed(() => (store.project?.edges?.length || 0) > 0)
@@ -50,7 +50,7 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
     if (currentYear.value == null) return null
     // Format year only (without phase), regardless of whether year is an object or number
     const yearNum = typeof currentYear.value === 'object' ? currentYear.value.year : currentYear.value
-    const formattedYear = `${yearNum}年`
+    const formattedYear = `${yearNum}`
     if (!pseudoMode.value) return formattedYear
     const labels = renderer?.lineLabels
     if (labels && labels.has(currentYear.value)) {

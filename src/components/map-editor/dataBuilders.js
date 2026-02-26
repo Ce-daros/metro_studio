@@ -169,24 +169,44 @@ function buildStationsGeoJson(project, selectedStationIds = [], filterYear = nul
   const visibleEdges = filterEdgesByYear(allEdges, filterYear)
   const stations = filterYear != null ? filterStationsByVisibleEdges(allStations, visibleEdges) : allStations
   const selectedStationSet = new Set(selectedStationIds || [])
+
+  // 根据可见线段重新计算换乘状态
+  const stationLineCount = new Map()
+  for (const edge of visibleEdges) {
+    for (const stationId of [edge.fromStationId, edge.toStationId]) {
+      if (!stationId) continue
+      const lines = stationLineCount.get(stationId) || new Set()
+      for (const lineId of edge.sharedByLineIds || []) {
+        lines.add(lineId)
+      }
+      stationLineCount.set(stationId, lines)
+    }
+  }
+
   return {
     type: 'FeatureCollection',
-    features: stations.map((station) => ({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: station.lngLat,
-      },
-      properties: {
-        id: station.id,
-        nameZh: station.nameZh,
-        nameEn: station.nameEn,
-        isInterchange: station.isInterchange,
-        underConstruction: station.underConstruction,
-        proposed: station.proposed,
-        isSelected: selectedStationSet.has(station.id),
-      },
-    })),
+    features: stations.map((station) => {
+      // 在当前时间轴年份下，判断是否为换乘站
+      const lineCount = stationLineCount.get(station.id)?.size || 0
+      const isInterchange = filterYear != null ? lineCount >= 2 : station.isInterchange
+
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: station.lngLat,
+        },
+        properties: {
+          id: station.id,
+          nameZh: station.nameZh,
+          nameEn: station.nameEn,
+          isInterchange,
+          underConstruction: station.underConstruction,
+          proposed: station.proposed,
+          isSelected: selectedStationSet.has(station.id),
+        },
+      }
+    }),
   }
 }
 

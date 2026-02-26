@@ -33,11 +33,16 @@ function applyBatch() {
   const patch = {}
   if (edgeBatchForm.targetLineId) patch.targetLineId = edgeBatchForm.targetLineId
   if (edgeBatchForm.lineStyle) patch.lineStyle = edgeBatchForm.lineStyle
+
+  // 对于多线段编辑，只要用户填写了字段就应用
   if (edgeBatchForm.openingYear !== '') {
     const parsed = Number(edgeBatchForm.openingYear)
     patch.openingYear = Number.isFinite(parsed) && Number.isInteger(parsed) ? parsed : null
   }
-  if (edgeBatchForm.phase !== '') patch.phase = edgeBatchForm.phase
+
+  if (edgeBatchForm.phase !== '') {
+    patch.phase = edgeBatchForm.phase
+  }
 
   if (!Object.keys(patch).length) {
     store.statusText = '请先选择至少一个批量变更项'
@@ -52,18 +57,10 @@ function applyBatch() {
   store.statusText = `已批量更新 ${updatedCount} 条线段`
 }
 
-const latestOpeningYear = computed(() => {
-  let max = -Infinity
-  for (const e of store.project?.edges || []) {
-    if (Number.isFinite(e.openingYear) && e.openingYear > max) max = e.openingYear
-  }
-  return max === -Infinity ? '' : max
-})
-
 function resetBatchForm() {
   edgeBatchForm.targetLineId = ''
   edgeBatchForm.lineStyle = ''
-  edgeBatchForm.openingYear = latestOpeningYear.value
+  edgeBatchForm.openingYear = ''
   edgeBatchForm.phase = ''
 }
 
@@ -94,8 +91,8 @@ watch(
         <option value="">线型（保持不变）</option>
         <option v-for="s in LINE_STYLE_OPTIONS" :key="`ebm_style_${s.id}`" :value="s.id">{{ s.label }}</option>
       </select>
-      <input v-model="edgeBatchForm.openingYear" type="number" class="pp-input" placeholder="开通年份" min="1900" max="2100" step="1" />
-      <input v-model="edgeBatchForm.phase" type="text" class="pp-input" placeholder="分期标签，如：一期" />
+      <input v-model="edgeBatchForm.openingYear" type="number" class="pp-input" placeholder="开通年份（保持不变）" min="1900" max="2100" step="1" />
+      <input v-model="edgeBatchForm.phase" type="text" class="pp-input" placeholder="分期标签（保持不变）" />
     </div>
 
     <div class="pp-actions">

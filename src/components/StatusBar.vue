@@ -70,10 +70,18 @@ const selectionSummary = computed(() => {
 
 const projectSummary = computed(() => {
   if (!store.project) return '无工程'
-  const stationCount = store.project.stations?.length || 0
-  const edgeCount = store.project.edges?.length || 0
-  const lineCount = store.project.lines?.length || 0
-  return `${lineCount} 线路 · ${stationCount} 站点 · ${edgeCount} 线段`
+  const year = store.currentEditYear
+  const edges = (store.project.edges || []).filter(e => e.openingYear != null && e.openingYear <= year)
+  const lineIds = new Set()
+  const stationIds = new Set()
+  for (const e of edges) {
+    for (const lid of e.sharedByLineIds || []) lineIds.add(lid)
+    stationIds.add(e.fromStationId)
+    stationIds.add(e.toStationId)
+  }
+  let totalKm = 0
+  for (const e of edges) totalKm += (e.lengthMeters || 0) / 1000
+  return `${year}年 · ${lineIds.size} 线路 · ${stationIds.size} 站 · ${totalKm.toFixed(1)} km`
 })
 
 const actualRouteProgress = computed(() => store.actualRouteExportProgress || null)
@@ -109,7 +117,7 @@ const shouldShowStatusSection = computed(() => {
     <div class="status-bar__divider"></div>
     <div class="status-bar__divider"></div>
     <div class="status-bar__section status-bar__section--grow">
-      <span class="status-bar__label">[工程]</span>
+      <span class="status-bar__label">[统计]</span>
       <span class="status-bar__value">{{ projectSummary }}</span>
     </div>
     <div class="status-bar__divider"></div>

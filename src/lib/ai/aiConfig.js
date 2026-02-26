@@ -70,7 +70,7 @@ export async function testAiConnection() {
     throw new Error('请先填写 API Base URL、API Key 和模型名称')
   }
 
-  const endpoint = `${config.baseUrl}/v1/chat/completions`
+  const endpoint = `${config.baseUrl}/chat/completions`
 
   const payload = {
     model: config.model,

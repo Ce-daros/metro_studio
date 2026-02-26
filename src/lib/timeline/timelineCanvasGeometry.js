@@ -70,13 +70,13 @@ export function resolveWaypointsSimple(edge, fromStation, toStation) {
 }
 
 export function measurePillWidth(ctx, text, s, pillH) {
-  ctx.font = `700 ${16 * s}px "DIN Alternate", "Bahnschrift", "Roboto Condensed", monospace`
+  ctx.font = `700 ${16 * s}px "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`
   const tw = ctx.measureText(text).width
   return tw + pillH  // padding = pillH/2 on each side
 }
 
 export function drawStatPill(ctx, x, y, h, r, s, text) {
-  ctx.font = `700 ${16 * s}px "DIN Alternate", "Bahnschrift", "Roboto Condensed", monospace`
+  ctx.font = `700 ${16 * s}px "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`
   const tw = ctx.measureText(text).width
   const w = tw + h  // padding = h/2 on each side
 

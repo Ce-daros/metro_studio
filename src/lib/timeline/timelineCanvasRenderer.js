@@ -22,7 +22,7 @@ export { roundRect, uiScale, geoLineWidth, drawGeoPolyline, resolveWaypointsSimp
 export {
   renderOverlayYear, renderOverlayStats, renderOverlayEvent,
   renderOverlayScaleBar, renderOverlayBranding, renderOverlayLineInfo,
-  renderScanLineLoading,
+  renderScanLineLoading, stressTestLineInfo,
 } from './timelineCanvasOverlays'
 
 // ─── Edge rendering (geographic) ────────────────────────────────
@@ -144,7 +144,7 @@ export function renderStations(ctx, stationIds, camera, width, height, stationMa
     // Station name (only at sufficient zoom) — with halo to avoid line overlap
     if (zoom >= 11 && opts.showLabels !== false && labelAlpha > 0.01) {
       const labelX = px + radius + 3
-      const zhFont = `${fontSize}px 微软雅黑, "Source Han Sans SC", "Microsoft YaHei", sans-serif`
+      const zhFont = `${fontSize}px "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`
       const zhText = station.nameZh || ''
 
       ctx.save()
@@ -161,7 +161,7 @@ export function renderStations(ctx, stationIds, camera, width, height, stationMa
       ctx.fillText(zhText, labelX, py - fontSize * 0.3)
 
       if (station.nameEn && zoom >= 12.5) {
-        const enFont = `500 ${fontSize * 0.78}px "Roboto Condensed", "Arial Narrow", sans-serif`
+        const enFont = `500 ${fontSize * 0.78}px "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`
         ctx.font = enFont
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.68)'
         ctx.lineWidth = Math.max(1.5, fontSize * 0.18)
@@ -225,7 +225,7 @@ export function renderAnimatedStations(ctx, yearPlan, drawProgress, camera, widt
         ctx.save()
         ctx.globalAlpha = labelAlpha
 
-        const zhFont = `${fontSize}px 微软雅黑, "Source Han Sans SC", "Microsoft YaHei", sans-serif`
+        const zhFont = `${fontSize}px "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`
         ctx.font = zhFont
         ctx.textAlign = 'left'
         ctx.textBaseline = 'top'
@@ -237,7 +237,7 @@ export function renderAnimatedStations(ctx, yearPlan, drawProgress, camera, widt
         ctx.fillText(station.nameZh || '', labelX, py - fontSize * 0.3)
 
         if (station.nameEn && zoom >= 12.5) {
-          ctx.font = `500 ${fontSize * 0.78}px "Roboto Condensed", "Arial Narrow", sans-serif`
+          ctx.font = `500 ${fontSize * 0.78}px "Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif`
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.68)'
           ctx.lineWidth = Math.max(1.5, fontSize * 0.18)
           ctx.strokeText(station.nameEn, labelX, py + fontSize * 0.65)

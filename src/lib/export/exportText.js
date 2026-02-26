@@ -16,8 +16,6 @@ const STYLE_LABELS = {
   tram: '有轨电车',
 }
 
-import { getOrderedStationIds } from '../lineGraph'
-
 /**
  * 格式化距离显示
  * @param {number} meters 米
@@ -31,48 +29,132 @@ function formatDistance(meters) {
 }
 
 /**
- * 按年份分组统计，每年包含各期线路
+ * 将一组边合并为连续区间，返回每个连通分量的起止站名
+ * @param {Array} edges 边数组
+ * @param {(id: string) => string} getStationName 站名查询函数
+ * @returns {string[]} 区间字符串数组，如 ["段店—齐鲁软件园", "xxx—yyy"]
+ */
+function mergeEdgesIntoIntervals(edges, getStationName) {
+  if (!edges.length) return []
+
+  // 构建邻接表
+  const adj = new Map()
+  for (const e of edges) {
+    if (!adj.has(e.fromStationId)) adj.set(e.fromStationId, [])
+    if (!adj.has(e.toStationId)) adj.set(e.toStationId, [])
+    adj.get(e.fromStationId).push(e.toStationId)
+    adj.get(e.toStationId).push(e.fromStationId)
+  }
+
+  // BFS 找连通分量
+  const visited = new Set()
+  const components = []
+  for (const nodeId of adj.keys()) {
+    if (visited.has(nodeId)) continue
+    const component = []
+    const queue = [nodeId]
+    visited.add(nodeId)
+    while (queue.length) {
+      const cur = queue.shift()
+      component.push(cur)
+      for (const nb of adj.get(cur)) {
+        if (!visited.has(nb)) {
+          visited.add(nb)
+          queue.push(nb)
+        }
+      }
+    }
+    components.push(component)
+  }
+
+  // 对每个连通分量，找起止站
+  const intervals = []
+  for (const comp of components) {
+    const endpoints = comp.filter((id) => adj.get(id).length === 1)
+
+    if (endpoints.length === 0) {
+      // 环线
+      intervals.push(`${getStationName(comp[0])}环线`)
+    } else if (endpoints.length === 2) {
+      // 简单链：从一端走到另一端
+      const start = endpoints[0]
+      const end = endpoints[1]
+      intervals.push(`${getStationName(start)}—${getStationName(end)}`)
+    } else {
+      // 有分支的树：BFS 找直径（最远两端点）
+      const bfs = (startId) => {
+        const dist = new Map([[startId, 0]])
+        const q = [startId]
+        let farthest = startId
+        let maxDist = 0
+        while (q.length) {
+          const c = q.shift()
+          for (const nb of adj.get(c)) {
+            if (!dist.has(nb)) {
+              dist.set(nb, dist.get(c) + 1)
+              q.push(nb)
+              if (dist.get(nb) > maxDist) {
+                maxDist = dist.get(nb)
+                farthest = nb
+              }
+            }
+          }
+        }
+        return farthest
+      }
+      const far1 = bfs(endpoints[0])
+      const far2 = bfs(far1)
+      intervals.push(`${getStationName(far1)}—${getStationName(far2)}`)
+    }
+  }
+  return intervals
+}
+
+/**
+ * 按年份分组统计，每年包含各期线路（边已合并为连续区间）
  * @param {import('../projectModel').RailProject} project
- * @returns {Map<number|null, Array<{phase: string, lineName: string, fromStation: string, toStation: string, distance: number}>>}
+ * @returns {Map<number|null, Array<{phase: string, lineName: string, intervals: string[], distance: number}>>}
  */
 function buildYearStats(project) {
   const stationMap = new Map(project.stations.map((s) => [s.id, s]))
-  const lineMap = new Map(project.lines.map((l) => [l.id, l]))
   const edgeMap = new Map(project.edges.map((e) => [e.id, e]))
 
-  // 按年份分组
-  const yearMap = new Map() // year -> Array of {phase, lineName, fromStation, toStation, distance}
+  const getStationName = (id) => {
+    const s = stationMap.get(id)
+    return s ? s.nameZh || s.nameEn || '未命名' : '???'
+  }
+
+  // year -> lineKey -> { phase, lineName, edges[], distance }
+  const yearLineMap = new Map()
 
   for (const line of project.lines || []) {
     const lineEdges = line.edgeIds.map((id) => edgeMap.get(id)).filter(Boolean)
     const lineName = line.nameZh || line.nameEn || line.id
 
-    // 获取有序站点
-    const orderedIds = getOrderedStationIds(line, edgeMap)
-    if (!orderedIds.length) continue
-
-    // 构建站点ID到站名的映射
-    const getStationName = (id) => {
-      const s = stationMap.get(id)
-      return s ? (s.nameZh || s.nameEn || '未命名') : '???'
-    }
-
-    // 按边获取区间信息
     for (const edge of lineEdges) {
       const year = edge.openingYear
       const phase = edge.phase || ''
-      const distance = edge.lengthMeters || 0
+      const key = `${lineName}|${phase}`
 
-      const fromStation = getStationName(edge.fromStationId)
-      const toStation = getStationName(edge.toStationId)
+      if (!yearLineMap.has(year)) yearLineMap.set(year, new Map())
+      const lineMap = yearLineMap.get(year)
+      if (!lineMap.has(key)) lineMap.set(key, { phase, lineName, edges: [], distance: 0 })
 
-      const entry = { phase, lineName, fromStation, toStation, distance }
-
-      if (!yearMap.has(year)) {
-        yearMap.set(year, [])
-      }
-      yearMap.get(year).push(entry)
+      const data = lineMap.get(key)
+      data.edges.push(edge)
+      data.distance += edge.lengthMeters || 0
     }
+  }
+
+  // 合并边为连续区间
+  const yearMap = new Map()
+  for (const [year, lineMap] of yearLineMap) {
+    const entries = []
+    for (const { phase, lineName, edges, distance } of lineMap.values()) {
+      const intervals = mergeEdgesIntoIntervals(edges, getStationName)
+      entries.push({ phase, lineName, intervals, distance })
+    }
+    yearMap.set(year, entries)
   }
 
   return yearMap
@@ -109,29 +191,15 @@ export function serializeProjectAsText(project) {
     const yearLabel = year == null ? '未定年份' : `${year}年`
     out.push(`━━ ${yearLabel} ━━`)
 
-    // 按线路分组，同一线路的同期合并
-    const linePhaseMap = new Map() // key: "lineId|phase", value: {lineName, intervals: [], distance}
-
-    for (const { phase, lineName, fromStation, toStation, distance } of entries) {
-      // 使用线路名作为key（简单处理）
-      const key = `${lineName}|${phase}`
-      if (!linePhaseMap.has(key)) {
-        linePhaseMap.set(key, { lineName, phase, intervals: [], distance: 0 })
-      }
-      const data = linePhaseMap.get(key)
-      data.intervals.push(`${fromStation}—${toStation}`)
-      data.distance += distance
-      totalNetworkDistance += distance
-    }
-
     // 按线路名排序
-    const sortedEntries = Array.from(linePhaseMap.values()).sort((a, b) => {
+    const sortedEntries = [...entries].sort((a, b) => {
       const nameCompare = a.lineName.localeCompare(b.lineName, 'zh')
       if (nameCompare !== 0) return nameCompare
       return a.phase.localeCompare(b.phase, 'zh')
     })
 
     for (const { lineName, phase, intervals, distance } of sortedEntries) {
+      totalNetworkDistance += distance
       const intervalStr = intervals.join('、')
       const phaseLabel = phase ? `${lineName}${phase}（${intervalStr}）` : `${lineName}（${intervalStr}）`
       out.push(`  ${phaseLabel}: ${formatDistance(distance)}`)

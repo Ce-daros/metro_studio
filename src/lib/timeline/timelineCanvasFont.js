@@ -1,29 +1,14 @@
 /**
  * Font loading for timeline canvas rendering.
+ * Uses Source Han Sans SC (system-installed) with sans-serif fallback.
  */
 
-export const FONT_FAMILY = '微软雅黑'
-
-let _fontLoadPromise = null
+export const FONT_FAMILY = '"Source Han Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif'
 
 /**
- * Load PingFang Bold from local project file via FontFace API.
- * Registers the font at multiple weights so Canvas ctx.font always matches.
+ * No-op: relies on system-installed Source Han Sans SC.
+ * Kept for backward compatibility with callers.
  */
 export function loadSourceHanSans(_textHint = '') {
-  if (_fontLoadPromise) return _fontLoadPromise
-  _fontLoadPromise = (async () => {
-    try {
-      const resp = await fetch('/PingFang-Bold.ttf')
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching font`)
-      const buffer = await resp.arrayBuffer()
-
-      const face = new FontFace(FONT_FAMILY, buffer)
-      const loaded = await face.load()
-      document.fonts.add(loaded)
-    } catch {
-      // Font load failure is non-critical; canvas will fall back to system font
-    }
-  })()
-  return _fontLoadPromise
+  return Promise.resolve()
 }

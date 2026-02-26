@@ -384,10 +384,27 @@ export function ensureMapLayers(map, store) {
           16, 11
         ],
         'text-offset': [
-          'case',
-          ['==', ['get', 'isInterchange'], true],
-          ['literal', [1.4, 0.2]],
-          ['literal', [0.8, 0.2]],
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          8, [
+            'case',
+            ['==', ['get', 'isInterchange'], true],
+            ['literal', [2.2, 0.2]],
+            ['literal', [1.2, 0.2]]
+          ],
+          12, [
+            'case',
+            ['==', ['get', 'isInterchange'], true],
+            ['literal', [1.8, 0.2]],
+            ['literal', [0.9, 0.2]]
+          ],
+          16, [
+            'case',
+            ['==', ['get', 'isInterchange'], true],
+            ['literal', [1.5, 0.2]],
+            ['literal', [0.8, 0.2]]
+          ]
         ],
         'text-anchor': 'left',
       },
@@ -619,7 +636,7 @@ export function ensurePopulationLayer(map, year) {
   // Always recreate the layer since updateOrAddSource now removes it
   try {
     const layerDef = { id: LAYER_POPULATION_1KM, type: 'raster', source: src1km,
-      maxzoom: 9, paint: { 'raster-opacity': 0.35 },
+      maxzoom: 9, paint: { 'raster-opacity': 0.2 },
     }
     if (beforeLayer) map.addLayer(layerDef, beforeLayer)
     else map.addLayer(layerDef)
@@ -631,7 +648,7 @@ export function ensurePopulationLayer(map, year) {
   // Always recreate the layer since updateOrAddSource now removes it
   try {
     const layerDef = { id: LAYER_POPULATION_100M, type: 'raster', source: src100m,
-      minzoom: 9, paint: { 'raster-opacity': 0.35 },
+      minzoom: 9, paint: { 'raster-opacity': 0.2 },
     }
     if (beforeLayer) map.addLayer(layerDef, beforeLayer)
     else map.addLayer(layerDef)

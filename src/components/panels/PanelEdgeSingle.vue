@@ -36,14 +36,22 @@ const edgeBatchForm = reactive({
   curveMode: 'keep',
   openingYear: '',
   phase: '',
+  // 跟踪初始值，用于判断字段是否被修改
+  _initialOpeningYear: '',
+  _initialPhase: '',
 })
 
 watch(
   () => selectedEdge.value,
   (edge) => {
     if (!edge) return
-    edgeBatchForm.openingYear = edge.openingYear != null ? String(edge.openingYear) : ''
-    edgeBatchForm.phase = edge.phase || ''
+    // 显示当前值，但记录初始值
+    const yearValue = edge.openingYear != null ? String(edge.openingYear) : ''
+    const phaseValue = edge.phase || ''
+    edgeBatchForm.openingYear = yearValue
+    edgeBatchForm.phase = phaseValue
+    edgeBatchForm._initialOpeningYear = yearValue
+    edgeBatchForm._initialPhase = phaseValue
   },
   { immediate: true },
 )
@@ -70,11 +78,17 @@ function applyBatch() {
   if (edgeBatchForm.lineStyle) patch.lineStyle = edgeBatchForm.lineStyle
   if (edgeBatchForm.curveMode === 'curved') patch.isCurved = true
   else if (edgeBatchForm.curveMode === 'straight') patch.isCurved = false
-  if (edgeBatchForm.openingYear !== '') {
+
+  // 只有当用户修改了年份字段时才应用更新
+  if (edgeBatchForm.openingYear !== edgeBatchForm._initialOpeningYear) {
     const parsed = Number(edgeBatchForm.openingYear)
     patch.openingYear = Number.isFinite(parsed) && Number.isInteger(parsed) ? parsed : null
   }
-  if (edgeBatchForm.phase !== '') patch.phase = edgeBatchForm.phase
+
+  // 只有当用户修改了分期字段时才应用更新
+  if (edgeBatchForm.phase !== edgeBatchForm._initialPhase) {
+    patch.phase = edgeBatchForm.phase
+  }
 
   if (!Object.keys(patch).length) {
     store.statusText = '请先选择至少一个批量变更项'
@@ -95,6 +109,8 @@ function resetBatchForm() {
   edgeBatchForm.curveMode = 'keep'
   edgeBatchForm.openingYear = ''
   edgeBatchForm.phase = ''
+  edgeBatchForm._initialOpeningYear = ''
+  edgeBatchForm._initialPhase = ''
 }
 
 watch(

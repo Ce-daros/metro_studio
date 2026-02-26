@@ -4,6 +4,32 @@ import { extractJsonObject } from "./jsonUtils";
 
 const TRANSLATION_BATCH_SIZE = 30;
 
+// Few-shot 示例：中文站名 → 英文站名
+const TRANSLATION_FEW_SHOT_EXAMPLES = [
+  ["创新谷", "Innovation Valley"],
+  ["大学城", "University Town"],
+  ["玉符河", "Yufu River"],
+  ["济南西站", "Jinanxi Railway Station"],
+  ["济南站", "Jinan Railway Station"],
+  ["长途汽车站", "Long-distance Bus Station"],
+  ["紫薇路", "Ziwei Road"],
+  ["遥墙机场南", "Jinan International Airport South"],
+  ["奥体中心", "Olympic Sports Center"],
+  ["龙奥大厦", "Long'ao Building"],
+  ["济南西站西广场", "Jinanxi Railway Station West Square"],
+  ["八一立交桥", "Bayi Interchange"],
+  ["黄金产业园", "Gold Industrial Park"],
+  ["玉函小区", "Yuhanxiaoqu"],
+  ["齐鲁软件园", "Qilu Software Park"],
+  ["世纪大道", "Century Avenue"],
+  ["超算中心", "Supercomputer Center"],
+  ["世纪大道春喧路", "Century Avenue · Chunxuan Road"],
+  ["彩虹湖", "Rainbow Lake"],
+  ["飞跃大道东", "Feiyue Avenue East"],
+  ["济北小学", "Jibei Primary School"],
+  ["杆石桥", "Ganshiqiao"],
+];
+
 const STATION_TRANSLATION_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -26,10 +52,52 @@ const STATION_TRANSLATION_SCHEMA = {
   required: ["items"],
 };
 
-const ENGLISH_NAMING_STANDARD = `专名部分用汉语拼音，不标声调，多音节连写，各词首字母大写。通名部分按道路和公共场所英文规范意译（如路/马路=Road，大道=Avenue，立交桥=interchange公园=Park，医院=Hospital，妇幼保健院=Maternal and Child Health Hospital）。若“东/西/南/北”是道路专名的固有组成（如“二环南路”“山师东路”），方位词不翻译，直接写入拼音（Erhuan Nanlu、Shanshi Donglu）；仅在表达独立方位修饰时才使用 East/West/South/North。公共机构/医院/学校/政府部门等必须意译其通名，不得整词音译。报站和导向标识仅保留站名主体，英文名末尾不得出现 Station/Metro Station/Subway Station。多线换乘站中英文统一，不用生僻缩写和不规范拼写。`;
+const ENGLISH_NAMING_STANDARD = `
+## 一、专名翻译规则
+- 使用汉语拼音，不标声调
+- 多音节连写，各词首字母大写
+- 示例：二环南路 → Erhuan Nanlu
+
+## 二、通名翻译规则
+道路类：
+  - 路/马路 → Road
+  - 大道 → Avenue
+  - 街 → Street
+  - 立交桥 → Interchange
+
+公共设施类：
+  - 公园 → Park
+  - 医院 → Hospital
+  - 妇幼保健院 → Maternal and Child Health Hospital
+  - 学校 → School
+  - 体育中心 → Sports Center
+  - 机场 → Airport
+  - 小区 Xiaoqu（中国特有名词）
+## 三、方位词处理
+- 如果方位词是道路专名的固有组成部分，保留拼音
+  示例：二环南路 → Erhuan Nanlu（不是 Erhuan South Road）
+  示例：山师东路 → Shanshi Donglu（不是 Shanshi East Road）
+- 仅在表达独立方位修饰时才使用 East/West/South/North
+  示例：机场南 → Airport South
+
+## 四、Station 后缀规则
+必须保留 Station 的情况：
+  - 火车站 → Railway Station
+  - 汽车站 → Bus Station
+  - 长途汽车站 → Coach Station
+  示例：济南站 → Jinan Railway Station
+
+禁止添加 Station 的情况：
+  - 普通地名、道路、建筑、区域等
+  - 不得添加 Metro Station / Subway Station
+  示例：大学城 → University Town（不是 University Town Station）
+
+## 五、特殊规则
+- 公共机构名称必须意译通名，不得整词音译
+- 多线换乘站中英文统一
+- 特有地名直接用罗马字转写
+`.trim();
 const CHINESE_STATION_SUFFIX_REGEX = /(地铁站|车站|站)$/u;
-const ENGLISH_STATION_SUFFIX_REGEX =
-  /\b(?:metro\s+station|subway\s+station|railway\s+station|train\s+station|station)\b\.?$/iu;
 
 function toFiniteNumber(value, fallback = 0) {
   const parsed = Number(value);
@@ -59,7 +127,6 @@ function stripChineseStationSuffix(text) {
 function sanitizeEnglishStationName(text) {
   return String(text || "")
     .trim()
-    .replace(ENGLISH_STATION_SUFFIX_REGEX, "")
     .replace(/\s{2,}/g, " ")
     .trim();
 }
@@ -166,13 +233,32 @@ async function postLLMChatWithFallback(payload, signal) {
 }
 
 async function translateStationChunk(chunk, model, signal) {
+  const fewShotExamples = TRANSLATION_FEW_SHOT_EXAMPLES.map(
+    ([zh, en]) => `  ${zh} → ${en}`
+  ).join("\n");
+
   const systemPrompt = [
+    "# 角色",
     "你是轨道交通英文站名规范翻译助手。",
-    "任务：仅根据输入 stationId + 中文站名生成英文站名。",
-    "严格遵守规范：",
+    "",
+    "# 任务",
+    "根据输入的中文站名，生成符合规范的英文站名。",
+    "",
+    "# 翻译规范",
     ENGLISH_NAMING_STANDARD,
-    "约束：",
-    "1) 仅输出 JSON；2) 仅可返回输入 stationId；3) 不得凭空添加不在中文名中的地名；4) nameEn 末尾严禁出现 Station/Metro Station/Subway Station；5) 对公共机构名称必须意译其通名（如医院/妇幼保健院/学校/政府机构）；6) 所有输出必须可用于站名标签。",
+    "",
+    "# 参考示例",
+    fewShotExamples,
+    "",
+    "# 输出要求",
+    "- 仅输出 JSON 格式",
+    "- 仅返回输入的 stationId，不得添加或删除",
+    "- 所有输出必须可直接用于站名标签",
+    "",
+    "# 禁止事项",
+    "- 不得凭空添加不在中文名中的地名",
+    "- 不得对公共机构名称整词音译（必须意译通名）",
+    "- 不得使用生僻缩写或不规范拼写",
   ].join("\n");
 
   const payload = {
@@ -201,7 +287,7 @@ async function translateStationChunk(chunk, model, signal) {
             output: "返回 { items: [{ stationId, nameEn }] }",
             stations: chunk.map((item) => ({
               stationId: item.stationId,
-              nameZh: stripChineseStationSuffix(item.nameZh),
+              nameZh: item.nameZh, // 保留完整站名，让 AI 判断是否是火车站
             })),
           },
           null,
@@ -343,4 +429,34 @@ export async function retranslateStationEnglishNames({
     updates: dedupedUpdates,
     failed,
   };
+}
+
+/**
+ * 翻译单个站名（内部调用批量翻译）
+ * @param {{stationId?: string, nameZh: string, nameEn?: string, model?: string, signal?: AbortSignal}} options
+ * @returns {Promise<string>} 返回英文站名
+ */
+export async function translateStationEnglishName({
+  stationId,
+  nameZh,
+  nameEn,
+  model,
+  signal,
+} = {}) {
+  const id = String(stationId || "single").trim();
+  const result = await retranslateStationEnglishNames({
+    stations: [{ stationId: id, nameZh, nameEn }],
+    model,
+    signal,
+  });
+
+  if (result.updates.length > 0) {
+    return result.updates[0].nameEn;
+  }
+
+  if (result.failed.length > 0) {
+    throw new Error(result.failed[0].reason || "翻译失败");
+  }
+
+  throw new Error("未返回翻译结果");
 }

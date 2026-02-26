@@ -290,16 +290,42 @@ const mapLegendLines = computed(() => {
 const interchangeVisibleStations = computed(() => {
   const allStations = store.project?.stations || []
   if (store.timelineFilterYear == null) return allStations
+
   const allEdges = store.project?.edges || []
   const visibleEdges = allEdges.filter(
     (edge) => edge.openingYear == null || edge.openingYear <= store.timelineFilterYear,
   )
+
+  // 计算每个站点在当前时间轴年份下经过的线路数
+  const stationLineCount = new Map()
+  for (const edge of visibleEdges) {
+    for (const stationId of [edge.fromStationId, edge.toStationId]) {
+      if (!stationId) continue
+      const lines = stationLineCount.get(stationId) || new Set()
+      for (const lineId of edge.sharedByLineIds || []) {
+        lines.add(lineId)
+      }
+      stationLineCount.set(stationId, lines)
+    }
+  }
+
   const visibleStationIds = new Set()
   for (const edge of visibleEdges) {
     visibleStationIds.add(edge.fromStationId)
     visibleStationIds.add(edge.toStationId)
   }
-  return allStations.filter((s) => visibleStationIds.has(s.id))
+
+  // 返回可见站点，并根据当前时间轴年份重新计算 isInterchange
+  return allStations
+    .filter((s) => visibleStationIds.has(s.id))
+    .map((station) => {
+      const lineCount = stationLineCount.get(station.id)?.size || 0
+      return {
+        ...station,
+        isInterchange: lineCount >= 2,
+        lineIds: [...(stationLineCount.get(station.id) || [])],
+      }
+    })
 })
 
 function updateAnnotationPositions() {

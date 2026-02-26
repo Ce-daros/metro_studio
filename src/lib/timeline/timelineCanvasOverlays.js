@@ -6,6 +6,7 @@
 import { metersPerPixel } from './timelineTileRenderer'
 import { easeOutCubic, easeOutBack } from './timelineCanvasEasing'
 import { roundRect, uiScale, measurePillWidth, drawStatPill } from './timelineCanvasGeometry'
+import { FONT_FAMILY } from './timelineCanvasFont'
 
 // ─── Overlay: Year + Stats block (bottom-left, reference layout) ─
 
@@ -26,7 +27,7 @@ export function renderOverlayYear(ctx, year, alpha, width, height, opts = {}) {
 
   // ── Measure year text ──
   const yearFontSize = 120 * s
-  const yearFont = `900 ${yearFontSize}px "DIN Alternate", "Bahnschrift", "Roboto Condensed", monospace`
+  const yearFont = `900 ${yearFontSize}px ${FONT_FAMILY}`
   ctx.font = yearFont
   const yearStr = String(year)
   const yearTextW = ctx.measureText(yearStr).width
@@ -115,142 +116,82 @@ export function renderOverlayStats(ctx, stats, alpha, width, height) {
 
 export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, opts = {}) {
   if (alpha <= 0) return
-  const { nameZh, nameEn, phase, deltaKm, slideT = 1, intervalFrom, intervalTo } = opts
+  const { nameZh, phase, deltaKm, slideT = 1, intervalFrom, intervalTo } = opts
   const s = uiScale(width, height)
 
-  const swatchW = 8 * s
-  const padH = 36 * s
-  const lineGap = 22 * s
+  if (!text && !nameZh) return
 
-  // Build main text: either custom event text, or "线路名（区间）"
-  let mainText = text || ''
-  if (!mainText && nameZh) {
-    mainText = nameZh  // Only show line name, not phase
-    if (intervalFrom && intervalTo) {
-      mainText += `（${intervalFrom}—${intervalTo}）`
-    } else if (deltaKm != null && deltaKm > 0) {
-      mainText += ` 开通运营 (+${deltaKm.toFixed(1)}km)`
-    } else {
-      mainText += ' 开通运营'
-    }
+  const CJK_FONT = FONT_FAMILY
+  const padH = 28 * s
+  const padV = 18 * s
+  const elemGap = 12 * s
+
+  // ── Capsule: short name (digits or first char) ──
+  const capsuleFontSize = 32 * s
+  const capsuleFont = `700 ${capsuleFontSize}px ${CJK_FONT}`
+  const capsuleH = 44 * s
+  const capsulePadH = 16 * s
+  const capsuleR = 10 * s
+
+  let shortName = nameZh || text
+  const digitMatch = shortName.match(/^\d+/)
+  shortName = digitMatch ? digitMatch[0] : [...shortName][0]
+
+  ctx.font = capsuleFont
+  const capsuleW = ctx.measureText(shortName).width + capsulePadH * 2
+
+  // ── Build inline text segments: "一期 段店⇄齐鲁软件园 开通运营" ──
+  const textFont = `600 ${30 * s}px ${CJK_FONT}`
+  ctx.font = textFont
+
+  let inlineText = ''
+  if (phase) inlineText += phase + ' '
+  if (intervalFrom && intervalTo) {
+    inlineText += `${intervalFrom}⇄${intervalTo} `
   }
-  if (!mainText) return
+  inlineText += '开通运营'
 
-  const CJK_FONT = '微软雅黑, "Source Han Sans SC", "Microsoft YaHei", sans-serif'
-  const nameFont = `700 ${42 * s}px ${CJK_FONT}`
-  const phaseFont = `700 ${26 * s}px ${CJK_FONT}`
-  const intervalFont = `600 ${36 * s}px ${CJK_FONT}`
-  const opFont = `400 ${42 * s}px ${CJK_FONT}`
-  const subFont = `500 ${24 * s}px "Roboto Condensed", "Arial Narrow", sans-serif`
+  const inlineW = ctx.measureText(inlineText).width
 
-  // Measure composite main text width
-  let mainW = 0
-  if (nameZh) {
-    const sp = 14 * s
-    ctx.font = nameFont; mainW += ctx.measureText(nameZh).width
-    if (phase) { ctx.font = phaseFont; mainW += sp + ctx.measureText(phase).width }
-    // Interval text (e.g. "（XXX—XXX）") or fallback to +km
-    let intervalText = ''
-    if (intervalFrom && intervalTo) {
-      intervalText = `（${intervalFrom}—${intervalTo}）`
-      ctx.font = intervalFont
-      // No spacing before interval text
-      if (intervalText) { mainW += ctx.measureText(intervalText).width }
-    } else {
-      const opText = deltaKm != null && deltaKm > 0 ? `+${deltaKm.toFixed(1)}km` : ''
-      intervalText = opText
-      ctx.font = opFont
-      // Keep spacing for +km text
-      if (intervalText) { mainW += sp + ctx.measureText(intervalText).width }
-    }
-  } else {
-    ctx.font = nameFont; mainW = ctx.measureText(mainText).width
-  }
+  // ── Banner size (single line) ──
+  const contentW = capsuleW + elemGap + inlineW
+  const bannerW = contentW + padH * 2
+  const bannerH = capsuleH + padV * 2
 
-  let subText = nameEn || ''
-  let subW = 0
-  if (subText) {
-    ctx.font = subFont
-    subW = ctx.measureText(subText).width
-  }
-
-  const contentW = Math.max(mainW, subW)
-  const bannerW = swatchW + contentW + padH * 2 + lineGap
-  const bannerH = subText ? (130 * s) : (100 * s)
-
-  // Slide-in animation: translate from left
+  // Slide-in animation
   const easedSlide = easeOutCubic(Math.max(0, Math.min(1, slideT)))
   const slideOffset = -(bannerW + 24 * s) * (1 - easedSlide)
-  const slideAlpha = easedSlide
 
   ctx.save()
-  ctx.globalAlpha = Math.max(0, Math.min(1, alpha * slideAlpha))
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha * easedSlide))
 
-  // Position: pinned to top-left corner
   const bannerX = 24 * s + slideOffset
   const bannerY = 24 * s
+  const centerY = bannerY + bannerH / 2
 
-  // Semi-transparent dark background
+  // Dark background
   ctx.fillStyle = 'rgba(0, 0, 0, 0.40)'
   roundRect(ctx, bannerX, bannerY, bannerW, bannerH, 14 * s)
   ctx.fill()
 
-  // Line color swatch (vertical bar on left)
-  const swatchX = bannerX + padH * 0.5
-  const swatchPadV = 14 * s
+  // ── Color capsule ──
+  const capsuleX = bannerX + padH
   ctx.fillStyle = lineColor || '#2563EB'
-  roundRect(ctx, swatchX, bannerY + swatchPadV, swatchW, bannerH - swatchPadV * 2, 4 * s)
+  roundRect(ctx, capsuleX, centerY - capsuleH / 2, capsuleW, capsuleH, capsuleR)
   ctx.fill()
 
-  // Main text — white on dark
-  const textX = swatchX + swatchW + lineGap
   ctx.fillStyle = '#ffffff'
-  ctx.textAlign = 'left'
-  const mainY = subText ? bannerY + bannerH * 0.38 : bannerY + bannerH / 2
+  ctx.font = capsuleFont
+  ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
+  ctx.fillText(shortName, capsuleX + capsuleW / 2, centerY)
 
-  if (nameZh) {
-    const sp = 14 * s
-    let intervalText = ''
-    let intervalTextFont = phaseFont
-    let useIntervalSpacing = true
-    if (intervalFrom && intervalTo) {
-      intervalText = `（${intervalFrom}—${intervalTo}）`
-      intervalTextFont = intervalFont
-      useIntervalSpacing = false  // No spacing before interval
-    } else {
-      const opText = deltaKm != null && deltaKm > 0 ? `+${deltaKm.toFixed(1)}km` : ''
-      intervalText = opText
-      intervalTextFont = opFont
-      useIntervalSpacing = true  // Keep spacing for +km
-    }
-    let cx = textX
-    ctx.font = nameFont
-    ctx.fillText(nameZh, cx, mainY)
-    cx += ctx.measureText(nameZh).width + sp
-    if (phase) {
-      ctx.font = phaseFont
-      ctx.fillText(phase, cx, mainY)
-      cx += ctx.measureText(phase).width
-      if (useIntervalSpacing) cx += sp
-    }
-    if (intervalText) {
-      ctx.font = intervalTextFont
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.fillText(intervalText, cx, mainY)
-      ctx.fillStyle = '#ffffff'
-    }
-  } else {
-    ctx.font = nameFont
-    ctx.fillText(mainText, textX, mainY)
-  }
-
-  if (subText) {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)'
-    ctx.font = subFont
-    ctx.textBaseline = 'top'
-    ctx.fillText(subText, textX, bannerY + bannerH * 0.56 + 5 * s)
-  }
+  // ── Inline text ──
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+  ctx.font = textFont
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(inlineText, capsuleX + capsuleW + elemGap, centerY)
 
   ctx.restore()
 }
@@ -288,7 +229,7 @@ export function renderOverlayScaleBar(ctx, camera, alpha, width, height) {
   ctx.fillRect(x + barPx - 1.5 * s, y - 4 * s, 1.5 * s, barH + 8 * s)
 
   ctx.fillStyle = '#ffffff'
-  ctx.font = `500 ${10 * s}px "Roboto Condensed", "Arial Narrow", sans-serif`
+  ctx.font = `500 ${10 * s}px ${FONT_FAMILY}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
   ctx.fillText(label, x + barPx / 2, y - 5 * s)
@@ -309,7 +250,7 @@ export function renderOverlayBranding(ctx, projectName, author, alpha, width, he
 
   // OSM attribution only — no logo
   ctx.fillStyle = '#ffffff'
-  ctx.font = `400 ${9 * s}px "Roboto Condensed", sans-serif`
+  ctx.font = `400 ${9 * s}px ${FONT_FAMILY}`
   ctx.textAlign = 'right'
   ctx.textBaseline = 'bottom'
   ctx.fillText('© OpenStreetMap contributors', x, y)
@@ -329,7 +270,7 @@ export function renderOverlayLineInfo(ctx, yearPlan, stats, alpha, width, height
 
   // ── Stats pills (between line cards and year block) ──
   const pillFontSize = 32 * s
-  const pillFont = `700 ${pillFontSize}px "DIN Alternate", "Bahnschrift", "Roboto Condensed", monospace`
+  const pillFont = `700 ${pillFontSize}px ${FONT_FAMILY}`
   const pillH = 32 * s
   const pillR = pillH / 2
   const pillGap = 10 * s
@@ -355,77 +296,69 @@ export function renderOverlayLineInfo(ctx, yearPlan, stats, alpha, width, height
   const baseX = 48 * s
   const cornerR = 14 * s
 
-  // ── Determine layout mode: single-column vs multi-column with auto-scale ──
+  // ── Determine layout: up to 6 columns, shrink 20% when >10 lines ──
   const topMargin = 24 * s
   const availableH = pillsRowTop - gapBetween - topMargin
 
-  // Base dimensions at scale 1.0
-  const BASE_CARD_H = 64 * s
+  // Base dimensions
+  const BASE_CARD_H = 88 * s
   const BASE_CARD_PAD_H = 22 * s
-  const BASE_CARD_GAP = 20 * s
-  const BASE_NAME_FONT_SIZE = 36 * s
-  const BASE_STAT_FONT_SIZE = 28 * s
-  const BASE_STAT_GAP = 14 * s
-  const MIN_SCALE = 0.7
+  const BASE_CARD_GAP = 8 * s
+  const BASE_NAME_FONT_SIZE = 44 * s
+  const BASE_KM_FONT_SIZE = 18 * s
 
-  // Layout: force two columns at 10+ lines, otherwise use height-based logic
   const count = lineEntries.length
-  const MULTI_COL_THRESHOLD = 10
-  const singleColH = count * (BASE_CARD_H + BASE_CARD_GAP) - BASE_CARD_GAP
-  let columns = count >= MULTI_COL_THRESHOLD ? 2 : 1
-  let cardScale = 1
+  let cardScale = count > 10 ? 0.8 : 1
 
-  if (columns === 1 && singleColH > availableH) {
-    // Try shrinking single column (down to MIN_SCALE)
-    const minSingleH = count * (BASE_CARD_H * MIN_SCALE + BASE_CARD_GAP * MIN_SCALE) - BASE_CARD_GAP * MIN_SCALE
-    if (minSingleH <= availableH) {
-      cardScale = Math.max(MIN_SCALE, availableH / singleColH)
-    } else {
-      columns = 2
-    }
+  // Determine columns: fill vertically first, add columns as needed (max 6)
+  let columns = 1
+  for (let c = 1; c <= 6; c++) {
+    const perCol = Math.ceil(count / c)
+    const colH = perCol * (BASE_CARD_H * cardScale + BASE_CARD_GAP * cardScale) - BASE_CARD_GAP * cardScale
+    if (colH <= availableH) { columns = c; break }
+    columns = c
+  }
+  // If still overflows at 6 columns, shrink further
+  const perCol = Math.ceil(count / columns)
+  const neededH = perCol * (BASE_CARD_H * cardScale + BASE_CARD_GAP * cardScale) - BASE_CARD_GAP * cardScale
+  if (neededH > availableH) {
+    cardScale *= availableH / neededH
   }
 
-  if (columns === 2) {
-    const perCol = Math.ceil(count / 2)
-    const twoColH = perCol * (BASE_CARD_H + BASE_CARD_GAP) - BASE_CARD_GAP
-    if (twoColH > availableH) {
-      cardScale = Math.max(MIN_SCALE, availableH / twoColH)
-    }
-  }
-
-  const multiCol = columns > 0 && columns >= 2
   const cardH = BASE_CARD_H * cardScale
   const cardPadH = BASE_CARD_PAD_H * cardScale
   const cardGap = BASE_CARD_GAP * cardScale
   const nameFontSize = BASE_NAME_FONT_SIZE * cardScale
-  const statFontSize = BASE_STAT_FONT_SIZE * cardScale
-  const statGap = BASE_STAT_GAP * cardScale
+  const kmFontSize = BASE_KM_FONT_SIZE * cardScale
   const scaledCornerR = cornerR * cardScale
 
-  const nameFont = `700 ${nameFontSize}px 微软雅黑, "Source Han Sans SC", "Microsoft YaHei", sans-serif`
-  const statFont = `600 ${statFontSize}px "DIN Alternate", "Bahnschrift", "Roboto Condensed", monospace`
+  const nameFont = `700 ${nameFontSize}px ${FONT_FAMILY}`
+  const kmFont = `600 ${kmFontSize}px ${FONT_FAMILY}`
 
-  // Build card data with display names
+  // Build card data with short display names (always digits or first char)
   const cards = []
+  let maxCardW = 0
   for (const entry of lineEntries) {
-    let displayName = entry.name
-    if (multiCol) {
-      const digitMatch = entry.name.match(/^\d+/)
-      displayName = digitMatch ? digitMatch[0] : [...entry.name][0]
-    }
+    const digitMatch = entry.name.match(/^\d+/)
+    const displayName = digitMatch ? digitMatch[0] : [...entry.name][0]
     ctx.font = nameFont
     const textW = ctx.measureText(displayName).width
-    const cardW = textW + cardPadH * 2
-    cards.push({ ...entry, displayName, cardW })
+    const kmStr = `${entry.km.toFixed(1)}`
+    ctx.font = kmFont
+    const kmTextW = ctx.measureText(kmStr).width
+    const cardW = Math.max(textW, kmTextW) + cardPadH * 2
+    if (cardW > maxCardW) maxCardW = cardW
+    cards.push({ ...entry, displayName, kmStr, cardW })
   }
+  // Uniform width
+  for (const card of cards) card.cardW = maxCardW
 
-  // Compute per-column layout
-  const perCol = columns >= 2 ? Math.ceil(cards.length / 2) : cards.length
-  const totalCardsH = perCol * (cardH + cardGap) - cardGap
+  // Compute layout
+  const rowsPerCol = Math.ceil(cards.length / columns)
+  const totalCardsH = rowsPerCol * (cardH + cardGap) - cardGap
   const baseY = pillsRowTop - gapBetween - totalCardsH - 12 * s
 
-  // Column gap for multi-column
-  const colGap = 8 * s
+  const colGap = 6 * s
 
   ctx.save()
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha))
@@ -476,19 +409,12 @@ export function renderOverlayLineInfo(ctx, yearPlan, stats, alpha, width, height
   }
 
   // ── Draw line cards ──
-  let col0MaxW = 0
-  if (multiCol) {
-    for (let i = 0; i < Math.min(perCol, cards.length); i++) {
-      col0MaxW = Math.max(col0MaxW, cards[i].cardW)
-    }
-  }
-
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i]
-    const col = multiCol ? (i < perCol ? 0 : 1) : 0
-    const row = multiCol ? (col === 0 ? i : i - perCol) : i
+    const col = Math.floor(i / rowsPerCol)
+    const row = i - col * rowsPerCol
     const cardY = baseY + row * (cardH + cardGap)
-    const cardX = col === 0 ? baseX : baseX + col0MaxW + colGap
+    const cardX = baseX + col * (maxCardW + colGap)
 
     // Per-card slide-in animation
     let progress = 1
@@ -510,27 +436,29 @@ export function renderOverlayLineInfo(ctx, yearPlan, stats, alpha, width, height
     roundRect(ctx, cardX, cardY, card.cardW, cardH, scaledCornerR)
     ctx.fill()
 
-    // White line name text
+    // Line number (upper part)
     ctx.fillStyle = '#ffffff'
     ctx.font = nameFont
-    ctx.textAlign = 'left'
+    ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(card.displayName, cardX + cardPadH, cardY + cardH / 2)
+    const nameY = cardY + cardH * 0.38
+    ctx.fillText(card.displayName, cardX + card.cardW / 2, nameY)
 
-    // KM and ST stats — only in single-column mode
-    if (!multiCol) {
-      const dispKm = card.km
-      const dispSt = card.stations
+    // Divider line
+    const divY = cardY + cardH * 0.58
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+    ctx.lineWidth = 1 * s * cardScale
+    ctx.beginPath()
+    ctx.moveTo(cardX + cardPadH * 0.6, divY)
+    ctx.lineTo(cardX + card.cardW - cardPadH * 0.6, divY)
+    ctx.stroke()
 
-      const statX = cardX + card.cardW + statGap
-      ctx.font = statFont
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'top'
-      ctx.fillText(`${dispKm.toFixed(1)} km`, statX, cardY + 5 * s * cardScale)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-      ctx.fillText(`${dispSt} st.`, statX, cardY + cardH / 2 + 3 * s * cardScale)
-    }
+    // KM value (lower part)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'
+    ctx.font = kmFont
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(card.kmStr, cardX + card.cardW / 2, cardY + cardH * 0.78)
 
     ctx.restore()
   }
@@ -651,7 +579,7 @@ export function renderScanLineLoading(ctx, width, height, opts) {
   const pctText = `${Math.floor(progress * 100)}%`
   ctx.save()
   ctx.fillStyle = '#ffffff'
-  ctx.font = `900 ${pctFontSize}px "DIN Alternate", "Bahnschrift", "Roboto Condensed", monospace`
+  ctx.font = `900 ${pctFontSize}px ${FONT_FAMILY}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'bottom'
   ctx.fillText(pctText, marginX, marginY - subFontSize - 8 * s)
@@ -659,9 +587,53 @@ export function renderScanLineLoading(ctx, width, height, opts) {
   // Subtitle
   ctx.globalAlpha = subAlpha
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-  ctx.font = `500 ${subFontSize}px "Roboto Condensed", "Arial Narrow", sans-serif`
+  ctx.font = `500 ${subFontSize}px ${FONT_FAMILY}`
   ctx.textBaseline = 'bottom'
   ctx.fillText('Loading tiles...', marginX, marginY)
 
   ctx.restore()
+}
+
+// ─── Stress test: 100 line capsules ──────────────────────────────
+
+/**
+ * Stress test: render 100 fake line capsules.
+ * Auto-finds the timeline canvas, clears it, and draws.
+ * Usage: window.__stressLineInfo()
+ */
+export function stressTestLineInfo(ctx, width, height) {
+  const COLORS = [
+    '#e53935','#d81b60','#8e24aa','#5e35b1','#3949ab',
+    '#1e88e5','#039be5','#00acc1','#00897b','#43a047',
+    '#7cb342','#c0ca33','#fdd835','#ffb300','#fb8c00',
+    '#f4511e','#6d4c41','#757575','#546e7a','#26a69a',
+  ]
+  const entries = []
+  for (let i = 1; i <= 100; i++) {
+    const isText = i > 90
+    entries.push({
+      lineId: `stress-${i}`,
+      name: isText ? ['机场线','磁浮线','APM线','浦江线','金山线','崇明线','南汇线','嘉闵线','宝嘉线','示范线'][i - 91] : `${i}号线`,
+      color: COLORS[i % COLORS.length],
+      km: +(Math.random() * 80 + 5).toFixed(1),
+      stations: Math.floor(Math.random() * 40 + 3),
+    })
+  }
+  ctx.fillStyle = '#0f1117'
+  ctx.fillRect(0, 0, width, height)
+  renderOverlayLineInfo(ctx, null, { km: 999, stations: 999, lines: 100 }, 1, width, height, {
+    cumulativeLineStats: entries,
+    lineAppearProgress: new Map(),
+    displayStats: { km: 2500, stations: 1200 },
+  })
+}
+
+if (typeof window !== 'undefined') {
+  window.__stressLineInfo = () => {
+    const c = document.querySelector('.preview-view__canvas')
+    if (!c) { console.error('No timeline canvas found — open the preview tab first'); return }
+    const ctx = c.getContext('2d')
+    const dpr = window.devicePixelRatio || 1
+    stressTestLineInfo(ctx, c.width / dpr, c.height / dpr)
+  }
 }

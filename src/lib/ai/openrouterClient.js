@@ -1,7 +1,7 @@
 import { getAiConfig } from './aiConfig.js'
 import { safeJsonParse } from './jsonUtils.js'
 
-const BLTCY_CHAT_COMPLETIONS_PATH = '/v1/chat/completions'
+const BLTCY_CHAT_COMPLETIONS_PATH = '/chat/completions'
 const DEFAULT_API_TIMEOUT_MS = 120000
 
 function resolveProviderApiKey() {

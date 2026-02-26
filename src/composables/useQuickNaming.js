@@ -29,10 +29,15 @@ async function goToStation(index) {
 
   store.setSelectedStations([id])
 
+  // 聚焦到站点位置
   if (getMapFn) {
     const map = getMapFn()
-    if (map && station.lngLat) {
-      map.easeTo({ center: station.lngLat, zoom: 15, duration: 800 })
+    if (map && station.lngLat && Array.isArray(station.lngLat) && station.lngLat.length === 2) {
+      try {
+        map.easeTo({ center: station.lngLat, zoom: 15, duration: 800 })
+      } catch (error) {
+        console.error('[QuickNaming] Failed to focus on station:', error)
+      }
     }
   }
 

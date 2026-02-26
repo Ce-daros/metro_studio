@@ -184,19 +184,53 @@ const selectionActions = {
 
   selectAllStations() {
     if (!this.project) return
-    this.setSelectedStations(this.project.stations.map((station) => station.id))
+
+    // 考虑时间轴过滤
+    const filterYear = this.timelineFilterYear
+    let visibleStations = this.project.stations
+
+    if (filterYear != null) {
+      // 只选择在当前年份已开通的线段相关的站点
+      const visibleEdges = this.project.edges.filter(
+        (edge) => edge.openingYear == null || edge.openingYear <= filterYear
+      )
+      const visibleStationIds = new Set()
+      for (const edge of visibleEdges) {
+        visibleStationIds.add(edge.fromStationId)
+        visibleStationIds.add(edge.toStationId)
+      }
+      visibleStations = this.project.stations.filter((station) => visibleStationIds.has(station.id))
+    }
+
+    this.setSelectedStations(visibleStations.map((station) => station.id))
     this.statusText = `已全选 ${this.selectedStationIds.length} 个站点`
   },
 
   selectAllLines() {
     if (!this.project) return
+
+    // 考虑时间轴过滤
+    const filterYear = this.timelineFilterYear
+    let visibleEdges = this.project.edges
+
+    if (filterYear != null) {
+      // 只选择在当前年份已开通的线段
+      visibleEdges = this.project.edges.filter(
+        (edge) => edge.openingYear == null || edge.openingYear <= filterYear
+      )
+    }
+
     const allEdgeIds = this.project.lines.flatMap((l) => l.edgeIds || [])
+    const visibleEdgeIdSet = new Set(visibleEdges.map((e) => e.id))
+    const filteredEdgeIds = allEdgeIds.filter((id) => visibleEdgeIdSet.has(id))
+
     const allStationIds = new Set()
-    for (const edge of this.project.edges || []) {
+    for (const edge of visibleEdges) {
       if (edge.fromStationId) allStationIds.add(edge.fromStationId)
       if (edge.toStationId) allStationIds.add(edge.toStationId)
     }
-    this.setSelectedEdges([...new Set(allEdgeIds)], { keepStations: false })
+
+    this.setSelectedEdges([...new Set(filteredEdgeIds)], { keepStations: false })
     this.setSelectedStations([...allStationIds], { keepEdges: true })
     this.statusText = `已全选所有线路`
   },
