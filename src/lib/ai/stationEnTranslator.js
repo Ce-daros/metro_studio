@@ -1,6 +1,7 @@
 import { postLLMChat } from "./openrouterClient";
 import { getAiConfig } from "./aiConfig";
 import { extractJsonObject } from "./jsonUtils";
+import { toFiniteNumber } from "../async/utils";
 
 const TRANSLATION_BATCH_SIZE = 30;
 
@@ -98,11 +99,6 @@ const ENGLISH_NAMING_STANDARD = `
 - 特有地名直接用罗马字转写
 `.trim();
 const CHINESE_STATION_SUFFIX_REGEX = /(地铁站|车站|站)$/u;
-
-function toFiniteNumber(value, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 function hasCjk(text) {
   return /[\u3400-\u9fff]/.test(String(text || ""));

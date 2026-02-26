@@ -4,7 +4,7 @@ import { NModal } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
 import { getOrderedStationIds } from '../lib/lineGraph'
 import { getDisplayLineName } from '../lib/lineNaming'
-import { startEnglishReview } from '../composables/useEnglishReview'
+import { startEnglishReview } from '../composables/useSequentialStationReview'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },

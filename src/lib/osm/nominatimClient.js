@@ -1,3 +1,6 @@
+import { sleep } from '../async/utils.js'
+import { createTTLCache, createSimpleThrottle } from './shared/requestUtils.js'
+
 const LOCATIONIQ_ENDPOINT = 'https://us1.locationiq.com/v1/reverse'
 const NOMINATIM_FALLBACK_ENDPOINT = 'https://nominatim.openstreetmap.org/reverse'
 
@@ -7,8 +10,7 @@ const NOMINATIM_REQUEST_TIMEOUT_MS = 15000
 const NOMINATIM_MAX_RETRIES = 3
 const NOMINATIM_CACHE_TTL_MS = 300000
 
-let lastRequestAt = 0
-const cache = new Map()
+const cache = createTTLCache(NOMINATIM_CACHE_TTL_MS)
 
 let _locationIqKey = ''
 try { _locationIqKey = window.localStorage.getItem('locationIqApiKey') || '' } catch { /* noop */ }
@@ -25,31 +27,10 @@ function getMinInterval() {
   return _locationIqKey ? LOCATIONIQ_MIN_INTERVAL_MS : NOMINATIM_MIN_INTERVAL_MS
 }
 
+const throttler = createSimpleThrottle(getMinInterval)
+
 function buildCacheKey(lat, lon, zoom) {
   return `${lat.toFixed(6)},${lon.toFixed(6)},${zoom}`
-}
-
-function sleep(ms, signal) {
-  if (!ms || ms <= 0) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      if (signal) signal.removeEventListener('abort', onAbort)
-      resolve()
-    }, ms)
-    function onAbort() {
-      clearTimeout(timer)
-      reject(new Error('Nominatim 请求已取消'))
-    }
-    if (signal?.aborted) { clearTimeout(timer); reject(new Error('Nominatim 请求已取消')) }
-    else if (signal) signal.addEventListener('abort', onAbort, { once: true })
-  })
-}
-
-async function throttle(signal) {
-  const now = Date.now()
-  const waitMs = lastRequestAt + getMinInterval() - now
-  if (waitMs > 0) await sleep(waitMs, signal)
-  lastRequestAt = Date.now()
 }
 
 /** @param {number} lat @param {number} lon @param {{zoom?: number, signal?: AbortSignal}} [options={}] @returns {Promise<object>} */
@@ -59,11 +40,11 @@ export async function reverseGeocode(lat, lon, options = {}) {
   const key = buildCacheKey(lat, lon, zoom)
 
   const cached = cache.get(key)
-  if (cached && cached.expireAt > Date.now()) return cached.data
+  if (cached !== undefined) return cached
 
   for (let attempt = 0; attempt <= NOMINATIM_MAX_RETRIES; attempt += 1) {
     if (signal?.aborted) throw new Error('Nominatim 请求已取消')
-    await throttle(signal)
+    await throttler.throttle(signal)
 
     const useLocationIq = !!_locationIqKey
     const endpoint = useLocationIq ? LOCATIONIQ_ENDPOINT : NOMINATIM_FALLBACK_ENDPOINT
@@ -101,11 +82,11 @@ export async function reverseGeocode(lat, lon, options = {}) {
       if (data?.error) {
         // Nominatim returns error for coordinates with no data (e.g. ocean)
         const emptyResult = { address: {}, namedetails: {}, extratags: {}, display_name: '' }
-        cache.set(key, { data: emptyResult, expireAt: Date.now() + NOMINATIM_CACHE_TTL_MS })
+        cache.set(key, emptyResult)
         return emptyResult
       }
 
-      cache.set(key, { data, expireAt: Date.now() + NOMINATIM_CACHE_TTL_MS })
+      cache.set(key, data)
       return data
     } catch (error) {
       clearTimeout(timeout)

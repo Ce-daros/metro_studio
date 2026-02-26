@@ -2,6 +2,12 @@
  * 将线网工程导出为人类可读的纯文本格式
  * 按年份分组，显示每年开通的各期线路
  */
+import {
+  buildUndirectedAdjacencyGraph,
+  findConnectedComponents,
+  findPathEndpoints,
+  findFarthestNode,
+} from '../graphUtils'
 
 const STATUS_LABELS = {
   open: '运营中',
@@ -37,73 +43,23 @@ function formatDistance(meters) {
 function mergeEdgesIntoIntervals(edges, getStationName) {
   if (!edges.length) return []
 
-  // 构建邻接表
-  const adj = new Map()
-  for (const e of edges) {
-    if (!adj.has(e.fromStationId)) adj.set(e.fromStationId, [])
-    if (!adj.has(e.toStationId)) adj.set(e.toStationId, [])
-    adj.get(e.fromStationId).push(e.toStationId)
-    adj.get(e.toStationId).push(e.fromStationId)
-  }
+  const adj = buildUndirectedAdjacencyGraph(edges)
+  const components = findConnectedComponents(adj)
 
-  // BFS 找连通分量
-  const visited = new Set()
-  const components = []
-  for (const nodeId of adj.keys()) {
-    if (visited.has(nodeId)) continue
-    const component = []
-    const queue = [nodeId]
-    visited.add(nodeId)
-    while (queue.length) {
-      const cur = queue.shift()
-      component.push(cur)
-      for (const nb of adj.get(cur)) {
-        if (!visited.has(nb)) {
-          visited.add(nb)
-          queue.push(nb)
-        }
-      }
-    }
-    components.push(component)
-  }
-
-  // 对每个连通分量，找起止站
   const intervals = []
   for (const comp of components) {
-    const endpoints = comp.filter((id) => adj.get(id).length === 1)
+    const endpoints = findPathEndpoints(adj, comp)
 
     if (endpoints.length === 0) {
       // 环线
       intervals.push(`${getStationName(comp[0])}环线`)
     } else if (endpoints.length === 2) {
-      // 简单链：从一端走到另一端
-      const start = endpoints[0]
-      const end = endpoints[1]
-      intervals.push(`${getStationName(start)}—${getStationName(end)}`)
+      // 简单链
+      intervals.push(`${getStationName(endpoints[0])}—${getStationName(endpoints[1])}`)
     } else {
-      // 有分支的树：BFS 找直径（最远两端点）
-      const bfs = (startId) => {
-        const dist = new Map([[startId, 0]])
-        const q = [startId]
-        let farthest = startId
-        let maxDist = 0
-        while (q.length) {
-          const c = q.shift()
-          for (const nb of adj.get(c)) {
-            if (!dist.has(nb)) {
-              dist.set(nb, dist.get(c) + 1)
-              q.push(nb)
-              if (dist.get(nb) > maxDist) {
-                maxDist = dist.get(nb)
-                farthest = nb
-              }
-            }
-          }
-        }
-        return farthest
-      }
-      const far1 = bfs(endpoints[0])
-      const far2 = bfs(far1)
+      // 有分支的树：BFS 找直径
+      const far1 = findFarthestNode(adj, endpoints[0])
+      const far2 = findFarthestNode(adj, far1)
       intervals.push(`${getStationName(far1)}—${getStationName(far2)}`)
     }
   }

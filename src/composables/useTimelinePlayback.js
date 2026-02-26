@@ -226,9 +226,12 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
     },
   )
 
-  // Rebuild when project data changes
+  // Rebuild when project data changes (edges, line names, colors, etc.)
   watch(
-    () => store.project?.edges?.length,
+    () => [
+      store.project?.edges?.length,
+      store.project?.lines?.map(l => `${l.nameZh}|${l.nameEn}|${l.color}`).join(','),
+    ],
     () => {
       if (active.value && renderer) {
         renderer.rebuild()

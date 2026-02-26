@@ -1,8 +1,4 @@
-
-function toFiniteNumber(value, fallback = 0) {
-  const n = Number(value)
-  return Number.isFinite(n) ? n : fallback
-}
+import { toFiniteNumber } from '../../lib/async/utils.js'
 
 const GRID_NEIGHBOR_OFFSETS = Object.freeze([
   Object.freeze([-1, -1]),

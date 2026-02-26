@@ -1,3 +1,6 @@
+import { sleep, createAbortSignalWithTimeout } from '../async/utils.js'
+import { createTTLCache } from './shared/requestUtils.js'
+
 const DEV_PROXY_ENDPOINTS = ['/api/overpass']
 const PUBLIC_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -26,7 +29,7 @@ const endpointState = new Map(OVERPASS_ENDPOINTS.map((endpoint) => [
 ]))
 
 const inflightQueries = new Map()
-const queryCache = new Map()
+const queryCache = createTTLCache(OVERPASS_CACHE_TTL_MS)
 
 let limiterActive = 0
 let limiterNextDispatchAt = 0
@@ -167,63 +170,6 @@ function getLiveEndpoints() {
     .sort((left, right) => getEndpointState(left).disabledUntil - getEndpointState(right).disabledUntil)
 }
 
-function sleep(ms, signal) {
-  const waitMs = Math.max(0, Number(ms) || 0)
-  if (!waitMs) return Promise.resolve()
-  return new Promise((resolve, reject) => {
-    let abortHandler = null
-    const timer = setTimeout(() => {
-      if (signal && abortHandler) {
-        signal.removeEventListener('abort', abortHandler)
-      }
-      resolve()
-    }, waitMs)
-    abortHandler = () => {
-      clearTimeout(timer)
-      signal.removeEventListener('abort', abortHandler)
-      reject(new Error('Overpass 请求已取消'))
-    }
-    if (signal) {
-      if (signal.aborted) {
-        clearTimeout(timer)
-        reject(new Error('Overpass 请求已取消'))
-      } else {
-        signal.addEventListener('abort', abortHandler, { once: true })
-      }
-    }
-  })
-}
-
-function createAbortSignalWithTimeout(parentSignal, timeoutMs) {
-  const controller = new AbortController()
-
-  const timeoutHandle = setTimeout(() => {
-    controller.abort(new Error(`timeout-${timeoutMs}ms`))
-  }, timeoutMs)
-
-  const abortFromParent = () => {
-    controller.abort(parentSignal?.reason || new Error('aborted'))
-  }
-
-  if (parentSignal) {
-    if (parentSignal.aborted) {
-      abortFromParent()
-    } else {
-      parentSignal.addEventListener('abort', abortFromParent, { once: true })
-    }
-  }
-
-  return {
-    signal: controller.signal,
-    cleanup() {
-      clearTimeout(timeoutHandle)
-      if (parentSignal) {
-        parentSignal.removeEventListener('abort', abortFromParent)
-      }
-    },
-  }
-}
-
 /** @param {string} query @param {AbortSignal} [signal] @returns {Promise<{elements: object[]}>} */
 export async function postOverpassQuery(query, signal) {
   const normalizedQuery = String(query || '').trim()
@@ -232,12 +178,9 @@ export async function postOverpassQuery(query, signal) {
   }
 
   if (OVERPASS_CACHE_TTL_MS > 0) {
-    const cacheEntry = queryCache.get(normalizedQuery)
-    if (cacheEntry && cacheEntry.expireAt > Date.now()) {
-      return cacheEntry.payload
-    }
-    if (cacheEntry && cacheEntry.expireAt <= Date.now()) {
-      queryCache.delete(normalizedQuery)
+    const cached = queryCache.get(normalizedQuery)
+    if (cached !== undefined) {
+      return cached
     }
   }
 
@@ -251,10 +194,7 @@ export async function postOverpassQuery(query, signal) {
   try {
     const payload = await requestPromise
     if (OVERPASS_CACHE_TTL_MS > 0) {
-      queryCache.set(normalizedQuery, {
-        payload,
-        expireAt: Date.now() + OVERPASS_CACHE_TTL_MS,
-      })
+      queryCache.set(normalizedQuery, payload)
     }
     return payload
   } finally {

@@ -8,6 +8,7 @@ import { createStandaloneHighResExporter } from '../../../composables/useMapExpo
 import { saveProjectToDb, setLatestProject } from '../../../lib/storage/db'
 import { downloadProjectFile, parseProjectFile } from '../../../lib/storage/projectFile'
 import { validateProject } from '../../../lib/validation'
+import { sleep } from '../../../lib/async/utils'
 
 let persistTimer = null
 let actualRoutePngExporter = null
@@ -34,10 +35,6 @@ function getRegisteredExporter() {
     return globalExporter
   }
   return null
-}
-
-function sleep(ms) {
-  return new Promise((resolve) => globalThis.setTimeout(resolve, ms))
 }
 
 async function waitForActualRoutePngExporter({ timeoutMs = 2200, intervalMs = 120 } = {}) {

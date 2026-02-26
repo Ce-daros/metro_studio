@@ -3,8 +3,7 @@ import { computed, inject, nextTick, reactive, ref, watch } from 'vue'
 import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { NTooltip } from 'naive-ui'
-import { useQuickNaming, advanceQuickNaming } from '../../composables/useQuickNaming'
-import { useEnglishReview, advanceEnglishReview } from '../../composables/useEnglishReview'
+import { useQuickNaming, advanceQuickNaming, useEnglishReview, advanceEnglishReview } from '../../composables/useSequentialStationReview'
 
 const store = useProjectStore()
 const nameZhInputRef = ref(null)

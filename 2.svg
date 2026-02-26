@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- 明日方舟粉紫风格 Favicon -->
+  <!-- 深色背景 -->
+  <rect x="4" y="4" width="120" height="120" rx="24" fill="#1a1025"/>
+  <!-- M 字母 - 粉紫渐变线路 -->
+  <!-- 左竖线 (亮粉) -->
+  <line x1="28" y1="96" x2="28" y2="32" stroke="#FF6B9D" stroke-width="12" stroke-linecap="round"/>
+  <!-- 左斜线 (粉紫) -->
+  <line x1="28" y1="32" x2="64" y2="68" stroke="#C850C0" stroke-width="12" stroke-linecap="round"/>
+  <!-- 右斜线 (紫) -->
+  <line x1="64" y1="68" x2="100" y2="32" stroke="#8E24AA" stroke-width="12" stroke-linecap="round"/>
+  <!-- 右竖线 (深紫蓝) -->
+  <line x1="100" y1="32" x2="100" y2="96" stroke="#6A1B9A" stroke-width="12" stroke-linecap="round"/>
+  <!-- 换乘站点 (明日方舟亮黄点缀) -->
+  <circle cx="28" cy="32" r="7" fill="#FFD54F"/>
+  <circle cx="64" cy="68" r="7" fill="#FFD54F"/>
+  <circle cx="100" cy="32" r="7" fill="#FFD54F"/>
+</svg>

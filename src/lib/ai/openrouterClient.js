@@ -1,5 +1,6 @@
 import { getAiConfig } from './aiConfig.js'
 import { safeJsonParse } from './jsonUtils.js'
+import { createAbortSignalWithTimeout } from '../async/utils.js'
 
 const BLTCY_CHAT_COMPLETIONS_PATH = '/chat/completions'
 const DEFAULT_API_TIMEOUT_MS = 120000
@@ -34,36 +35,6 @@ function resolveChatEndpoint() {
 
   const normalizedBase = customBase.replace(/\/+$/, '')
   return `${normalizedBase}${BLTCY_CHAT_COMPLETIONS_PATH}`
-}
-
-function createAbortSignalWithTimeout(parentSignal, timeoutMs) {
-  const controller = new AbortController()
-
-  const timeoutHandle = setTimeout(() => {
-    controller.abort(new Error(`timeout-${timeoutMs}ms`))
-  }, timeoutMs)
-
-  const abortFromParent = () => {
-    controller.abort(parentSignal?.reason || new Error('aborted'))
-  }
-
-  if (parentSignal) {
-    if (parentSignal.aborted) {
-      abortFromParent()
-    } else {
-      parentSignal.addEventListener('abort', abortFromParent, { once: true })
-    }
-  }
-
-  return {
-    signal: controller.signal,
-    cleanup() {
-      clearTimeout(timeoutHandle)
-      if (parentSignal) {
-        parentSignal.removeEventListener('abort', abortFromParent)
-      }
-    },
-  }
 }
 
 function buildErrorMessage(status, body) {
