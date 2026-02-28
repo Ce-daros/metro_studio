@@ -16,21 +16,32 @@ export const edgeActions = {
     const multi = Boolean(options.multi || options.toggle)
     const toggle = Boolean(options.toggle)
     if (multi) {
-      const selected = new Set(this.selectedEdgeIds || [])
-      if (toggle && selected.has(target.id)) {
-        selected.delete(target.id)
+      const selectedEdges = new Set(this.selectedEdgeIds || [])
+      const selectedStations = new Set(this.selectedStationIds || [])
+      if (toggle && selectedEdges.has(target.id)) {
+        selectedEdges.delete(target.id)
+        // 移除不再被任何选中线段引用的站点
+        const stillNeeded = new Set()
+        for (const eid of selectedEdges) {
+          const e = this.edgeById.get(eid)
+          if (e) { stillNeeded.add(e.fromStationId); stillNeeded.add(e.toStationId) }
+        }
+        for (const sid of selectedStations) {
+          if (!stillNeeded.has(sid)) selectedStations.delete(sid)
+        }
       } else {
-        selected.add(target.id)
+        selectedEdges.add(target.id)
+        if (target.fromStationId) selectedStations.add(target.fromStationId)
+        if (target.toStationId) selectedStations.add(target.toStationId)
       }
-      this.setSelectedEdges([...selected], { keepStations: Boolean(options.keepStationSelection) })
+      this.setSelectedEdges([...selectedEdges], { keepStations: true })
+      this.setSelectedStations([...selectedStations], { keepEdges: true })
     } else {
-      this.setSelectedEdges([target.id], { keepStations: Boolean(options.keepStationSelection) })
+      this.setSelectedEdges([target.id], { keepStations: true })
+      const stationIds = [target.fromStationId, target.toStationId].filter(Boolean)
+      this.setSelectedStations(stationIds, { keepEdges: true })
     }
     this.selectedEdgeAnchor = null
-    if (!options.keepStationSelection) {
-      this.selectedStationId = null
-      this.selectedStationIds = []
-    }
     this.pendingEdgeStartStationId = null
   },
 
@@ -188,6 +199,7 @@ export const edgeActions = {
         lengthMeters: haversineDistanceMeters(fromStation.lngLat, toStation.lngLat),
         isCurved: false,
         openingYear: this.currentEditYear,
+        phase: this.currentEditPhase || null,
       }
       this.project.edges.push(edge)
     } else if (!edge.sharedByLineIds.includes(line.id)) {

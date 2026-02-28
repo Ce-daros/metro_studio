@@ -35,6 +35,7 @@ function updateEditYearToMax(store) {
     store.currentEditYear = defaultYear
     store.timelineFilterYear = defaultYear
   }
+  store.currentEditPhase = ''
 }
 
 /**
@@ -117,6 +118,12 @@ const lifecycleActions = {
     this.project.meta.updatedAt = new Date().toISOString()
     this.statusText = `已重命名工程: ${normalizedName}`
     await this.persistNow()
+  },
+
+  setProjectRegion(region) {
+    if (!this.project) return
+    this.project.region = region || null
+    this.touchProject(region ? `设置工程城市: ${region.name}` : '已清除工程城市')
   },
 
   async duplicateCurrentProject(name) {

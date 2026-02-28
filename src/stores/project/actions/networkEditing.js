@@ -109,6 +109,10 @@ const networkEditingActions = {
     const normalizedYear = Number.isFinite(year) ? Math.floor(Number(year)) : 2010
     this.currentEditYear = normalizedYear
   },
+
+  setCurrentEditPhase(phase) {
+    this.currentEditPhase = String(phase || '').trim()
+  },
 }
 
 export { networkEditingActions }

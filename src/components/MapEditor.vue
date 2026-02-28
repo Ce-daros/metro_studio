@@ -554,7 +554,9 @@ onMounted(() => {
   map.on('mousedown', startBoxSelection)
   map.on('mousemove', onMouseMove)
   map.on('mouseup', stopStationDrag)
-  map.on('mouseleave', stopStationDrag)
+  map.on('mouseleave', () => {
+    stopStationDrag()
+  })
   map.on('move', refreshRouteDrawPreviewProjectedPoints)
   map.on('move', updateAnnotationPositions)
   map.on('move', refreshMapGridLayer)

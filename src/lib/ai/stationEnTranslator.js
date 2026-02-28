@@ -1,18 +1,17 @@
 import { postLLMChat } from "./openrouterClient";
 import { getAiConfig } from "./aiConfig";
-import { extractJsonObject } from "./jsonUtils";
 import { toFiniteNumber } from "../async/utils";
 
-const TRANSLATION_BATCH_SIZE = 30;
+const TRANSLATION_BATCH_SIZE = 10;
+const STATIONS_PER_REQUEST = 4;
 
 // Few-shot 示例：中文站名 → 英文站名
 const TRANSLATION_FEW_SHOT_EXAMPLES = [
   ["创新谷", "Innovation Valley"],
   ["大学城", "University Town"],
   ["玉符河", "Yufu River"],
-  ["济南西站", "Jinanxi Railway Station"],
   ["济南站", "Jinan Railway Station"],
-  ["长途汽车站", "Long-distance Bus Station"],
+  ["长途汽车站", "Coach Station"],
   ["紫薇路", "Ziwei Road"],
   ["遥墙机场南", "Jinan International Airport South"],
   ["奥体中心", "Olympic Sports Center"],
@@ -20,38 +19,16 @@ const TRANSLATION_FEW_SHOT_EXAMPLES = [
   ["济南西站西广场", "Jinanxi Railway Station West Square"],
   ["八一立交桥", "Bayi Interchange"],
   ["黄金产业园", "Gold Industrial Park"],
-  ["玉函小区", "Yuhanxiaoqu"],
+  ["玉函小区", "Yuhan Xiaoqu"],
   ["齐鲁软件园", "Qilu Software Park"],
   ["世纪大道", "Century Avenue"],
   ["超算中心", "Supercomputer Center"],
-  ["世纪大道春喧路", "Century Avenue · Chunxuan Road"],
+  ["经七纬二", "Jingqi Weier"],
   ["彩虹湖", "Rainbow Lake"],
   ["飞跃大道东", "Feiyue Avenue East"],
   ["济北小学", "Jibei Primary School"],
   ["杆石桥", "Ganshiqiao"],
 ];
-
-const STATION_TRANSLATION_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    items: {
-      type: "array",
-      minItems: 0,
-      maxItems: TRANSLATION_BATCH_SIZE,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          stationId: { type: "string", minLength: 1, maxLength: 64 },
-          nameEn: { type: "string", minLength: 1, maxLength: 96 },
-        },
-        required: ["stationId", "nameEn"],
-      },
-    },
-  },
-  required: ["items"],
-};
 
 const ENGLISH_NAMING_STANDARD = `
 ## 一、专名翻译规则
@@ -162,50 +139,6 @@ function normalizeInputStations(stations) {
     .filter((station) => station.stationId && station.nameZh);
 }
 
-function extractItemsFromChatResponse(payload) {
-  const content = payload?.choices?.[0]?.message?.content;
-  if (content && typeof content === "object") {
-    if (Array.isArray(content)) {
-      const joined = content
-        .map((part) => {
-          if (typeof part === "string") return part;
-          return String(part?.text || "");
-        })
-        .join("");
-      const parsed = extractJsonObject(joined);
-      return parsed && Array.isArray(parsed.items) ? parsed.items : [];
-    }
-    return Array.isArray(content.items) ? content.items : [];
-  }
-  if (typeof content === "string") {
-    const parsed = extractJsonObject(content);
-    if (parsed && Array.isArray(parsed.items)) {
-      return parsed.items;
-    }
-  }
-  return [];
-}
-
-function normalizeTranslationItems(rawItems, stationMap) {
-  const updates = [];
-  const seen = new Set();
-
-  for (const item of rawItems || []) {
-    const stationId = String(item?.stationId || "").trim();
-    if (!stationId || seen.has(stationId)) continue;
-    const station = stationMap.get(stationId);
-    if (!station) continue;
-
-    const nameEn = sanitizeEnglishStationName(item?.nameEn);
-    if (!nameEn) continue;
-
-    seen.add(stationId);
-    updates.push({ stationId, nameEn });
-  }
-
-  return updates;
-}
-
 function isResponseFormatError(error) {
   const text = String(error?.message || "").toLowerCase();
   return (
@@ -228,11 +161,32 @@ async function postLLMChatWithFallback(payload, signal) {
   }
 }
 
-async function translateStationChunk(chunk, model, signal) {
-  const fewShotExamples = TRANSLATION_FEW_SHOT_EXAMPLES.map(
-    ([zh, en]) => `  ${zh} → ${en}`
-  ).join("\n");
+/**
+ * 将 few-shot 示例按每组 STATIONS_PER_REQUEST 个合并
+ */
+function buildFewShotMessages() {
+  const messages = [];
+  for (let i = 0; i < TRANSLATION_FEW_SHOT_EXAMPLES.length; i += STATIONS_PER_REQUEST) {
+    const group = TRANSLATION_FEW_SHOT_EXAMPLES.slice(i, i + STATIONS_PER_REQUEST);
+    const userContent = group.map(([zh]) => zh).join("\n");
+    const assistantContent = group.map(([, en]) => en).join("\n");
+    messages.push(
+      { role: "user", content: userContent },
+      { role: "assistant", content: assistantContent },
+    );
+  }
+  return messages;
+}
 
+/**
+ * 翻译一批站点（最多 STATIONS_PER_REQUEST 个）
+ * @param {{stationId: string, nameZh: string, previousNameEn?: string}[]} stations
+ * @param {string} model
+ * @param {AbortSignal} signal
+ * @param {{name: string, nameEn?: string}} cityContext
+ * @returns {Promise<Array<{stationId: string, nameEn: string}>>}
+ */
+async function translateStationBatch(stations, model, signal, cityContext) {
   const systemPrompt = [
     "# 角色",
     "你是轨道交通英文站名规范翻译助手。",
@@ -243,31 +197,32 @@ async function translateStationChunk(chunk, model, signal) {
     "# 翻译规范",
     ENGLISH_NAMING_STANDARD,
     "",
-    "# 参考示例",
-    fewShotExamples,
-    "",
     "# 输出要求",
-    "- 仅输出 JSON 格式",
-    "- 仅返回输入的 stationId，不得添加或删除",
-    "- 所有输出必须可直接用于站名标签",
+    "- 每行一个英文站名，顺序与输入对应",
+    "- 不要包含任何其他内容（不要引号、编号、解释）",
     "",
     "# 禁止事项",
     "- 不得凭空添加不在中文名中的地名",
     "- 不得对公共机构名称整词音译（必须意译通名）",
     "- 不得使用生僻缩写或不规范拼写",
+    ...(cityContext
+      ? [
+          "",
+          "# 城市上下文",
+          `当前城市：${cityContext.name}${cityContext.nameEn ? `（${cityContext.nameEn}）` : ""}`,
+          "请根据该城市的地理和文化背景进行翻译，例如涉及当地地名、机场、火车站等应使用该城市对应的英文名。",
+        ]
+      : []),
   ].join("\n");
+
+  // 构建 few-shot 对话
+  const fewShotMessages = buildFewShotMessages();
+
+  const userContent = stations.map((s) => s.nameZh).join("\n");
 
   const payload = {
     model,
     stream: false,
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "station_translation_batch",
-        strict: true,
-        schema: STATION_TRANSLATION_SCHEMA,
-      },
-    },
     temperature: 0,
     top_p: 0.8,
     messages: [
@@ -275,51 +230,35 @@ async function translateStationChunk(chunk, model, signal) {
         role: "system",
         content: systemPrompt,
       },
+      ...fewShotMessages,
       {
         role: "user",
-        content: JSON.stringify(
-          {
-            task: "将输入列表中的中文站名翻译为符合规范的英文站名。",
-            output: "返回 { items: [{ stationId, nameEn }] }",
-            stations: chunk.map((item) => ({
-              stationId: item.stationId,
-              nameZh: item.nameZh, // 保留完整站名，让 AI 判断是否是火车站
-            })),
-          },
-          null,
-          2,
-        ),
+        content: userContent,
       },
     ],
   };
 
-  const response = await postLLMChatWithFallback(payload, signal);
-  const stationMap = new Map(
-    chunk.map((station) => [station.stationId, station]),
+  const response = await postLLMChat(payload, signal);
+  const content = sanitizeEnglishStationName(
+    response?.choices?.[0]?.message?.content || "",
   );
-  const modelItems = normalizeTranslationItems(
-    extractItemsFromChatResponse(response),
-    stationMap,
-  );
-  const translatedIdSet = new Set(modelItems.map((item) => item.stationId));
+  const lines = content.split("\n").map((l) => l.trim()).filter(Boolean);
 
-  const fallbackItems = chunk
-    .filter((station) => !translatedIdSet.has(station.stationId))
-    .map((station) => ({
-      stationId: station.stationId,
-      nameEn: fallbackNameEn(station.nameZh, station.previousNameEn),
-    }))
-    .filter((item) => item.nameEn);
+  const results = [];
+  for (let i = 0; i < stations.length && i < lines.length; i++) {
+    results.push({ stationId: stations[i].stationId, nameEn: lines[i] });
+  }
 
-  return [...modelItems, ...fallbackItems];
+  return results;
 }
 
-/** @param {{stations?: Array<{id?: string, stationId?: string, nameZh: string, nameEn?: string}>, model?: string, signal?: AbortSignal, onProgress?: function}} options @returns {Promise<{updates: Array<{stationId: string, nameEn: string}>, failed: Array<{stationId: string, reason: string}>}>} */
+/** @param {{stations?: Array<{id?: string, stationId?: string, nameZh: string, nameEn?: string}>, model?: string, signal?: AbortSignal, onProgress?: function, cityContext?: {name: string, nameEn?: string}}} options @returns {Promise<{updates: Array<{stationId: string, nameEn: string}>, failed: Array<{stationId: string, reason: string}>}>} */
 export async function retranslateStationEnglishNames({
   stations,
   model,
   signal,
   onProgress,
+  cityContext,
 } = {}) {
   const normalizedStations = normalizeInputStations(stations);
   const total = normalizedStations.length;
@@ -332,55 +271,77 @@ export async function retranslateStationEnglishNames({
     resolvedModel = getAiConfig().model;
   }
   if (!resolvedModel) {
-    throw new Error('请先在「设置 → AI 配置」中填写模型名称');
+    throw new Error("请先在「设置 → AI 配置」中填写模型名称");
   }
 
   const updates = [];
   const failed = [];
-  const chunks = chunkArray(normalizedStations, TRANSLATION_BATCH_SIZE);
 
   let done = 0;
   onProgress?.({ done, total, percent: 0, message: "准备翻译任务..." });
 
+  // 将站点按 STATIONS_PER_REQUEST 分组
+  const stationBatches = [];
+  for (let i = 0; i < normalizedStations.length; i += STATIONS_PER_REQUEST) {
+    stationBatches.push(normalizedStations.slice(i, i + STATIONS_PER_REQUEST));
+  }
+
+  // 将批次按 TRANSLATION_BATCH_SIZE 分组（并行控制）
+  const parallelChunks = chunkArray(stationBatches, TRANSLATION_BATCH_SIZE);
+
   // 并行处理所有chunk
-  const chunkPromises = chunks.map(async (chunk, chunkIndex) => {
+  const chunkPromises = parallelChunks.map(async (batches, chunkIndex) => {
     if (signal?.aborted) {
       throw new Error("重译任务已取消");
     }
 
-    try {
-      const chunkUpdates = await translateStationChunk(chunk, resolvedModel, signal);
-      const foundIds = new Set(chunkUpdates.map((item) => item.stationId));
+    // chunk内每个批次独立请求
+    const batchPromises = batches.map((batch) =>
+      translateStationBatch(batch, resolvedModel, signal, cityContext)
+    );
 
-      const chunkFailed = [];
-      for (const station of chunk) {
-        if (!foundIds.has(station.stationId)) {
-          chunkFailed.push({
-            stationId: station.stationId,
-            reason: "模型未返回可用翻译结果",
-          });
+    const batchResults = await Promise.allSettled(batchPromises);
+
+    const chunkUpdates = [];
+    const chunkFailed = [];
+
+    for (let i = 0; i < batchResults.length; i++) {
+      const batch = batches[i];
+      const result = batchResults[i];
+
+      if (result.status === "fulfilled" && result.value?.length > 0) {
+        const translatedIds = new Set(result.value.map((r) => r.stationId));
+        chunkUpdates.push(...result.value);
+
+        // 处理该批次中未翻译的站点
+        for (const station of batch) {
+          if (!translatedIds.has(station.stationId)) {
+            const fallback = fallbackNameEn(station.nameZh, station.previousNameEn);
+            if (fallback) {
+              chunkUpdates.push({ stationId: station.stationId, nameEn: fallback });
+            } else {
+              chunkFailed.push({ stationId: station.stationId, reason: "模型未返回该站点翻译" });
+            }
+          }
+        }
+      } else {
+        // 整个批次失败，fallback所有站点
+        for (const station of batch) {
+          const fallback = fallbackNameEn(station.nameZh, station.previousNameEn);
+          if (fallback) {
+            chunkUpdates.push({ stationId: station.stationId, nameEn: fallback });
+          } else {
+            const reason = result.status === "rejected"
+              ? result.reason?.message || "翻译失败"
+              : "模型未返回可用翻译结果";
+            chunkFailed.push({ stationId: station.stationId, reason });
+          }
         }
       }
-
-      return { success: true, updates: chunkUpdates, failed: chunkFailed, chunk };
-    } catch (error) {
-      const chunkUpdates = [];
-      const chunkFailed = [];
-
-      for (const station of chunk) {
-        const fallback = fallbackNameEn(station.nameZh, station.previousNameEn);
-        if (fallback) {
-          chunkUpdates.push({ stationId: station.stationId, nameEn: fallback });
-        } else {
-          chunkFailed.push({
-            stationId: station.stationId,
-            reason: String(error?.message || "翻译失败"),
-          });
-        }
-      }
-
-      return { success: false, updates: chunkUpdates, failed: chunkFailed, chunk };
     }
+
+    const totalStations = batches.reduce((sum, b) => sum + b.length, 0);
+    return { updates: chunkUpdates, failed: chunkFailed, chunkLength: totalStations };
   });
 
   // 等待所有chunk完成
@@ -392,15 +353,13 @@ export async function retranslateStationEnglishNames({
       throw new Error("重译任务已取消");
     }
 
-    if (result.status === 'fulfilled') {
-      const { updates: chunkUpdates, failed: chunkFailed, chunk } = result.value;
+    if (result.status === "fulfilled") {
+      const { updates: chunkUpdates, failed: chunkFailed, chunkLength } = result.value;
       updates.push(...chunkUpdates);
       failed.push(...chunkFailed);
-      done += chunk.length;
+      done += chunkLength;
     } else {
-      // Promise被reject的情况(不应该发生,因为我们在内部catch了)
-      // 但为了安全起见还是处理一下
-      done += TRANSLATION_BATCH_SIZE;
+      done += TRANSLATION_BATCH_SIZE * STATIONS_PER_REQUEST;
     }
 
     onProgress?.({
@@ -429,7 +388,7 @@ export async function retranslateStationEnglishNames({
 
 /**
  * 翻译单个站名（内部调用批量翻译）
- * @param {{stationId?: string, nameZh: string, nameEn?: string, model?: string, signal?: AbortSignal}} options
+ * @param {{stationId?: string, nameZh: string, nameEn?: string, model?: string, signal?: AbortSignal, cityContext?: {name: string, nameEn?: string}}} options
  * @returns {Promise<string>} 返回英文站名
  */
 export async function translateStationEnglishName({
@@ -438,12 +397,14 @@ export async function translateStationEnglishName({
   nameEn,
   model,
   signal,
+  cityContext,
 } = {}) {
   const id = String(stationId || "single").trim();
   const result = await retranslateStationEnglishNames({
     stations: [{ stationId: id, nameZh, nameEn }],
     model,
     signal,
+    cityContext,
   });
 
   if (result.updates.length > 0) {

@@ -24,6 +24,7 @@ import { LINE_STYLE_OPTIONS, getLineStyleMap } from '../../lib/lineStyles'
 const LAYER_LANDUSE = 'landuse-overlay'
 const LAYER_POPULATION_1KM = 'population-overlay-1km'
 const LAYER_POPULATION_100M = 'population-overlay-100m'
+const LAYER_TRUNK_ROADS = 'trunk-roads-overlay'
 const LAYER_STATIONS_LABEL = 'railmap-stations-label'
 const LAYER_STATIONS_INTERCHANGE = 'railmap-stations-interchange'
 
@@ -448,23 +449,9 @@ export function updateMapDisplayVisibility(map, store) {
 export function ensureLanduseLayer(map, store) {
   if (!map) return
 
-  if (!store.protomapsApiKey) {
-    console.warn('Protomaps API Key not configured. Please set it in Settings > Configure Protomaps API Key')
+  if (!ensureProtomapsSource(map, store)) {
     removeLanduseLayer(map)
     return
-  }
-
-  if (!map.getSource('protomaps')) {
-    try {
-      map.addSource('protomaps', {
-        type: 'vector',
-        url: `https://api.protomaps.com/tiles/v4.json?key=${store.protomapsApiKey}`,
-        attribution: '© Protomaps © OpenStreetMap contributors',
-      })
-    } catch (e) {
-      console.error('Failed to add protomaps source:', e)
-      return
-    }
   }
 
   if (!map.getLayer(LAYER_LANDUSE)) {
@@ -504,10 +491,7 @@ export function removeLanduseLayer(map) {
   if (map.getLayer(LAYER_LANDUSE)) {
     map.removeLayer(LAYER_LANDUSE)
   }
-
-  if (map.getSource('protomaps')) {
-    map.removeSource('protomaps')
-  }
+  cleanupProtomapsSourceIfUnused(map)
 }
 
 export function updateLanduseVisibility(map, visible) {
@@ -573,8 +557,92 @@ function normalizeOverlayOrder(map) {
   if (!map) return
   const anchor = getOverlayAnchorLayer(map)
   moveLayerSafe(map, LAYER_LANDUSE, anchor)
+  moveLayerSafe(map, LAYER_TRUNK_ROADS, anchor)
   moveLayerSafe(map, LAYER_POPULATION_1KM, anchor)
   moveLayerSafe(map, LAYER_POPULATION_100M, anchor)
+}
+
+function ensureProtomapsSource(map, store) {
+  if (!store?.protomapsApiKey) {
+    console.warn('Protomaps API Key not configured. Please set it in Settings > Configure Protomaps API Key')
+    if (store) {
+      store.statusText = '请先在设置中配置 Protomaps API Key，才能使用主干道高亮'
+    }
+    return false
+  }
+  if (map.getSource('protomaps')) return true
+  try {
+    map.addSource('protomaps', {
+      type: 'vector',
+      url: `https://api.protomaps.com/tiles/v4.json?key=${store.protomapsApiKey}`,
+      attribution: '© Protomaps © OpenStreetMap contributors',
+    })
+    return true
+  } catch (e) {
+    console.error('Failed to add protomaps source:', e)
+    return false
+  }
+}
+
+function cleanupProtomapsSourceIfUnused(map) {
+  if (!map?.getSource('protomaps')) return
+  if (map.getLayer(LAYER_LANDUSE) || map.getLayer(LAYER_TRUNK_ROADS)) return
+  map.removeSource('protomaps')
+}
+
+export function ensureTrunkRoadLayer(map, store) {
+  if (!map) return
+  if (!ensureProtomapsSource(map, store)) {
+    removeTrunkRoadLayer(map)
+    return
+  }
+
+  if (!map.getLayer(LAYER_TRUNK_ROADS)) {
+    try {
+      const beforeLayer = getOverlayAnchorLayer(map)
+      const layerDef = {
+        id: LAYER_TRUNK_ROADS,
+        type: 'line',
+        source: 'protomaps',
+        'source-layer': 'roads',
+        filter: [
+          'any',
+          ['in', ['get', 'kind_detail'], ['literal', ['motorway', 'trunk', 'primary']]],
+          ['in', ['get', 'kind'], ['literal', ['highway', 'major_road']]],
+        ],
+        paint: {
+          'line-color': '#ff5a36',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1.4, 11, 2.2, 14, 4.2, 17, 7.2],
+          'line-opacity': 0.88,
+          'line-blur': 0.2,
+        },
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+        },
+      }
+      if (beforeLayer) map.addLayer(layerDef, beforeLayer)
+      else map.addLayer(layerDef)
+      normalizeOverlayOrder(map)
+    } catch (e) {
+      console.error('Failed to add trunk roads layer:', e)
+      return
+    }
+  }
+  updateTrunkRoadVisibility(map, true)
+}
+
+export function removeTrunkRoadLayer(map) {
+  if (!map) return
+  if (map.getLayer(LAYER_TRUNK_ROADS)) {
+    map.removeLayer(LAYER_TRUNK_ROADS)
+  }
+  cleanupProtomapsSourceIfUnused(map)
+}
+
+function updateTrunkRoadVisibility(map, visible) {
+  if (!map || !map.getLayer(LAYER_TRUNK_ROADS)) return
+  map.setLayoutProperty(LAYER_TRUNK_ROADS, 'visibility', visible ? 'visible' : 'none')
 }
 
 function worldpopTileUrl(resolution, year) {
@@ -676,6 +744,7 @@ export function setPopulationYear(map, year) {
 const OVERLAY_HANDLERS = {
   zoning: { ensure: ensureLanduseLayer, remove: removeLanduseLayer },
   population: { ensure: (map, store) => ensurePopulationLayer(map, getPopulationYearFromStore(store)), remove: removePopulationLayer },
+  trunkRoads: { ensure: ensureTrunkRoadLayer, remove: removeTrunkRoadLayer },
 }
 
 export function ensureOverlay(map, store, id) {

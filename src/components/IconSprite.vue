@@ -457,6 +457,7 @@
       <symbol id="icon-square-filled" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="5" y="5" width="14" height="14" rx="1" ry="1" fill="currentColor"/>
       </symbol>
+
     </defs>
   </svg>
 </template>

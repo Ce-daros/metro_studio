@@ -35,9 +35,12 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
 
     if (store.mode === 'delete-mode') {
       const mouseEvent = event.originalEvent
-      const isMultiModifier = Boolean(mouseEvent?.shiftKey || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
-      if (isMultiModifier) {
-        store.selectStation(stationId, { multi: true })
+      const isShift = Boolean(mouseEvent?.shiftKey)
+      const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+      const hasModifier = isShift || isCtrl
+      if (hasModifier) {
+        // Shift: 加选, Ctrl: 切换选择
+        store.selectStation(stationId, { multi: true, toggle: isCtrl })
       } else {
         store.deleteStation(stationId)
         store.statusText = `已删除站点: ${stationId}`
@@ -54,8 +57,9 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
         }
       } else {
         const mouseEvent = event.originalEvent
-        const isMultiModifier = Boolean(mouseEvent?.shiftKey || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
-        if (isMultiModifier && store.selectedStationIds.includes(stationId)) {
+        const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+        // Ctrl+点击已选中的站点：从该站点拾取样式
+        if (isCtrl && store.selectedStationIds.includes(stationId)) {
           store.activateStyleBrush(store.selectedStationIds[store.selectedStationIds.length - 1], 'station')
         } else {
           store.activateStyleBrush(stationId, 'station')
@@ -90,8 +94,10 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
 
     const mouseEvent = event.originalEvent
     const isShift = Boolean(mouseEvent?.shiftKey)
-    const isMultiModifier = Boolean(isShift || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+    const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+    const hasModifier = isShift || isCtrl
 
+    // Shift: 范围选择（当选中一个站点时）
     if (isShift && store.mode === 'select' && store.selectedStationIds.length === 1 && store.selectedStationIds[0] !== stationId) {
       const fromId = store.selectedStationIds[0]
       const edges = store.project?.edges
@@ -104,9 +110,10 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
       }
     }
 
+    // Ctrl/Meta: 切换选择，Shift: 加选
     store.selectStation(stationId, {
-      multi: isMultiModifier && store.mode === 'select',
-      toggle: isMultiModifier && store.mode === 'select',
+      multi: hasModifier && store.mode === 'select',
+      toggle: isCtrl && store.mode === 'select',
     })
   }
 
@@ -124,9 +131,12 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
     const mouseEvent = event.originalEvent
 
     if (store.mode === 'delete-mode') {
-      const isMultiModifier = Boolean(mouseEvent?.shiftKey || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
-      if (isMultiModifier) {
-        store.selectEdge(edgeId, { multi: true })
+      const isShift = Boolean(mouseEvent?.shiftKey)
+      const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+      const hasModifier = isShift || isCtrl
+      if (hasModifier) {
+        // Shift: 加选, Ctrl: 切换选择
+        store.selectEdge(edgeId, { multi: true, toggle: isCtrl })
       } else {
         store.deleteEdge(edgeId)
         store.statusText = `已删除线段: ${edgeId}`
@@ -142,8 +152,9 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
           store.statusText = '只能应用线段样式到线段'
         }
       } else {
-        const isMultiModifier = Boolean(mouseEvent?.shiftKey || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
-        if (isMultiModifier && store.selectedEdgeIds.includes(edgeId)) {
+        const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+        // Ctrl+点击已选中的线段：从该线段拾取样式
+        if (isCtrl && store.selectedEdgeIds.includes(edgeId)) {
           store.activateStyleBrush(store.selectedEdgeIds[store.selectedEdgeIds.length - 1], 'edge')
         } else {
           store.activateStyleBrush(edgeId, 'edge')
@@ -184,11 +195,13 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
     if (store.mode !== 'select') {
       store.setMode('select')
     }
-    const isMultiModifier = Boolean(mouseEvent?.shiftKey || mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+    const isShift = Boolean(mouseEvent?.shiftKey)
+    const isCtrl = Boolean(mouseEvent?.ctrlKey || mouseEvent?.metaKey)
+    const hasModifier = isShift || isCtrl
+    // Ctrl: 切换选择，Shift: 加选
     store.selectEdge(edgeId, {
-      multi: isMultiModifier,
-      toggle: isMultiModifier,
-      keepStationSelection: isMultiModifier,
+      multi: hasModifier,
+      toggle: isCtrl,
     })
     const selectedCount = store.selectedEdgeIds?.length || 0
     store.statusText = selectedCount > 1 ? `已选中线段 ${selectedCount} 条` : `已选中线段: ${edgeId}`

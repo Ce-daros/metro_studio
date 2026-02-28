@@ -82,19 +82,10 @@ function redoEdit() {
         <template #trigger>
           <button class="toolbar__btn" :class="{ active: store.mode === 'box-select' }" @click="store.setMode('box-select')">
             <IconBase name="box-select" :size="14" />
-            <span>框选站点</span>
+            <span>框选</span>
           </button>
         </template>
-        框选站点工具 (B)
-      </NTooltip>
-      <NTooltip>
-        <template #trigger>
-          <button class="toolbar__btn" :class="{ active: store.mode === 'box-select-edges' }" @click="store.setMode('box-select-edges')">
-            <IconBase name="box-select" :size="14" />
-            <span>框选线段</span>
-          </button>
-        </template>
-        框选线段工具 (Shift+B)
+        框选工具 (B) - Shift=加选, Ctrl=减选
       </NTooltip>
     </div>
     <div class="toolbar__row">

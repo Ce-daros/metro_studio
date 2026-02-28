@@ -144,6 +144,7 @@ export function useMenuBarActions(store, emit, refs) {
       { type: 'separator' },
       { type: 'item', label: '复制当前工程', action: 'duplicateProject', icon: 'copy', disabled: !store.project },
       { type: 'item', label: '重命名工程', action: 'renameProject', icon: 'edit', disabled: !store.project },
+      { type: 'item', label: `设置工程城市${store.project?.region?.name ? `（${store.project.region.name}）` : ''}`, action: 'setRegionCustom', icon: 'map-pin', disabled: !store.project },
       { type: 'item', label: '删除当前工程', action: 'deleteProject', icon: 'trash', disabled: !store.project },
       { type: 'separator' },
       { type: 'submenu', label: '从城市模板创建', icon: 'route', disabled: isTrial.value, children: [
@@ -200,6 +201,7 @@ export function useMenuBarActions(store, emit, refs) {
     { type: 'toggle', label: '显示站点标识', checked: store.showStationMarkers, action: 'toggleStationMarkers', icon: 'map-pin' },
     { type: 'toggle', label: '显示站点名', checked: store.showStationLabels, action: 'toggleStationLabels', icon: 'eye' },
     { type: 'toggle', label: '显示换乘标记', checked: store.showInterchangeMarkers, action: 'toggleInterchangeMarkers', icon: 'target' },
+    { type: 'toggle', label: '高亮主干道', checked: store.overlayLayers.includes('trunkRoads'), action: 'toggleTrunkRoads', icon: 'navigation' },
     { type: 'submenu', label: '叠加图层', icon: 'layers', children: [
       { type: 'toggle', label: '无叠加', checked: overlayMode.value === 'none', action: 'overlayNone', icon: 'eye-off' },
       { type: 'toggle', label: '分区覆盖', checked: overlayMode.value === 'zoning', action: 'overlayZoning', icon: 'map' },
@@ -332,6 +334,28 @@ export function useMenuBarActions(store, emit, refs) {
       return }
     if (action === 'fitToNetwork') { store.fitToNetwork(); return }
     if (action.startsWith('importCity_')) { emit('action', action); return }
+    if (action === 'setRegionCustom') {
+      if (!store.project) return
+      ;(async () => {
+        const name = await prompt({
+          title: '设置工程城市',
+          message: '请输入城市名称（中文），用于 AI 翻译站名时提供上下文',
+          defaultValue: store.project.region?.name || '',
+          placeholder: '例如：济南',
+        })
+        if (name === null) return
+        const trimmed = name.trim()
+        if (!trimmed) { store.setProjectRegion(null); return }
+        const nameEn = await prompt({
+          title: '设置工程城市',
+          message: '请输入城市英文名（可选，留空跳过）',
+          defaultValue: store.project.region?.nameEn || '',
+          placeholder: '例如：Jinan',
+        })
+        store.setProjectRegion({ id: 'custom', name: trimmed, nameEn: (nameEn || '').trim() })
+      })()
+      return
+    }
     if (action === 'stationVisAll') { store.setExportStationVisibilityMode('all'); return }
     if (action === 'stationVisInterchange') { store.setExportStationVisibilityMode('interchange'); return }
     if (action === 'stationVisNone') { store.setExportStationVisibilityMode('none'); return }
@@ -361,6 +385,7 @@ export function useMenuBarActions(store, emit, refs) {
     if (action === 'overlayNone') { store.setOverlayMode('none'); return }
     if (action === 'overlayZoning') { store.setOverlayMode('zoning'); return }
     if (action === 'overlayPopulation') { store.setOverlayMode('population'); return }
+    if (action === 'toggleTrunkRoads') { store.toggleOverlay('trunkRoads'); return }
     if (action === 'showLanduseLegend') { emit('show-landuse-legend'); return }
     if (action === 'toggleMapGrid') { store.toggleMapGrid(); return }
     if (action === 'toggleMapCoordinates') { store.toggleMapCoordinates(); return }

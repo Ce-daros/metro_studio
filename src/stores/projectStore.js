@@ -103,6 +103,7 @@ export const useProjectStore = defineStore('project', {
     protomapsApiKey: getInitialProtomapsApiKey(),
     mapTileType: 'osm',
     currentEditYear: DEFAULT_EDIT_YEAR,
+    currentEditPhase: '',
     timelineFilterYear: null,
     timelinePlayback: {
       state: 'idle',

@@ -29,9 +29,14 @@ export const stationAiActions = {
     }
     this.statusText = '全图英文重译已开始...'
 
+    const cityContext = this.project.region?.name
+      ? { name: this.project.region.name, nameEn: this.project.region.nameEn || '' }
+      : null
+
     try {
       const result = await retranslateStationEnglishNames({
         stations,
+        cityContext,
         onProgress: ({ done, total: progressTotal, percent, message }) => {
           const safePercent = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0))
           this.stationEnglishRetranslateProgress = {
@@ -116,9 +121,14 @@ export const stationAiActions = {
     }
     this.statusText = `站点英文重译已开始（${total} 站）...`
 
+    const cityContext = this.project.region?.name
+      ? { name: this.project.region.name, nameEn: this.project.region.nameEn || '' }
+      : null
+
     try {
       const result = await retranslateStationEnglishNames({
         stations,
+        cityContext,
         onProgress: ({ done, total: progressTotal, percent, message }) => {
           const safePercent = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0))
           this.stationEnglishRetranslateProgress = {

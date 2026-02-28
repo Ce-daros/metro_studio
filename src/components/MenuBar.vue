@@ -85,8 +85,10 @@ function onLineNDropdownSelect(key) {
 const MIN_YEAR = 1900
 const MAX_YEAR = 2100
 const editYearInput = ref(store.currentEditYear)
+const editPhaseInput = ref(store.currentEditPhase || '')
 
 watch(() => store.currentEditYear, (v) => { editYearInput.value = v })
+watch(() => store.currentEditPhase, (v) => { editPhaseInput.value = v || '' })
 
 function normalizeEditYear(year) {
   const num = Number.isFinite(+year) ? Math.floor(+year) : 2010
@@ -112,6 +114,12 @@ function decrementEditYear() {
   store.setCurrentEditYear(y)
   store.setTimelineFilterYear(y)
   editYearInput.value = y
+}
+
+function onEditPhaseInput(event) {
+  const phase = String(event.target.value || '').trim()
+  store.setCurrentEditPhase(phase)
+  editPhaseInput.value = phase
 }
 
 const lines = computed(() => store.project?.lines || [])
@@ -298,6 +306,18 @@ function toggleNavigation() {
           @click="incrementEditYear"
           aria-label="增加年份"
         >+</button>
+      </div>
+
+      <div class="menu-bar__phase-selector">
+        <span class="menu-bar__year-label">工程期数</span>
+        <input
+          type="text"
+          class="menu-bar__phase-input"
+          :value="editPhaseInput"
+          maxlength="20"
+          placeholder="如：一期"
+          @change="onEditPhaseInput"
+        />
       </div>
 
       <div v-if="activeView === 'preview'" class="menu-bar__timeline-basemap" role="group" aria-label="时间轴底图模式">
@@ -582,6 +602,16 @@ function toggleNavigation() {
   clip-path: var(--clip-chamfer-sm);
 }
 
+.menu-bar__phase-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--toolbar-input-border);
+  background: rgba(8, 8, 11, 0.9);
+  padding: 2px 6px;
+  clip-path: var(--clip-chamfer-sm);
+}
+
 .menu-bar__year-label {
   font-size: 13px;
   color: var(--toolbar-muted);
@@ -639,6 +669,19 @@ function toggleNavigation() {
 .menu-bar__year-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+
+.menu-bar__phase-input {
+  width: 74px;
+  border: none;
+  background: transparent;
+  color: var(--toolbar-text);
+  font-size: 13px;
+  padding: 2px 0;
+}
+
+.menu-bar__phase-input:focus {
+  outline: none;
 }
 
 .menu-bar__file-input {

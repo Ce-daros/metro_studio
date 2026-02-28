@@ -280,13 +280,10 @@ const selectionActions = {
       } else {
         selected.add(stationId)
       }
-      this.setSelectedStations([...selected], { keepPrimary: !toggle })
+      this.setSelectedStations([...selected], { keepPrimary: !toggle, keepEdges: true })
     } else {
-      this.setSelectedStations([stationId])
+      this.setSelectedStations([stationId], { keepEdges: true })
     }
-    this.selectedEdgeId = null
-    this.selectedEdgeIds = []
-    this.selectedEdgeAnchor = null
     if (this.mode === 'add-edge') {
       if (!this.pendingEdgeStartStationId) {
         this.pendingEdgeStartStationId = stationId

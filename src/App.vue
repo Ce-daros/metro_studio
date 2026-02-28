@@ -362,7 +362,6 @@ const { rebuildBindings } = useShortcuts({
   'tool.routeDraw': () => store.setMode('route-draw'),
   'tool.styleBrush': () => store.setMode('style-brush'),
   'tool.boxSelect': () => store.setMode('box-select'),
-  'tool.boxSelectEdges': () => store.setMode('box-select-edges'),
   'tool.anchorEdit': () => store.setMode('anchor-edit'),
   'tool.annotation': () => store.setMode('annotation'),
 

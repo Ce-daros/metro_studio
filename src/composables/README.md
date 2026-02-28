@@ -12,6 +12,7 @@ Vue 3 Composition API composables，封装可复用的组件逻辑。
 - **useMapBoundary.js** — 边界哈希、`fitMapToBoundary`、边界 watcher
 - **useRouteDrawPreview.js** — 连续布线预览状态、距离计算、颜色渐变
 - **useMapTimelinePlayer.js** — 时间轴播放器生命周期管理
+- 说明：草稿笔/橡皮擦相关 composable 已移除
 
 ### 工具栏相关
 - **useToolbarProjectManagement.js** — 项目列表、创建/加载/重命名/复制/删除、文件导入
@@ -22,7 +23,7 @@ Vue 3 Composition API composables，封装可复用的组件逻辑。
 - **useToolbarEditYear.js** — 年份输入、规范化、增减
 
 ### 其他视图相关
-- **useMenuBarActions.js** — 菜单项定义（文件/编辑/视图/AI/导出/统计/设置 7 个 computed 菜单结构）；统计菜单内置 3 项实时基础数据并可打开独立统计弹窗，AI 配置与 API Key 配置归入设置菜单；无已打开工程时会自动禁用保存/导出类操作，同时负责 action 分发与城市预设过滤
+- **useMenuBarActions.js** — 菜单项定义（文件/编辑/视图/AI/导出/统计/设置 7 个 computed 菜单结构）；统计菜单内置 3 项实时基础数据并可打开独立统计弹窗，支持视图菜单一键切换“高亮主干道”，AI 配置与 API Key 配置归入设置菜单；无已打开工程时会自动禁用保存/导出类操作，同时负责 action 分发与城市预设过滤
 - **useViewportControl.js** — 缩放/平移/鼠标事件、viewport transform 计算（用于 VehicleHudView）
 - **useTimelinePlayback.js** — 播放控制（play/pause/stop/speed）、renderer 生命周期、全屏（用于 TimelinePreviewView）
 
