@@ -14,7 +14,7 @@ function dedupeEdgeIds(ids, edgeIdSet) {
 const selectionActions = {
   setMode(mode) {
     this.mode = mode
-    if (mode !== 'add-edge' && mode !== 'route-draw') {
+    if (mode !== 'add-edge' && mode !== 'route-draw' && mode !== 'route-draw-naming') {
       this.pendingEdgeStartStationId = null
     }
     // 样式刷模式特殊处理
@@ -98,7 +98,7 @@ const selectionActions = {
   cancelPendingEdgeStart() {
     if (!this.pendingEdgeStartStationId) return
     this.pendingEdgeStartStationId = null
-    if (this.mode === 'add-edge' || this.mode === 'route-draw') {
+    if (this.mode === 'add-edge' || this.mode === 'route-draw' || this.mode === 'route-draw-naming') {
       this.statusText = '已取消待连接起点'
     }
   },
@@ -299,7 +299,7 @@ const selectionActions = {
       this.pendingEdgeStartStationId = null
       return
     }
-    if (this.mode === 'route-draw') {
+    if (this.mode === 'route-draw' || this.mode === 'route-draw-naming') {
       if (!this.pendingEdgeStartStationId) {
         this.pendingEdgeStartStationId = stationId
         this.statusText = '连续布线已开始：请继续点击下一个点'

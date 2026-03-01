@@ -360,6 +360,7 @@ const { rebuildBindings } = useShortcuts({
   'tool.addStation': () => store.setMode('add-station'),
   'tool.addEdge': () => store.setMode('add-edge'),
   'tool.routeDraw': () => store.setMode('route-draw'),
+  'tool.routeDrawNaming': () => store.setMode('route-draw-naming'),
   'tool.styleBrush': () => store.setMode('style-brush'),
   'tool.boxSelect': () => store.setMode('box-select'),
   'tool.anchorEdit': () => store.setMode('anchor-edit'),

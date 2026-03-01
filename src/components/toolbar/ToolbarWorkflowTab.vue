@@ -69,6 +69,17 @@ function redoEdit() {
       </NTooltip>
       <NTooltip>
         <template #trigger>
+          <button class="toolbar__btn" :class="{ active: store.mode === 'route-draw-naming' }" @click="store.setMode('route-draw-naming')">
+            <IconBase name="route" :size="14" />
+            <span>命名布线</span>
+          </button>
+        </template>
+        命名布线模式 (T)
+      </NTooltip>
+    </div>
+    <div class="toolbar__row">
+      <NTooltip>
+        <template #trigger>
           <button class="toolbar__btn" :class="{ active: store.mode === 'style-brush' || store.styleBrush.active }" @click="store.setMode('style-brush')">
             <IconBase name="paintbrush" :size="14" />
             <span>样式刷</span>

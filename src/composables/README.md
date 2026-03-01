@@ -8,9 +8,9 @@ Vue 3 Composition API composables，封装可复用的组件逻辑。
 - **useMapContextMenu.js** — 右键菜单状态、位置调整、所有 `*FromContext` 操作函数
 - **useMapLineSelectionMenu.js** — 线路选择菜单状态、选择逻辑
 - **useMapExport.js** — PNG 导出全流程（实际走向高清图、分享小图、截图抓帧与高分辨率分块渲染）
-- **useMapEventHandlers.js** — 点击/拖拽/键盘/鼠标事件处理、`dragState`/`anchorDragState`/`selectionBox` 状态
+- **useMapEventHandlers.js** — 点击/拖拽/键盘/鼠标事件处理、`dragState`/`anchorDragState`/`selectionBox` 状态（含“命名布线工具”落站后触发站名输入聚焦）
 - **useMapBoundary.js** — 边界哈希、`fitMapToBoundary`、边界 watcher
-- **useRouteDrawPreview.js** — 连续布线预览状态、距离计算、颜色渐变
+- **useRouteDrawPreview.js** — 连续布线预览状态、距离计算、颜色渐变（支持 `route-draw` 与 `route-draw-naming`）
 - **useMapTimelinePlayer.js** — 时间轴播放器生命周期管理
 - 说明：草稿笔/橡皮擦相关 composable 已移除
 

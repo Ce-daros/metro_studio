@@ -60,6 +60,7 @@ const showHint = ref(false)
 const mapCenterText = ref('--, --')
 const mapZoomText = ref('--')
 const mapZoomLevel = ref(4)
+const stationRenameTrigger = inject('stationRenameTrigger', null)
 let map = null
 let scaleControl = null
 let deferredProjectSyncStyleListener = null
@@ -168,6 +169,11 @@ const {
   openLineSelectionMenu,
   refreshRouteDrawPreviewProjectedPoints,
   contextMenu,
+  triggerStationNameFocus: () => {
+    if (stationRenameTrigger && typeof stationRenameTrigger.value === 'number') {
+      stationRenameTrigger.value += 1
+    }
+  },
 })
 
 const selectionBoxStyle = computed(() => {
@@ -598,7 +604,7 @@ watch(
     pendingEdgeStartStationId: store.pendingEdgeStartStationId,
   }),
   () => {
-    if (store.mode !== 'route-draw' || !store.pendingEdgeStartStationId) {
+    if (!['route-draw', 'route-draw-naming'].includes(store.mode) || !store.pendingEdgeStartStationId) {
       clearRouteDrawPreview()
     }
   },

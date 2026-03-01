@@ -15,6 +15,10 @@ const ROUTE_DRAW_LONG_COLOR = '#A855F7'
  * @param {() => maplibregl.Map|null} deps.getMap - Getter for the map instance
  */
 export function useRouteDrawPreview({ store, getMap }) {
+  function isRouteDrawMode() {
+    return store.mode === 'route-draw' || store.mode === 'route-draw-naming'
+  }
+
   const routeDrawPreview = reactive({
     visible: false,
     startLngLat: null,
@@ -75,7 +79,7 @@ export function useRouteDrawPreview({ store, getMap }) {
 
   function updateRouteDrawPreview(event) {
     const map = getMap()
-    if (!map || store.mode !== 'route-draw' || !store.pendingEdgeStartStationId) {
+    if (!map || !isRouteDrawMode() || !store.pendingEdgeStartStationId) {
       clearRouteDrawPreview()
       return
     }

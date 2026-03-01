@@ -12,6 +12,10 @@ export function useMapDragHandlers({
   updateRouteDrawPreview,
   clearRouteDrawPreview,
 }) {
+  function isRouteDrawMode() {
+    return store.mode === 'route-draw' || store.mode === 'route-draw-naming'
+  }
+
   function startStationDrag(event) {
     if (store.navigation?.active) return
     const map = getMap()
@@ -52,7 +56,7 @@ export function useMapDragHandlers({
   }
 
   function onMouseMove(event) {
-    if (store.mode === 'route-draw' && !interactionState.isBoxSelecting() && !interactionState.isStationDragging() && !interactionState.isAnchorDragging()) {
+    if (isRouteDrawMode() && !interactionState.isBoxSelecting() && !interactionState.isStationDragging() && !interactionState.isAnchorDragging()) {
       updateRouteDrawPreview(event)
     } else {
       clearRouteDrawPreview()

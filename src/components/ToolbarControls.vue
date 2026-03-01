@@ -36,6 +36,7 @@ const MODE_LABELS = {
   'add-station': '添加站点',
   'add-edge': '连接两站',
   'route-draw': '连续画线',
+  'route-draw-naming': '命名布线',
   'box-select': '框选',
   'quick-link': '快速连线',
   'anchor-edit': '控制点编辑',

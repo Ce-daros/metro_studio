@@ -62,6 +62,7 @@ defineExpose({ menuEl })
           <button @click="emit('set-mode', 'add-station')">添加站点</button>
           <button @click="emit('set-mode', 'add-edge')">连接两站</button>
           <button @click="emit('set-mode', 'route-draw')">连续画线</button>
+          <button @click="emit('set-mode', 'route-draw-naming')">命名布线</button>
         </div>
       </div>
 
