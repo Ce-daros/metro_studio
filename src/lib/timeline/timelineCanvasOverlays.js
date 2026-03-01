@@ -125,6 +125,64 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
   const padH = 28 * s
   const padV = 18 * s
   const elemGap = 12 * s
+  const easedSlide = easeOutCubic(Math.max(0, Math.min(1, slideT)))
+
+  // If an explicit timeline event text exists, render it directly and do not
+  // fallback to line-opening boilerplate.
+  if (text) {
+    const fontSize = 30 * s
+    const textFont = `600 ${fontSize}px ${CJK_FONT}`
+    const maxTextWidth = width * 0.64
+
+    ctx.save()
+    ctx.font = textFont
+    const paragraphs = String(text)
+      .split('\n')
+      .map((part) => part.trim())
+      .filter(Boolean)
+    const lines = []
+    for (const paragraph of paragraphs) {
+      let line = ''
+      for (const ch of paragraph.split('')) {
+        const next = line + ch
+        if (ctx.measureText(next).width > maxTextWidth && line) {
+          lines.push(line)
+          line = ch
+        } else {
+          line = next
+        }
+      }
+      if (line) lines.push(line)
+    }
+    const shownLines = lines.slice(0, 6)
+
+    const lineHeight = fontSize * 1.28
+    let measuredW = 0
+    for (const ln of shownLines) {
+      measuredW = Math.max(measuredW, ctx.measureText(ln).width)
+    }
+    const bannerW = measuredW + padH * 2
+    const bannerH = shownLines.length * lineHeight + padV * 2
+    const slideOffset = -(bannerW + 24 * s) * (1 - easedSlide)
+    const bannerX = 24 * s + slideOffset
+    const bannerY = 24 * s
+
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha * easedSlide))
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+    roundRect(ctx, bannerX, bannerY, bannerW, bannerH, 14 * s)
+    ctx.fill()
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.96)'
+    ctx.font = textFont
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    for (let i = 0; i < shownLines.length; i++) {
+      const y = bannerY + padV + lineHeight * (i + 0.5)
+      ctx.fillText(shownLines[i], bannerX + padH, y)
+    }
+    ctx.restore()
+    return
+  }
 
   // ── Capsule: short name (digits or first char) ──
   const capsuleFontSize = 32 * s
@@ -159,7 +217,6 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
   const bannerH = capsuleH + padV * 2
 
   // Slide-in animation
-  const easedSlide = easeOutCubic(Math.max(0, Math.min(1, slideT)))
   const slideOffset = -(bannerW + 24 * s) * (1 - easedSlide)
 
   ctx.save()
@@ -592,48 +649,4 @@ export function renderScanLineLoading(ctx, width, height, opts) {
   ctx.fillText('Loading tiles...', marginX, marginY)
 
   ctx.restore()
-}
-
-// ─── Stress test: 100 line capsules ──────────────────────────────
-
-/**
- * Stress test: render 100 fake line capsules.
- * Auto-finds the timeline canvas, clears it, and draws.
- * Usage: window.__stressLineInfo()
- */
-export function stressTestLineInfo(ctx, width, height) {
-  const COLORS = [
-    '#e53935','#d81b60','#8e24aa','#5e35b1','#3949ab',
-    '#1e88e5','#039be5','#00acc1','#00897b','#43a047',
-    '#7cb342','#c0ca33','#fdd835','#ffb300','#fb8c00',
-    '#f4511e','#6d4c41','#757575','#546e7a','#26a69a',
-  ]
-  const entries = []
-  for (let i = 1; i <= 100; i++) {
-    const isText = i > 90
-    entries.push({
-      lineId: `stress-${i}`,
-      name: isText ? ['机场线','磁浮线','APM线','浦江线','金山线','崇明线','南汇线','嘉闵线','宝嘉线','示范线'][i - 91] : `${i}号线`,
-      color: COLORS[i % COLORS.length],
-      km: +(Math.random() * 80 + 5).toFixed(1),
-      stations: Math.floor(Math.random() * 40 + 3),
-    })
-  }
-  ctx.fillStyle = '#0f1117'
-  ctx.fillRect(0, 0, width, height)
-  renderOverlayLineInfo(ctx, null, { km: 999, stations: 999, lines: 100 }, 1, width, height, {
-    cumulativeLineStats: entries,
-    lineAppearProgress: new Map(),
-    displayStats: { km: 2500, stations: 1200 },
-  })
-}
-
-if (typeof window !== 'undefined') {
-  window.__stressLineInfo = () => {
-    const c = document.querySelector('.preview-view__canvas')
-    if (!c) { console.error('No timeline canvas found — open the preview tab first'); return }
-    const ctx = c.getContext('2d')
-    const dpr = window.devicePixelRatio || 1
-    stressTestLineInfo(ctx, c.width / dpr, c.height / dpr)
-  }
 }

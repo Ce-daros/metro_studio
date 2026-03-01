@@ -12,6 +12,7 @@ import PanelEdgeSingle from './panels/PanelEdgeSingle.vue'
 import PanelEdgeMulti from './panels/PanelEdgeMulti.vue'
 import PanelAnchor from './panels/PanelAnchor.vue'
 import PanelAnnotation from './panels/PanelAnnotation.vue'
+import TimelineEventEditor from './TimelineEventEditor.vue'
 
 const store = useProjectStore()
 const { width, onPointerDown } = usePanelResize()
@@ -23,6 +24,7 @@ useAutoAnimate(panelBody, getAutoAnimateConfig())
 
 const selectedStationCount = computed(() => store.selectedStationIds.length)
 const selectedEdgeCount = computed(() => store.selectedEdgeIds.length)
+const hasTimelineYears = computed(() => store.timelineYears.length > 0)
 
 const selectedStation = computed(() => {
   if (!store.project || !store.selectedStationId) return null
@@ -94,6 +96,13 @@ function toggleCollapse() {
       <PanelStationSingle v-else-if="panelType === 'station-single'" />
       <PanelStationMulti v-else-if="panelType === 'station-multi'" />
       <PanelNoSelection v-else />
+
+      <section class="properties-panel__timeline-section">
+        <h3 class="properties-panel__section-title">年份事件</h3>
+        <p class="properties-panel__section-intro">按年份编辑注释文案，预览动画会优先显示这些文案。</p>
+        <TimelineEventEditor />
+        <p v-if="!hasTimelineYears" class="properties-panel__hint">暂无年份可编辑，请先给线段设置开通年份。</p>
+      </section>
     </div>
   </aside>
 </template>
@@ -214,5 +223,29 @@ function toggleCollapse() {
 .properties-panel__body::-webkit-scrollbar-thumb {
   background: var(--toolbar-scrollbar-thumb);
   border: 1px solid rgba(188, 31, 255, 0.3);
+}
+
+.properties-panel__timeline-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(188, 31, 255, 0.35);
+}
+
+.properties-panel__section-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--toolbar-text);
+}
+
+.properties-panel__section-intro {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--toolbar-muted);
+}
+
+.properties-panel__hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--toolbar-muted);
 }
 </style>

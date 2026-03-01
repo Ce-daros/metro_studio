@@ -163,8 +163,16 @@ function toSerializableProject(project) {
       createdAt: toFiniteNumber(a.createdAt, Date.now()),
     })),
     timelineEvents: (normalized.timelineEvents || []).map((e) => ({
+      id: String(e.id || ''),
       year: toFiniteNumber(e.year, 0),
       description: String(e.description || ''),
+      position: e.position === 'after' ? 'after' : e.position === 'year_end' ? 'year_end' : 'before',
+      order: toFiniteNumber(e.order, 0),
+    })),
+    timelineYearDelays: (normalized.timelineYearDelays || []).map((d) => ({
+      year: toFiniteNumber(d.year, 0),
+      beforeMs: Math.max(0, toFiniteNumber(d.beforeMs, 0)),
+      afterMs: Math.max(0, toFiniteNumber(d.afterMs, 0)),
     })),
     meta: {
       createdAt: String(normalized.meta?.createdAt || new Date().toISOString()),

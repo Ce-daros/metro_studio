@@ -19,6 +19,12 @@ let frameId = 0
 let decorFrameId = 0
 let onResize = null
 
+function createWelcomeSubtitleId() {
+  return Math.random().toString(16).slice(2, 8).toUpperCase()
+}
+
+const welcomeSubtitleId = ref(createWelcomeSubtitleId())
+
 const CITIES = [
   { id: 'beijing', name: '北京', nameEn: 'BEIJING' },
   { id: 'shanghai', name: '上海', nameEn: 'SHANGHAI' },
@@ -847,7 +853,7 @@ onBeforeUnmount(() => {
       <header class="welcome__header">
         <div class="welcome__subtitle">
           <span class="welcome__subtitle-line"></span>
-          <span class="welcome__subtitle-id">#{{ Math.random().toString(16).slice(2, 8).toUpperCase() }}</span>
+          <span class="welcome__subtitle-id">#{{ welcomeSubtitleId }}</span>
         </div>
         <div class="welcome__title-shell">
           <!-- 隐形标题，用于 SEO 和占位，实际视觉由 Canvas 提供 -->

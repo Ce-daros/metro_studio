@@ -22,7 +22,7 @@ export { roundRect, uiScale, geoLineWidth, drawGeoPolyline, resolveWaypointsSimp
 export {
   renderOverlayYear, renderOverlayStats, renderOverlayEvent,
   renderOverlayScaleBar, renderOverlayBranding, renderOverlayLineInfo,
-  renderScanLineLoading, stressTestLineInfo,
+  renderScanLineLoading,
 } from './timelineCanvasOverlays'
 
 // ─── Edge rendering (geographic) ────────────────────────────────

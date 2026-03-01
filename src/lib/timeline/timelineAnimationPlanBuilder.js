@@ -385,17 +385,29 @@ export function buildTimelineAnimationPlan(project) {
 
   // Collect unique year+phase combinations (同一年多期不合并)
   const yearPhaseSet = new Set()
-  for (const edge of project.edges || []) {
+  const phaseFirstAppearance = new Map()
+  for (let edgeIndex = 0; edgeIndex < (project.edges || []).length; edgeIndex++) {
+    const edge = project.edges[edgeIndex]
     if (edge.openingYear != null) {
       const phase = edge.phase || ''
-      yearPhaseSet.add(`${edge.openingYear}|${phase}`)
+      const key = `${edge.openingYear}|${phase}`
+      yearPhaseSet.add(key)
+      if (!phaseFirstAppearance.has(key)) {
+        phaseFirstAppearance.set(key, edgeIndex)
+      }
     }
   }
-  // Sort by year, then by phase
+  // Sort by year, then by first appearance order in project data.
+  // This avoids locale-based phase ordering drift (e.g. "一期/二期/三期" lexicographic issues).
   const sortedYearPhases = [...yearPhaseSet].sort((a, b) => {
     const [yearA, phaseA] = a.split('|')
     const [yearB, phaseB] = b.split('|')
     if (yearA !== yearB) return Number(yearA) - Number(yearB)
+    const indexA = phaseFirstAppearance.get(a)
+    const indexB = phaseFirstAppearance.get(b)
+    if (Number.isFinite(indexA) && Number.isFinite(indexB) && indexA !== indexB) {
+      return indexA - indexB
+    }
     return phaseA.localeCompare(phaseB, 'zh')
   })
   if (!sortedYearPhases.length) return { years: [], yearPlans: new Map() }

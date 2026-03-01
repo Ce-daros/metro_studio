@@ -2,6 +2,7 @@ import { haversineDistanceMeters } from '../geo'
 
 const WIKI_METRO_SYSTEMS_API_URL =
   'https://en.wikipedia.org/w/api.php?action=parse&page=List_of_metro_systems&prop=text&format=json&formatversion=2&origin=*'
+const WIKI_METRO_TABLE_SELECTOR = 'table.wikitable'
 
 function normalizeText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
@@ -21,6 +22,61 @@ function parseLengthKm(text) {
 
 function normalizeHeader(value) {
   return normalizeText(value).toLowerCase()
+}
+
+function findHeaderIndex(headers, aliases) {
+  const normalizedAliases = aliases.map((alias) => normalizeHeader(alias))
+  for (let i = 0; i < headers.length; i += 1) {
+    const header = headers[i]
+    if (!header) continue
+    if (normalizedAliases.some((alias) => header.includes(alias))) {
+      return i
+    }
+  }
+  return -1
+}
+
+function isLengthHeader(header) {
+  if (!header || !header.includes('length')) return false
+  if (header.includes('system length') || header.includes('route length') || header.includes('network length')) {
+    return true
+  }
+  if (header === 'length') return true
+  return /total|km|mi/.test(header)
+}
+
+function resolveColumnIndexes(headers) {
+  const cityIndex = findHeaderIndex(headers, ['city', 'urban area', 'metropolitan area'])
+  const countryIndex = findHeaderIndex(headers, ['country', 'countries'])
+  const nameIndex = findHeaderIndex(headers, ['name', 'system', 'network'])
+  const lengthIndex = headers.findIndex((header) => isLengthHeader(header))
+  if (cityIndex < 0 || nameIndex < 0 || lengthIndex < 0) return null
+  return { cityIndex, countryIndex, nameIndex, lengthIndex }
+}
+
+function parseEntriesFromRows(rows, indexes) {
+  const dedupe = new Set()
+  const parsed = []
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i]
+    const city = normalizeText(row[indexes.cityIndex])
+    const country = indexes.countryIndex >= 0 ? normalizeText(row[indexes.countryIndex]) : ''
+    const systemName = normalizeText(row[indexes.nameIndex])
+    const lengthKm = parseLengthKm(row[indexes.lengthIndex])
+    if (!city || !systemName || !Number.isFinite(lengthKm) || lengthKm <= 0) continue
+
+    const dedupeKey = `${city}::${country}::${systemName}`.toLowerCase()
+    if (dedupe.has(dedupeKey)) continue
+    dedupe.add(dedupeKey)
+    parsed.push({
+      city,
+      country,
+      systemName,
+      lengthKm,
+    })
+  }
+  parsed.sort((a, b) => b.lengthKm - a.lengthKm)
+  return parsed
 }
 
 function fillCarryCells(carryCells, row, startColumn) {
@@ -73,42 +129,23 @@ function tableToRows(tableElement) {
 function parseMetroRankingFromHtml(html) {
   const parser = new DOMParser()
   const document = parser.parseFromString(html, 'text/html')
-  const table = document.querySelector('table.wikitable.sortable')
-  if (!table) return []
+  const tables = Array.from(document.querySelectorAll(WIKI_METRO_TABLE_SELECTOR))
+  if (!tables.length) return []
 
-  const rows = tableToRows(table)
-  if (rows.length < 2) return []
-
-  const headers = rows[0].map(normalizeHeader)
-  const cityIndex = headers.findIndex((header) => header === 'city')
-  const countryIndex = headers.findIndex((header) => header === 'country')
-  const nameIndex = headers.findIndex((header) => header === 'name')
-  const lengthIndex = headers.findIndex((header) => header.includes('system length'))
-  if (cityIndex < 0 || countryIndex < 0 || nameIndex < 0 || lengthIndex < 0) return []
-
-  const dedupe = new Set()
-  const parsed = []
-  for (let i = 1; i < rows.length; i += 1) {
-    const row = rows[i]
-    const city = normalizeText(row[cityIndex])
-    const country = normalizeText(row[countryIndex])
-    const systemName = normalizeText(row[nameIndex])
-    const lengthKm = parseLengthKm(row[lengthIndex])
-    if (!city || !country || !systemName || !Number.isFinite(lengthKm) || lengthKm <= 0) continue
-
-    const dedupeKey = `${city}::${systemName}`.toLowerCase()
-    if (dedupe.has(dedupeKey)) continue
-    dedupe.add(dedupeKey)
-    parsed.push({
-      city,
-      country,
-      systemName,
-      lengthKm,
-    })
+  let bestEntries = []
+  for (const table of tables) {
+    const rows = tableToRows(table)
+    if (rows.length < 2) continue
+    const headers = rows[0].map(normalizeHeader)
+    const indexes = resolveColumnIndexes(headers)
+    if (!indexes) continue
+    const entries = parseEntriesFromRows(rows, indexes)
+    if (entries.length > bestEntries.length) {
+      bestEntries = entries
+    }
   }
 
-  parsed.sort((a, b) => b.lengthKm - a.lengthKm)
-  return parsed
+  return bestEntries
 }
 
 export async function fetchWorldMetroRanking(options = {}) {
@@ -209,4 +246,3 @@ export function buildProjectMetroRanking(projectLengthKm, rankingEntries = []) {
     below,
   }
 }
-

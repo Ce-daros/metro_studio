@@ -203,6 +203,10 @@ export const useProjectStore = defineStore('project', {
       for (const edge of state.project.edges) {
         if (edge.openingYear != null) years.add(edge.openingYear)
       }
+      for (const evt of state.project.timelineEvents || []) {
+        const year = Number(evt?.year)
+        if (Number.isFinite(year)) years.add(year)
+      }
       return [...years].sort((a, b) => a - b)
     },
     /** @returns {{min: number, max: number}|null} */

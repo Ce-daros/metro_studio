@@ -3,17 +3,13 @@
  * Returns segments: 上车 (boarding), 车中 (in-transit), 下车 (alighting).
  */
 
-const SPONSORS = ['阿水大杯茶', '九阳集团', '小鸭集团']
 const IDLE_MESSAGES = [
   '各位乘客，为了保持良好的乘车环境，请勿在列车内躺卧、吸烟、饮食、丢弃杂物等，使用电子设备时请勿外放声音，谢谢合作。',
   '"畅行泉城"是贯穿每一次进出站的出行承诺。"爱满全程"是服务泉城市民坚守的行动指南。济南地铁运营服务品牌：畅行泉城，爱满全程。',
   '乘客您好，下车时请携带好行李物品，提前至车门处等候，做好下车准备。先下后上，有序乘车。',
   '各位乘客，请为需要帮助的乘客让座，谢谢您的配合。',
 ]
-
-function pickSponsor() {
-  return SPONSORS[Math.floor(Math.random() * SPONSORS.length)]
-}
+const APPROACHING_PREFIX = '温馨提示'
 
 function formatLines(lines) {
   if (!lines.length) return ''
@@ -40,7 +36,6 @@ export function buildAnnouncementTexts(
   isFirstStation, transferLines = [], virtualTransferLines = [],
   loopDirection = 0
 ) {
-  const sponsor = pickSponsor()
   const transferText = buildTransferText(transferLines, virtualTransferLines)
 
   // ── 上车段 ──
@@ -80,7 +75,7 @@ export function buildAnnouncementTexts(
   }
 
   // ── 下车段 ──
-  let approachingZh = `${sponsor}提醒您，${stationNameZh}站就要到了。`
+  let approachingZh = `${APPROACHING_PREFIX}，${stationNameZh}站就要到了。`
   if (transferText) approachingZh += transferText + '。'
   approachingZh += '列车开启前进方向左侧车门，下车请注意安全。'
 

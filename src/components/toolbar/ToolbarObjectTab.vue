@@ -1,9 +1,11 @@
 <script setup>
+import { computed } from 'vue'
 import { LINE_STYLE_OPTIONS } from '../../lib/lineStyles'
 import { useProjectStore } from '../../stores/projectStore'
 import { useToolbarStationOps } from '../../composables/useToolbarStationOps.js'
 import { useToolbarEdgeOps } from '../../composables/useToolbarEdgeOps.js'
 import { useToolbarLineOps } from '../../composables/useToolbarLineOps.js'
+import TimelineEventEditor from '../TimelineEventEditor.vue'
 
 const store = useProjectStore()
 
@@ -45,9 +47,18 @@ const {
   deleteActiveLine,
   displayLineName,
 } = useToolbarLineOps()
+
+const hasTimelineYears = computed(() => store.timelineYears.length > 0)
 </script>
 
 <template>
+  <section class="toolbar__section">
+    <h3>年份事件</h3>
+    <p class="toolbar__section-intro">按年份编辑注释文案，预览动画中将优先显示这些文案。</p>
+    <TimelineEventEditor />
+    <p v-if="!hasTimelineYears" class="toolbar__hint">暂无年份可编辑，请先给线段设置开通年份。</p>
+  </section>
+
   <!-- Station properties -->
   <section class="toolbar__section">
     <h3>站点属性</h3>

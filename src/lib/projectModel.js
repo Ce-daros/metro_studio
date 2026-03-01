@@ -61,7 +61,8 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {{stationLabels: Record<string, {dx:number,dy:number,anchor:string}>, edgeDirections: Record<string, number>}} layoutMeta
  * @property {{geoSeedScale: number, displayConfig: object, paramReduction?: {enabled: boolean, deltas: number[]}}} layoutConfig
  * @property {{createdAt: string, updatedAt: string}} meta
- * @property {Array<{year: number, description: string}>} timelineEvents
+ * @property {Array<{id: string, year: number, description: string, position: ('before'|'after'|'year_end'), order: number}>} timelineEvents
+ * @property {Array<{year: number, beforeMs: number, afterMs: number}>} timelineYearDelays
  */
 
 export function createEmptyProject(name = '新建工程') {
@@ -112,6 +113,7 @@ export function createEmptyProject(name = '新建工程') {
     },
     annotations: [],
     timelineEvents: [],
+    timelineYearDelays: [],
     meta: {
       createdAt: now,
       updatedAt: now,
@@ -200,8 +202,30 @@ export function normalizeProject(raw) {
       : [],
     timelineEvents: Array.isArray(raw?.timelineEvents)
       ? raw.timelineEvents
-          .filter((e) => e && Number.isFinite(e.year) && typeof e.description === 'string')
-          .map((e) => ({ year: e.year, description: e.description }))
+          .map((e, index) => {
+            const year = Number(e?.year)
+            const description = String(e?.description || '').trim()
+            if (!Number.isFinite(year) || !description) return null
+            return {
+              id: String(e?.id || createId('timeline_evt')),
+              year,
+              description,
+              position: e?.position === 'after' ? 'after' : e?.position === 'year_end' ? 'year_end' : 'before',
+              order: Number.isFinite(Number(e?.order)) ? Number(e.order) : index,
+            }
+          })
+          .filter(Boolean)
+      : [],
+    timelineYearDelays: Array.isArray(raw?.timelineYearDelays)
+      ? raw.timelineYearDelays
+          .map((d) => {
+            const year = Number(d?.year)
+            if (!Number.isFinite(year)) return null
+            const beforeMs = Math.max(0, Number(d?.beforeMs || 0))
+            const afterMs = Math.max(0, Number(d?.afterMs || 0))
+            return { year, beforeMs, afterMs }
+          })
+          .filter(Boolean)
       : [],
     meta: {
       ...base.meta,

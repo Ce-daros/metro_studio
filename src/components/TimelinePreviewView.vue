@@ -164,6 +164,7 @@ const {
         />
       </div>
     </div>
+
   </section>
 </template>
 
@@ -364,4 +365,5 @@ const {
   transition: width var(--transition-slow);
   border-radius: 0 2px 2px 0;
 }
+
 </style>

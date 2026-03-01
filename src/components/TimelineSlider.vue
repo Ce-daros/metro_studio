@@ -91,8 +91,20 @@ function disableTimeline() {
 
 const eventDescription = computed(() => {
   if (displayYear.value == null || !store.project?.timelineEvents) return null
-  const evt = store.project.timelineEvents.find((e) => e.year === displayYear.value)
-  return evt?.description || null
+  const year = Number(displayYear.value)
+  if (!Number.isFinite(year)) return null
+  const events = (store.project.timelineEvents || [])
+    .filter((e) => Number(e.year) === year && String(e.description || '').trim())
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0))
+  if (!events.length) return null
+  const pos = events[0]?.position === 'after'
+    ? '开通后'
+    : events[0]?.position === 'year_end'
+      ? '年度最后（全网）'
+      : '开通前'
+  const texts = events.map((e) => String(e.description || '').trim()).filter(Boolean)
+  if (!texts.length) return null
+  return `${pos}：${texts.join('；')}`
 })
 </script>
 

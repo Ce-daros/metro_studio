@@ -5,6 +5,24 @@ import { findCityPresetById, findCityPresetByRelationId } from '../../../lib/osm
 import { createId } from '../../../lib/ids'
 import { normalizeProject } from '../../../lib/projectModel'
 
+function isStarterPlaceholderLine(line) {
+  if (!line || typeof line !== 'object') return false
+  const edgeIds = Array.isArray(line.edgeIds) ? line.edgeIds : []
+  return line.key === 'manual-line-1' && edgeIds.length === 0
+}
+
+function isProjectEmptyForImport(project) {
+  if (!project) return false
+  const lines = Array.isArray(project.lines) ? project.lines : []
+  const hasOnlyStarterLine = lines.length === 1 && isStarterPlaceholderLine(lines[0])
+  const hasNoNetworkData = !(project.stations?.length) && !(project.edges?.length)
+  const hasNoExtraData =
+    !(project.manualTransfers?.length) &&
+    !(project.annotations?.length) &&
+    !(project.timelineEvents?.length)
+  return hasNoNetworkData && hasNoExtraData && (lines.length === 0 || hasOnlyStarterLine)
+}
+
 const importLayoutActions = {
   /**
    * Legacy shortcut: import Jinan metro network using the original Jinan-specific importer.
@@ -104,8 +122,7 @@ const importLayoutActions = {
     const now = new Date().toISOString()
     const currentProjectName = String(this.project.name || '').trim() || '新建工程'
     const cityLabel = imported.region?.name || 'OSM'
-    
-    const isEmptyProject = !this.project.stations?.length && !this.project.lines?.length
+    const isEmptyProject = isProjectEmptyForImport(this.project)
 
     if (isEmptyProject) {
       this.project.region = imported.region

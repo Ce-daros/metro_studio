@@ -154,6 +154,46 @@ function reconstructPath(prev, source, target) {
   return { stationIds, edgeIds }
 }
 
+function normalizeEdgeLineIds(edge, lineById) {
+  const ids = Array.isArray(edge?.sharedByLineIds) ? edge.sharedByLineIds : []
+  const unique = new Set()
+  const normalized = []
+  for (const id of ids) {
+    const lineId = String(id || '')
+    if (!lineId || unique.has(lineId)) continue
+    if (lineById.has(lineId)) {
+      unique.add(lineId)
+      normalized.push(lineId)
+    }
+  }
+  return normalized
+}
+
+function pickLineByOrder(lineIds, lineOrderMap) {
+  if (!lineIds.length) return null
+  const sorted = [...lineIds].sort((a, b) => {
+    const rankA = lineOrderMap.has(a) ? lineOrderMap.get(a) : Number.MAX_SAFE_INTEGER
+    const rankB = lineOrderMap.has(b) ? lineOrderMap.get(b) : Number.MAX_SAFE_INTEGER
+    if (rankA !== rankB) return rankA - rankB
+    return a.localeCompare(b)
+  })
+  return sorted[0]
+}
+
+function pickSegmentLineId(edge, preferredLineId, nextEdge, lineById, lineOrderMap) {
+  const candidates = normalizeEdgeLineIds(edge, lineById)
+  if (!candidates.length) return null
+  if (preferredLineId && candidates.includes(preferredLineId)) return preferredLineId
+
+  const nextCandidates = normalizeEdgeLineIds(nextEdge, lineById)
+  if (nextCandidates.length) {
+    const shared = candidates.filter((lineId) => nextCandidates.includes(lineId))
+    if (shared.length) return pickLineByOrder(shared, lineOrderMap)
+  }
+
+  return pickLineByOrder(candidates, lineOrderMap)
+}
+
 /**
  * 根据路径中的边和站点，构建分段信息（按线路分段）。
  * @param {string[]} edgeIds - 经过的边 ID 列表
@@ -161,9 +201,10 @@ function reconstructPath(prev, source, target) {
  * @param {Map<string, Object>} edgeById - 边 ID → 边对象
  * @param {Map<string, Object>} stationById - 站点 ID → 站点对象
  * @param {Map<string, Object>} lineById - 线路 ID → 线路对象
+ * @param {Map<string, number>} lineOrderMap - 线路顺序映射
  * @returns {Array<{lineId: string, lineName: string, lineColor: string, fromStation: string, toStation: string, fromStationId: string, toStationId: string, stationCount: number, distanceMeters: number}>}
  */
-function buildSegments(edgeIds, stationIds, edgeById, stationById, lineById) {
+function buildSegments(edgeIds, stationIds, edgeById, stationById, lineById, lineOrderMap) {
   if (!edgeIds.length) return []
 
   const segments = []
@@ -174,8 +215,8 @@ function buildSegments(edgeIds, stationIds, edgeById, stationById, lineById) {
   for (let i = 0; i < edgeIds.length; i++) {
     const edge = edgeById.get(edgeIds[i])
     if (!edge) continue
-    // 取该边的第一条线路作为所属线路
-    const lineId = edge.sharedByLineIds?.[0] || null
+    const nextEdge = i + 1 < edgeIds.length ? edgeById.get(edgeIds[i + 1]) : null
+    const lineId = pickSegmentLineId(edge, currentLineId, nextEdge, lineById, lineOrderMap)
 
     if (lineId !== currentLineId && currentLineId !== null) {
       // 线路切换，结束当前段
@@ -265,6 +306,12 @@ export function computeShortestRoute({
   const edgeById = new Map(edges.map((e) => [e.id, e]))
   const stationById = new Map(stations.map((s) => [s.id, s]))
   const lineById = new Map((lines || []).map((l) => [l.id, l]))
+  const lineOrderMap = new Map()
+  for (let i = 0; i < (lines || []).length; i += 1) {
+    const lineId = String(lines[i]?.id || '')
+    if (!lineId || lineOrderMap.has(lineId)) continue
+    lineOrderMap.set(lineId, i)
+  }
 
   let bestResult = null
   let bestTotal = Infinity
@@ -286,7 +333,7 @@ export function computeShortestRoute({
         const path = reconstructPath(prev, originCandidate.stationId, destCandidate.stationId)
         if (!path) continue
 
-        const segments = buildSegments(path.edgeIds, path.stationIds, edgeById, stationById, lineById)
+        const segments = buildSegments(path.edgeIds, path.stationIds, edgeById, stationById, lineById, lineOrderMap)
 
         bestTotal = totalDist
         bestResult = {

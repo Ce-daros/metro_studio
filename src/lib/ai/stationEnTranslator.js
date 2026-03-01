@@ -290,7 +290,7 @@ export async function retranslateStationEnglishNames({
   const parallelChunks = chunkArray(stationBatches, TRANSLATION_BATCH_SIZE);
 
   // 并行处理所有chunk
-  const chunkPromises = parallelChunks.map(async (batches, chunkIndex) => {
+  const chunkPromises = parallelChunks.map(async (batches) => {
     if (signal?.aborted) {
       throw new Error("重译任务已取消");
     }
@@ -348,7 +348,13 @@ export async function retranslateStationEnglishNames({
   const results = await Promise.allSettled(chunkPromises);
 
   // 收集结果并更新进度
-  for (const result of results) {
+  for (let index = 0; index < results.length; index += 1) {
+    const result = results[index];
+    const expectedChunkLength = (parallelChunks[index] || []).reduce(
+      (sum, batch) => sum + batch.length,
+      0,
+    );
+
     if (signal?.aborted) {
       throw new Error("重译任务已取消");
     }
@@ -359,8 +365,9 @@ export async function retranslateStationEnglishNames({
       failed.push(...chunkFailed);
       done += chunkLength;
     } else {
-      done += TRANSLATION_BATCH_SIZE * STATIONS_PER_REQUEST;
+      done += expectedChunkLength;
     }
+    done = Math.min(done, total);
 
     onProgress?.({
       done,

@@ -60,11 +60,14 @@ export class TimelinePreviewEngine {
 
     // Timeline data
     this._years = []
-    this._eventMap = new Map()
+    this._yearEventGroups = new Map()
+    this._yearDelayMap = new Map()
     this._lineLabels = new Map()
     this._animationPlan = null
     this._continuousPlan = null
     this._currentYearIndex = 0
+    this._eventOnlyYears = []
+    this._eventOnlyCursor = 0
 
     // Geographic data
     this._tileCache = new TileCache(this._basemapMode)
@@ -95,11 +98,42 @@ export class TimelinePreviewEngine {
     this._yearPauseLastIndex = -1
     this._pauseLastLineId = null
     this._isLinePaused = false
+    this._yearEventHoldUntil = 0
+    this._yearEventHoldProgress = 0
+    this._yearEventHoldIndex = -1
+    this._yearEventHoldYear = null
+    this._yearEventHoldMode = 'before'
+    this._yearEventHoldItemIndex = 0
+    this._yearEventHoldGlobalView = false
+    this._yearEventHoldStart = 0
+    this._yearEventHoldFromCamera = null
+    this._yearEventHoldTargetCamera = null
+    this._yearEventShownYears = new Set()
+    this._yearDelayShownBefore = new Set()
+    this._yearDelayShownAfter = new Set()
+    this._yearDelayHoldUntil = 0
+    this._yearDelayHoldProgress = 0
+    this._yearDelayHoldStart = 0
+    this._lastTickYearMarkerIndex = -1
+    this._YEAR_EVENT_HOLD_BASE_MS = 1200
+    this._YEAR_EVENT_HOLD_PER_CHAR_MS = 119
+    this._YEAR_EVENT_HOLD_MAX_MS = 5600
+    this._YEAR_DELAY_VISUAL_SETTLE_MS = 450
     // Camera travel phase (after hold, before new line draws)
     this._camTravelUntil = 0
     this._camTravelFrom = null
     this._camTravelStart = 0
     this._camTravelTarget = null
+    this._suppressNextLineTransition = false
+    this._introZoomUntil = 0
+    this._introZoomStart = 0
+    this._introZoomHoldMs = 0
+    this._introZoomFrom = null
+    this._introZoomTarget = null
+    this._introFreezeProgress = 0
+    this._introInfoYear = null
+    this._introInfoText = null
+    this._transitionOverlayAlpha = 0
 
     // Outro: holdLast → zoomOut → holdFull → idle
     this._outroPhase = null
@@ -179,17 +213,59 @@ export class TimelinePreviewEngine {
       this._years = pseudoPlan.years
       this._animationPlan = pseudoPlan
       this._lineLabels = pseudoPlan.lineLabels || new Map()
-      this._eventMap = new Map()
+      this._yearEventGroups = new Map()
+      this._yearDelayMap = new Map()
     } else {
-      this._eventMap = new Map()
+      this._yearEventGroups = new Map()
+      this._yearDelayMap = new Map()
+      for (const rawDelay of project?.timelineYearDelays || []) {
+        const y = Number(rawDelay?.year)
+        if (!Number.isFinite(y)) continue
+        const beforeMs = Math.max(0, Number(rawDelay?.beforeMs || 0))
+        const afterMs = Math.max(0, Number(rawDelay?.afterMs || 0))
+        this._yearDelayMap.set(y, { beforeMs, afterMs })
+      }
       for (const evt of project?.timelineEvents || []) {
-        this._eventMap.set(evt.year, evt.description)
+        const yearNum = Number(evt?.year)
+        if (!Number.isFinite(yearNum)) continue
+        const text = String(evt?.description || '').trim()
+        if (!text) continue
+        if (!this._yearEventGroups.has(yearNum)) {
+          this._yearEventGroups.set(yearNum, {
+            position: evt?.position === 'after' ? 'after' : evt?.position === 'year_end' ? 'year_end' : 'before',
+            items: [],
+          })
+        }
+        const group = this._yearEventGroups.get(yearNum)
+        const itemOrder = Number.isFinite(Number(evt?.order)) ? Number(evt.order) : group.items.length
+        if (!group.items.length) {
+          group.position = evt?.position === 'after' ? 'after' : evt?.position === 'year_end' ? 'year_end' : 'before'
+        }
+        group.items.push({
+          id: String(evt?.id || ''),
+          description: text,
+          order: itemOrder,
+        })
+      }
+
+      for (const group of this._yearEventGroups.values()) {
+        group.items.sort((a, b) => a.order - b.order)
       }
 
       this._lineLabels = new Map()
       this._animationPlan = buildTimelineAnimationPlan(project)
       this._years = this._animationPlan.years
     }
+
+    const markerYearSet = new Set()
+    for (const y of this._years) {
+      const yearNum = this._toYearNumber(y)
+      if (Number.isFinite(yearNum)) markerYearSet.add(yearNum)
+    }
+    this._eventOnlyYears = [...this._yearEventGroups.keys()]
+      .filter((yearNum) => !markerYearSet.has(yearNum))
+      .sort((a, b) => a - b)
+    this._eventOnlyCursor = 0
 
     this._continuousPlan = buildContinuousPlan(this._animationPlan, this._years)
 
@@ -289,6 +365,129 @@ export class TimelinePreviewEngine {
       }
     }
     return { year: this._continuousPlan.yearMarkers[idx].year, index: idx }
+  }
+
+  _toYearNumber(yearValue) {
+    if (yearValue == null) return null
+    if (typeof yearValue === 'object') {
+      return Number(yearValue.year)
+    }
+    return Number(yearValue)
+  }
+
+  _getYearEventGroup(yearValue) {
+    const yearNum = this._toYearNumber(yearValue)
+    if (!Number.isFinite(yearNum)) return null
+    const group = this._yearEventGroups.get(yearNum)
+    if (!group?.items?.length) return null
+    return group
+  }
+
+  _getYearDelay(yearValue) {
+    const yearNum = this._toYearNumber(yearValue)
+    if (!Number.isFinite(yearNum)) return { beforeMs: 0, afterMs: 0 }
+    const row = this._yearDelayMap.get(yearNum)
+    if (!row) return { beforeMs: 0, afterMs: 0 }
+    return {
+      beforeMs: Math.max(0, Number(row.beforeMs || 0)),
+      afterMs: Math.max(0, Number(row.afterMs || 0)),
+    }
+  }
+
+  _getYearEventItemText(group, itemIndex) {
+    if (!group?.items?.length) return null
+    const idx = Number(itemIndex)
+    if (!Number.isFinite(idx) || idx < 0 || idx >= group.items.length) return null
+    const text = String(group.items[idx]?.description || '').trim()
+    return text || null
+  }
+
+  _computeYearEventHoldMs(text) {
+    const cleaned = String(text || '').replace(/\s+/g, '')
+    const charCount = cleaned.length
+    const raw = this._YEAR_EVENT_HOLD_BASE_MS + charCount * this._YEAR_EVENT_HOLD_PER_CHAR_MS
+    return Math.max(this._YEAR_EVENT_HOLD_BASE_MS, Math.min(this._YEAR_EVENT_HOLD_MAX_MS, raw))
+  }
+
+  _beginYearEventHold(now, yearNum, markerIndex, freezeProgress, mode) {
+    const group = this._getYearEventGroup(yearNum)
+    if (!group?.items?.length) return false
+    const text = this._getYearEventItemText(group, 0)
+    if (!text) return false
+    this._yearEventHoldUntil = now + this._computeYearEventHoldMs(text)
+    this._yearEventHoldProgress = freezeProgress
+    this._yearEventHoldIndex = markerIndex
+    this._yearEventHoldYear = yearNum
+    this._yearEventHoldMode = mode === 'after' ? 'after' : mode === 'year_end' ? 'year_end' : 'before'
+    this._yearEventHoldItemIndex = 0
+    this._yearEventHoldGlobalView = this._yearEventHoldMode === 'year_end'
+    this._yearEventHoldStart = now
+    this._yearEventHoldFromCamera = { ...(this._smoothCamera || this._camera || this._fullCamera) }
+    this._yearEventHoldTargetCamera = this._computeTipCamera(freezeProgress)
+    return true
+  }
+
+  _applyYearEndHoldCamera(now) {
+    if (
+      this._yearEventHoldMode !== 'year_end' ||
+      !this._yearEventHoldGlobalView ||
+      !(this._fullCamera && this._yearEventHoldFromCamera && this._yearEventHoldTargetCamera)
+    ) {
+      return
+    }
+
+    const holdMs = Math.max(1, this._yearEventHoldUntil - this._yearEventHoldStart)
+    const t = Math.max(0, Math.min(1, (now - this._yearEventHoldStart) / holdMs))
+    const OUT_RATIO = 0.28
+    const IN_RATIO_START = 0.72
+
+    const lerpCam = (a, b, p) => ({
+      centerLng: a.centerLng + (b.centerLng - a.centerLng) * p,
+      centerLat: a.centerLat + (b.centerLat - a.centerLat) * p,
+      zoom: a.zoom + (b.zoom - a.zoom) * p,
+    })
+
+    let cam = null
+    if (t < OUT_RATIO) {
+      const p = easeOutCubic(t / OUT_RATIO)
+      cam = lerpCam(this._yearEventHoldFromCamera, this._fullCamera, p)
+    } else if (t < IN_RATIO_START) {
+      cam = { ...this._fullCamera }
+    } else {
+      const p = easeOutCubic((t - IN_RATIO_START) / (1 - IN_RATIO_START))
+      cam = lerpCam(this._fullCamera, this._yearEventHoldTargetCamera, p)
+    }
+
+    this._camera = cam
+    this._smoothCamera = { ...cam }
+  }
+
+  _resolveYearMarkerRange(yearNum) {
+    if (!Number.isFinite(yearNum) || !this._continuousPlan?.yearMarkers?.length) return null
+    let firstIndex = -1
+    let lastIndex = -1
+    let firstWithLines = -1
+    let lastWithLines = -1
+    const markers = this._continuousPlan.yearMarkers
+
+    for (let i = 0; i < markers.length; i++) {
+      const markerYear = this._toYearNumber(markers[i]?.year)
+      if (markerYear !== yearNum) continue
+      if (firstIndex < 0) firstIndex = i
+      lastIndex = i
+      if (markers[i]?.yearPlan?.lineDrawPlans?.length) {
+        if (firstWithLines < 0) firstWithLines = i
+        lastWithLines = i
+      }
+    }
+
+    if (firstIndex < 0) return null
+    return {
+      firstIndex,
+      lastIndex,
+      firstWithLines,
+      lastWithLines,
+    }
   }
 
   _computePseudoStats(yearPlan) {
@@ -407,21 +606,32 @@ export class TimelinePreviewEngine {
   _getCurrentYearLineInfo(yearMarkerIndex, globalProgress) {
     if (!this._continuousPlan?.yearMarkers?.length) return null
     const marker = this._continuousPlan.yearMarkers[yearMarkerIndex]
+    const nextMarker = this._continuousPlan.yearMarkers[yearMarkerIndex + 1] || null
+    const markerStart = Number(marker?.globalStart)
+    const markerEnd = Number(nextMarker?.globalStart ?? 1)
     const yp = marker?.yearPlan
     if (!yp?.lineDrawPlans?.length) return null
 
     // Find the line currently being drawn based on globalProgress
     let activeLp = yp.lineDrawPlans[0]
     if (globalProgress != null) {
-      const markerYearNum = typeof marker.year === 'object' ? marker.year.year : marker.year
+      const EPS = 1e-6
+      // Do not show line capsule before this marker's first segment actually starts.
+      let firstSegStart = Infinity
+      for (const seg of this._continuousPlan.segments) {
+        if (seg.globalStart < markerStart || seg.globalStart >= markerEnd) continue
+        if (seg.globalStart < firstSegStart) firstSegStart = seg.globalStart
+      }
+      if (Number.isFinite(firstSegStart) && globalProgress < firstSegStart + EPS) {
+        return null
+      }
       // 找到当前正在绘制的 segment
       let currentSeg = null
       for (const seg of this._continuousPlan.segments) {
-        if (seg.globalStart <= globalProgress && seg.globalEnd > globalProgress) {
-          if (seg.year === markerYearNum) {
-            currentSeg = seg
-            break
-          }
+        if (seg.globalStart < markerStart || seg.globalStart >= markerEnd) continue
+        if (seg.globalStart < globalProgress - EPS && seg.globalEnd > globalProgress + EPS) {
+          currentSeg = seg
+          break
         }
       }
       // 如果找到了当前正在绘制的 segment，使用它的线路
@@ -430,10 +640,9 @@ export class TimelinePreviewEngine {
       } else {
         // 否则找到这一年最后绘制的 segment
         for (const seg of this._continuousPlan.segments) {
-          if (seg.globalStart > globalProgress) break
-          if (seg.year === markerYearNum) {
-            activeLp = yp.lineDrawPlans.find(lp => lp.lineId === seg.lineId) || activeLp
-          }
+          if (seg.globalStart < markerStart || seg.globalStart >= markerEnd) continue
+          if (seg.globalStart >= globalProgress - EPS) break
+          activeLp = yp.lineDrawPlans.find(lp => lp.lineId === seg.lineId) || activeLp
         }
       }
     }
@@ -474,10 +683,38 @@ export class TimelinePreviewEngine {
     this._yearPauseProgress = 0
     this._pauseLastLineId = null
     this._isLinePaused = false
+    this._yearEventHoldUntil = 0
+    this._yearEventHoldProgress = 0
+    this._yearEventHoldIndex = -1
+    this._yearEventHoldYear = null
+    this._yearEventHoldMode = 'before'
+    this._yearEventHoldItemIndex = 0
+    this._yearEventHoldGlobalView = false
+    this._yearEventHoldStart = 0
+    this._yearEventHoldFromCamera = null
+    this._yearEventHoldTargetCamera = null
+    this._yearEventShownYears = new Set()
+    this._yearDelayShownBefore = new Set()
+    this._yearDelayShownAfter = new Set()
+    this._yearDelayHoldUntil = 0
+    this._yearDelayHoldProgress = 0
+    this._yearDelayHoldStart = 0
+    this._eventOnlyCursor = 0
+    this._lastTickYearMarkerIndex = -1
     this._camTravelUntil = 0
     this._camTravelFrom = null
     this._camTravelStart = 0
     this._camTravelTarget = null
+    this._suppressNextLineTransition = true
+    this._introZoomUntil = 0
+    this._introZoomStart = 0
+    this._introZoomHoldMs = 0
+    this._introZoomFrom = null
+    this._introZoomTarget = null
+    this._introFreezeProgress = 0
+    this._introInfoYear = null
+    this._introInfoText = null
+    this._transitionOverlayAlpha = 0
     this._outroPhase = null
     this._outroStart = 0
     this._outroCamFrom = null
@@ -494,6 +731,48 @@ export class TimelinePreviewEngine {
     this._bannerSlideYear = null
     this._bannerSlideStartTime = 0
     this._tipGlowPhase = 0
+
+    // Intro camera phase: keep full-city view, then smoothly zoom to first line start.
+    const firstSeg = this._continuousPlan?.segments?.[0]
+    if (firstSeg?.waypoints?.length) {
+      const [lng, lat] = firstSeg.waypoints[0]
+      const INTRO_HOLD_MS = 700
+      const INTRO_ZOOM_MS = 1200
+      this._introZoomStart = now
+      this._introZoomHoldMs = INTRO_HOLD_MS
+      this._introZoomUntil = now + INTRO_HOLD_MS + INTRO_ZOOM_MS
+      this._introZoomFrom = { ...(this._fullCamera || this._camera) }
+      this._introZoomTarget = {
+        centerLng: lng,
+        centerLat: lat,
+        zoom: (this._fullCamera?.zoom || this._camera.zoom) + this._zoomOffset,
+      }
+      this._introFreezeProgress = Math.max(0, Math.min(1, (firstSeg.globalStart ?? 0) + 1e-4))
+      this._isLinePaused = true
+      this._smoothCamera = this._introZoomFrom ? { ...this._introZoomFrom } : null
+
+      // If there are event-only years before first line opening, show the first one
+      // during the full-city intro and consume it from later playback.
+      const introEventYear = this._eventOnlyYears?.[0]
+      const introGroup = this._getYearEventGroup(introEventYear)
+      const introText = this._getYearEventItemText(introGroup, 0)
+      const introItemCount = introGroup?.items?.length || 0
+      if (Number.isFinite(introEventYear) && introText && introItemCount === 1) {
+        this._introInfoYear = introEventYear
+        this._introInfoText = introText
+        this._yearEventShownYears.add(introEventYear)
+        this._eventOnlyCursor = Math.max(this._eventOnlyCursor, 1)
+
+        // Consume a single intro event-only year in the intro phase itself.
+        // Keep delay semantics: before-delay extends full-city hold window.
+        const introDelay = this._getYearDelay(introEventYear)
+        const extraHoldMs = Math.max(0, Number(introDelay.beforeMs || 0))
+        if (extraHoldMs > 0) {
+          this._introZoomHoldMs += this._YEAR_DELAY_VISUAL_SETTLE_MS + extraHoldMs
+          this._introZoomUntil += this._YEAR_DELAY_VISUAL_SETTLE_MS + extraHoldMs
+        }
+      }
+    }
     this._setState('playing')
     this._emitYearChange()
   }
@@ -517,6 +796,9 @@ export class TimelinePreviewEngine {
     // Dynamic camera: track drawing tip (skip during outro zoom and line pause)
     if ((!this._outroPhase || this._outroPhase === 'holdLast') && !this._isLinePaused) {
       this._camera = this._computeCameraAtProgress(globalProgress, now)
+    }
+    if (this._yearEventHoldGlobalView) {
+      this._applyYearEndHoldCamera(now)
     }
 
     // Tiles
@@ -629,20 +911,51 @@ export class TimelinePreviewEngine {
       this._emitYearChange()
     }
 
+    const isYearEventHoldFrame =
+      this._yearEventHoldUntil > now &&
+      Number.isFinite(this._yearEventHoldYear)
+    const isYearDelayHoldFrame =
+      this._yearDelayHoldUntil > now &&
+      this._yearDelayHoldStart > 0
+    const isIntroInfoFrame =
+      !this._pseudoMode &&
+      this._introZoomUntil > now &&
+      Number.isFinite(this._introInfoYear) &&
+      Boolean(this._introInfoText)
+
     // Format year label (only show year, not phase)
-    const yearLabel = this._pseudoMode
+    let yearLabel = this._pseudoMode
       ? (this._lineLabels.get(year)?.nameZh || `#${year}`)
       : (typeof year === 'object' && year !== null
           ? `${year.year}`
           : `${year}`)
+    if (isIntroInfoFrame) {
+      yearLabel = `${this._introInfoYear}`
+    } else if (!this._pseudoMode && isYearEventHoldFrame) {
+      yearLabel = `${this._yearEventHoldYear}`
+    }
 
     // Year transition animation
+    const useWallClockYearTransition =
+      this._isLinePaused &&
+      (
+        this._yearEventHoldUntil > now ||
+        this._yearDelayHoldUntil > now ||
+        this._introZoomUntil > now ||
+        this._yearPauseUntil > now ||
+        this._camTravelUntil > now
+      )
     if (yearLabel !== this._prevYearLabel && this._prevYearLabel != null) {
-      this._yearTransitionStart = globalProgress
+      this._yearTransitionStart = useWallClockYearTransition ? now : globalProgress
       this._yearTransitionT = 0
     }
     if (this._yearTransitionT < 1) {
-      this._yearTransitionT = Math.min(1, (globalProgress - this._yearTransitionStart) / this._YEAR_TRANSITION_DURATION)
+      if (useWallClockYearTransition) {
+        const YEAR_LABEL_FADE_MS = 320
+        this._yearTransitionT = Math.min(1, (now - this._yearTransitionStart) / YEAR_LABEL_FADE_MS)
+      } else {
+        this._yearTransitionT = Math.min(1, (globalProgress - this._yearTransitionStart) / this._YEAR_TRANSITION_DURATION)
+      }
     }
     const savedPrevYear = (this._yearTransitionT < 1) ? this._prevYearLabel : null
     if (yearLabel !== this._prevYearLabel) {
@@ -660,7 +973,10 @@ export class TimelinePreviewEngine {
       this._displayStats = rawStats
     }
 
-    const overlayAlpha = globalProgress < 0.01 ? globalProgress / 0.01 : globalProgress > 0.99 ? (1 - globalProgress) / 0.01 : 1
+    let overlayAlpha = globalProgress < 0.01 ? globalProgress / 0.01 : globalProgress > 0.99 ? (1 - globalProgress) / 0.01 : 1
+    if (isYearEventHoldFrame || isIntroInfoFrame || isYearDelayHoldFrame) {
+      overlayAlpha = Math.max(overlayAlpha, 0.95)
+    }
 
     // Year + Stats (bottom-left block)
     renderOverlayYear(this._ctx, yearLabel, overlayAlpha, this._logicalWidth, this._logicalHeight, {
@@ -674,20 +990,37 @@ export class TimelinePreviewEngine {
     // Current year marker
     const curMarker = this._continuousPlan.yearMarkers[index]
 
-    // Compute yearLocalT for banner alpha and line card animation
-    let yearLocalT = 0
-    if (curMarker) {
-      const nextMarker = this._continuousPlan.yearMarkers[index + 1]
-      const yearEnd = nextMarker ? nextMarker.globalStart : 1
-      const yearSpan = yearEnd - curMarker.globalStart
-      yearLocalT = yearSpan > 0 ? (globalProgress - curMarker.globalStart) / yearSpan : 0
-    }
-
     // Event banner slide-in (wall-clock driven)
     if (curMarker) {
-      const eventText = this._eventMap.get(year)
+      const yearNum = this._toYearNumber(year)
+      const eventHoldActive =
+        this._yearEventHoldUntil > now &&
+        Number.isFinite(this._yearEventHoldYear)
+      const introInfoActive =
+        !this._pseudoMode &&
+        this._introZoomUntil > now &&
+        Number.isFinite(this._introInfoYear) &&
+        Boolean(this._introInfoText)
+      const displayYearNum = introInfoActive
+        ? this._introInfoYear
+        : eventHoldActive
+          ? this._yearEventHoldYear
+          : yearNum
+      const yearEventGroup = this._getYearEventGroup(displayYearNum)
+      const eventText = introInfoActive
+        ? this._introInfoText
+        : this._getYearEventItemText(yearEventGroup, this._yearEventHoldItemIndex)
       const lineInfo = this._getCurrentYearLineInfo(index, globalProgress)
-      const bannerKey = `${year}:${lineInfo?.activeLineId}`
+      const holdMatchesPosition = eventHoldActive && this._yearEventHoldMode === (yearEventGroup?.position || 'before')
+      let displayEventText = eventText && (introInfoActive || holdMatchesPosition || eventHoldActive) ? eventText : null
+      if (!displayEventText && eventHoldActive) {
+        const holdGroup = this._getYearEventGroup(this._yearEventHoldYear)
+        displayEventText = this._getYearEventItemText(holdGroup, this._yearEventHoldItemIndex)
+      }
+      const bannerYearKey = Number.isFinite(displayYearNum) ? displayYearNum : String(year)
+      const bannerMode = displayEventText ? 'event' : 'line'
+      const delayKey = isYearDelayHoldFrame ? `delay:${this._yearDelayHoldStart}` : 'delay:none'
+      const bannerKey = `${bannerYearKey}:${lineInfo?.activeLineId}:${bannerMode}:${this._yearEventHoldMode}:${delayKey}`
       if (this._bannerSlideYear !== bannerKey) {
         this._bannerSlideYear = bannerKey
         this._bannerSlideStartTime = now
@@ -695,14 +1028,9 @@ export class TimelinePreviewEngine {
       const BANNER_SLIDE_MS = 350
       const bannerElapsed = now - (this._bannerSlideStartTime || now)
       this._bannerSlideT = Math.min(1, bannerElapsed / BANNER_SLIDE_MS)
-      // Fade out near end of year
-      if (yearLocalT > 0.925) {
-        this._bannerSlideT = Math.min(this._bannerSlideT, Math.max(0, (1 - yearLocalT) / 0.075))
-      }
-      const yearNum = typeof year === 'object' ? year.year : year
       const lineColor = lineInfo?.color || this._continuousPlan.segments.find(s => s.year === yearNum)?.color || '#2563EB'
 
-      renderOverlayEvent(this._ctx, eventText || null, lineColor, overlayAlpha, this._logicalWidth, this._logicalHeight, {
+      renderOverlayEvent(this._ctx, displayEventText || null, lineColor, overlayAlpha, this._logicalWidth, this._logicalHeight, {
         nameZh: lineInfo?.nameZh || '',
         nameEn: lineInfo?.nameEn || '',
         phase: lineInfo?.phase || '',
@@ -759,6 +1087,14 @@ export class TimelinePreviewEngine {
         displayStats: this._displayStats || rawStats,
       })
     }
+
+    if (this._transitionOverlayAlpha > 0) {
+      this._ctx.save()
+      this._ctx.globalAlpha = Math.max(0, Math.min(1, this._transitionOverlayAlpha))
+      this._ctx.fillStyle = '#000000'
+      this._ctx.fillRect(0, 0, this._logicalWidth, this._logicalHeight)
+      this._ctx.restore()
+    }
   }
 
   /** Draw a single polyline in geographic coordinates. */
@@ -806,6 +1142,7 @@ export class TimelinePreviewEngine {
   }
 
   _tickPlaying(now) {
+    this._transitionOverlayAlpha = 0
     // ── Outro phases: holdLast → zoomOut → holdFull → idle ──
     if (this._outroPhase) {
       const elapsed = now - this._outroStart
@@ -815,6 +1152,7 @@ export class TimelinePreviewEngine {
       } else if (this._outroPhase === 'zoomOut') {
         if (!this._outroCamFrom) this._outroCamFrom = { ...this._smoothCamera || this._camera }
         const t = Math.min(1, elapsed / 2000)
+        this._transitionOverlayAlpha = 0.42 * t
         const ease = t * t * (3 - 2 * t)
         const fc = this._fullCamera
         if (fc && this._outroCamFrom) {
@@ -827,6 +1165,7 @@ export class TimelinePreviewEngine {
         this._renderContinuousFrame(1, now)
         if (t >= 1) { this._outroPhase = 'holdFull'; this._outroStart = now }
       } else if (this._outroPhase === 'holdFull') {
+        this._transitionOverlayAlpha = Math.min(0.85, 0.42 + (elapsed / 2000) * 0.43)
         this._renderContinuousFrame(1, now)
         if (elapsed > 2000) {
           this._outroPhase = null
@@ -835,6 +1174,133 @@ export class TimelinePreviewEngine {
         }
       }
       return
+    }
+
+    // Year event intro hold: show event card exclusively before drawing this year.
+    if (this._yearEventHoldUntil > now) {
+      this._phaseStart += now - this._lastPlayingTick
+      this._lastPlayingTick = now
+      this._isLinePaused = true
+      this._renderContinuousFrame(this._yearEventHoldProgress, now)
+      return
+    }
+    if (this._yearEventHoldUntil > 0) {
+      let holdDeadline = this._yearEventHoldUntil
+      while (this._yearEventHoldUntil > 0 && now >= holdDeadline) {
+        const gap = holdDeadline - this._lastPlayingTick
+        if (gap > 0) this._phaseStart += gap
+        this._lastPlayingTick = holdDeadline
+
+        const finishedYear = this._yearEventHoldYear
+        const finishedMode = this._yearEventHoldMode
+        const finishedProgress = this._yearEventHoldProgress
+        const currentGroup = this._getYearEventGroup(this._yearEventHoldYear)
+        const nextItemIndex = this._yearEventHoldItemIndex + 1
+        const nextText = this._getYearEventItemText(currentGroup, nextItemIndex)
+        if (nextText) {
+          this._yearEventHoldItemIndex = nextItemIndex
+          this._yearEventHoldUntil = holdDeadline + this._computeYearEventHoldMs(nextText)
+          this._yearEventHoldStart = holdDeadline
+          this._yearEventHoldFromCamera = { ...(this._smoothCamera || this._camera || this._fullCamera) }
+          this._yearEventHoldTargetCamera = this._computeTipCamera(this._yearEventHoldProgress)
+          holdDeadline = this._yearEventHoldUntil
+          continue
+        }
+
+        if (
+          Number.isFinite(finishedYear) &&
+          finishedMode === 'before' &&
+          !this._yearDelayShownAfter.has(finishedYear)
+        ) {
+          const delay = this._getYearDelay(finishedYear)
+          const markerRange = this._resolveYearMarkerRange(finishedYear)
+          // Only auto-apply here for event-only years (no line marker range).
+          if (!markerRange && delay.afterMs > 0) {
+            this._yearDelayShownAfter.add(finishedYear)
+            this._yearDelayHoldUntil = holdDeadline + this._YEAR_DELAY_VISUAL_SETTLE_MS + delay.afterMs
+            this._yearDelayHoldProgress = finishedProgress
+            this._yearDelayHoldStart = holdDeadline
+          }
+        }
+
+        this._yearEventHoldUntil = 0
+        this._yearEventHoldIndex = -1
+        this._yearEventHoldYear = null
+        this._yearEventHoldMode = 'before'
+        this._yearEventHoldItemIndex = 0
+        this._yearEventHoldGlobalView = false
+        this._yearEventHoldStart = 0
+        this._yearEventHoldFromCamera = null
+        this._yearEventHoldTargetCamera = null
+        this._isLinePaused = false
+      }
+
+      if (this._yearEventHoldUntil > now) {
+        this._phaseStart += now - this._lastPlayingTick
+        this._lastPlayingTick = now
+        this._isLinePaused = true
+        this._renderContinuousFrame(this._yearEventHoldProgress, now)
+        return
+      }
+    }
+
+    // Per-year delay hold (before/after): freeze timeline without event card.
+    if (this._yearDelayHoldUntil > now) {
+      this._phaseStart += now - this._lastPlayingTick
+      this._lastPlayingTick = now
+      this._isLinePaused = true
+      this._renderContinuousFrame(this._yearDelayHoldProgress, now)
+      return
+    }
+    if (this._yearDelayHoldUntil > 0) {
+      const gap = this._yearDelayHoldUntil - this._lastPlayingTick
+      if (gap > 0) this._phaseStart += gap
+      this._lastPlayingTick = this._yearDelayHoldUntil
+      this._yearDelayHoldUntil = 0
+      this._yearDelayHoldProgress = 0
+      this._yearDelayHoldStart = 0
+      this._isLinePaused = false
+    }
+
+    // Intro zoom phase: animate camera from full city to first line start before drawing begins.
+    if (this._introZoomUntil > now) {
+      this._phaseStart += now - this._lastPlayingTick
+      this._lastPlayingTick = now
+      this._isLinePaused = true
+      const motionTotal = this._introZoomUntil - this._introZoomStart - this._introZoomHoldMs
+      const motionElapsed = now - this._introZoomStart - this._introZoomHoldMs
+      const t = motionTotal > 0 ? Math.min(1, Math.max(0, motionElapsed / motionTotal)) : 1
+      const introElapsed = now - this._introZoomStart
+      const introFadeInT = Math.max(0, Math.min(1, introElapsed / 450))
+      this._transitionOverlayAlpha = (1 - introFadeInT) * 0.45
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+      const from = this._introZoomFrom
+      const to = this._introZoomTarget
+      if (from && to) {
+        this._camera = {
+          centerLng: from.centerLng + (to.centerLng - from.centerLng) * ease,
+          centerLat: from.centerLat + (to.centerLat - from.centerLat) * ease,
+          zoom: from.zoom + (to.zoom - from.zoom) * ease,
+        }
+        this._smoothCamera = { ...this._camera }
+      }
+      this._renderContinuousFrame(this._introFreezeProgress, now)
+      return
+    }
+    if (this._introZoomUntil > 0) {
+      const gap = this._introZoomUntil - this._lastPlayingTick
+      if (gap > 0) this._phaseStart += gap
+      this._lastPlayingTick = this._introZoomUntil
+      this._introZoomUntil = 0
+      this._introZoomStart = 0
+      this._introZoomHoldMs = 0
+      this._introZoomFrom = null
+      this._introZoomTarget = null
+      this._introInfoYear = null
+      this._introInfoText = null
+      this._isLinePaused = false
+      this._suppressNextLineTransition = true
+      if (this._camera) this._smoothCamera = { ...this._camera }
     }
 
     // Pause between years: freeze progress while paused
@@ -900,7 +1366,202 @@ export class TimelinePreviewEngine {
     }
 
     // Detect line change (across or within years) and pause + camera travel
-    const { index } = this._findCurrentYear(rawProgress)
+    const { year, index } = this._findCurrentYear(rawProgress)
+    const curMarker = this._continuousPlan?.yearMarkers?.[index]
+    const yearNum = this._toYearNumber(year)
+    const yearEventGroup = this._getYearEventGroup(yearNum)
+    const hasYearEvent = Boolean(yearEventGroup)
+    const yearRange = this._resolveYearMarkerRange(yearNum)
+    const hasYearLineOpening = Boolean(yearRange && yearRange.firstWithLines >= 0 && yearRange.lastWithLines >= 0)
+    const firstLineMarkerIndex = yearRange?.firstWithLines ?? -1
+    const firstLineMarker = firstLineMarkerIndex >= 0
+      ? this._continuousPlan?.yearMarkers?.[firstLineMarkerIndex]
+      : null
+    const isLastMarkerOfYear = Boolean(yearRange && index === yearRange.lastWithLines)
+    const markerAfterYear = yearRange ? this._continuousPlan?.yearMarkers?.[yearRange.lastWithLines + 1] : null
+    const yearEnd = markerAfterYear ? markerAfterYear.globalStart : 1
+    const enteredNewMarker = index !== this._lastTickYearMarkerIndex
+    if (enteredNewMarker) this._lastTickYearMarkerIndex = index
+    const yearDelay = this._getYearDelay(yearNum)
+
+    // Event-only years (no line openings) should still play in chronological order.
+    // We inject them before reaching/at the next line year marker.
+    const currentYearNum = this._toYearNumber(year)
+    if (!this._pseudoMode && Number.isFinite(currentYearNum) && this._eventOnlyCursor < this._eventOnlyYears.length) {
+      const pendingYear = this._eventOnlyYears[this._eventOnlyCursor]
+      const pendingGroup = this._getYearEventGroup(pendingYear)
+      const pendingMode = pendingGroup?.position === 'year_end'
+        ? 'year_end'
+        : pendingGroup?.position === 'after'
+          ? 'after'
+          : 'before'
+      const pendingDelay = this._getYearDelay(pendingYear)
+      if (
+        Number.isFinite(pendingYear) &&
+        pendingYear <= currentYearNum &&
+        !this._yearEventShownYears.has(pendingYear)
+      ) {
+        const freezeProgress = Math.max(0, Math.min(1, (curMarker?.globalStart ?? rawProgress) + 1e-4))
+        if (
+          pendingDelay.beforeMs > 0 &&
+          !this._yearDelayShownBefore.has(pendingYear)
+        ) {
+          this._yearDelayShownBefore.add(pendingYear)
+          this._yearDelayHoldUntil = now + this._YEAR_DELAY_VISUAL_SETTLE_MS + pendingDelay.beforeMs
+          this._yearDelayHoldProgress = freezeProgress
+          this._yearDelayHoldStart = now
+          this._isLinePaused = true
+          this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+          this._renderContinuousFrame(freezeProgress, now)
+          return
+        }
+        if (this._beginYearEventHold(now, pendingYear, index, freezeProgress, pendingMode)) {
+          this._yearEventShownYears.add(pendingYear)
+          this._eventOnlyCursor += 1
+          this._isLinePaused = true
+          this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+          this._renderContinuousFrame(freezeProgress, now)
+          return
+        }
+        this._yearEventShownYears.add(pendingYear)
+        this._eventOnlyCursor += 1
+      }
+    }
+
+    // Year-level "before" delay: pauses at first line marker before any before-event intro.
+    if (
+      !this._pseudoMode &&
+      hasYearLineOpening &&
+      firstLineMarker &&
+      index >= firstLineMarkerIndex &&
+      rawProgress >= firstLineMarker.globalStart &&
+      yearDelay.beforeMs > 0 &&
+      !this._yearDelayShownBefore.has(yearNum)
+    ) {
+      const freezeProgress = Math.max(0, Math.min(1, (firstLineMarker.globalStart ?? rawProgress) + 1e-4))
+      this._yearDelayShownBefore.add(yearNum)
+      this._yearDelayHoldUntil = now + this._YEAR_DELAY_VISUAL_SETTLE_MS + yearDelay.beforeMs
+      this._yearDelayHoldProgress = freezeProgress
+      this._yearDelayHoldStart = now
+      this._isLinePaused = true
+      this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+      this._renderContinuousFrame(freezeProgress, now)
+      return
+    }
+
+    // "Before" year events: hold once at the first marker of that calendar year.
+    if (
+      !this._pseudoMode &&
+      hasYearEvent &&
+      hasYearLineOpening &&
+      firstLineMarker &&
+      index >= firstLineMarkerIndex &&
+      rawProgress >= firstLineMarker.globalStart &&
+      yearEventGroup.position === 'before' &&
+      !this._yearEventShownYears.has(yearNum)
+    ) {
+      const freezeProgress = Math.max(
+        0,
+        Math.min(1, (firstLineMarker.globalStart ?? rawProgress) + 1e-4),
+      )
+      if (!this._beginYearEventHold(now, yearNum, firstLineMarkerIndex, freezeProgress, 'before')) {
+        this._yearEventShownYears.add(yearNum)
+      } else {
+        this._yearEventShownYears.add(yearNum)
+
+        // Prevent an immediate extra line pause right after the intro hold.
+        const firstLineId = firstLineMarker?.yearPlan?.lineDrawPlans?.[0]?.lineId || null
+        this._pauseLastLineId = firstLineId
+        this._yearPauseLastIndex = firstLineMarkerIndex
+        this._isLinePaused = true
+
+        this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+        this._renderContinuousFrame(freezeProgress, now)
+        return
+      }
+    }
+
+    // "After" year events: hold once near the end of the last marker of that year.
+    if (
+      !this._pseudoMode &&
+      isLastMarkerOfYear &&
+      hasYearEvent &&
+      hasYearLineOpening &&
+      yearEventGroup.position === 'after' &&
+      !this._yearEventShownYears.has(yearNum)
+    ) {
+      const shouldTriggerAfterHold = rawProgress >= Math.max(curMarker?.globalStart ?? 0, yearEnd - 1e-4)
+      if (shouldTriggerAfterHold) {
+        const freezeProgress = Math.max(
+          (curMarker?.globalStart ?? rawProgress) + 1e-4,
+          Math.min(1, yearEnd - 1e-4),
+        )
+        if (!this._beginYearEventHold(now, yearNum, index, freezeProgress, 'after')) {
+          this._yearEventShownYears.add(yearNum)
+        } else {
+          this._yearEventShownYears.add(yearNum)
+          this._isLinePaused = true
+
+          this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+          this._renderContinuousFrame(freezeProgress, now)
+          return
+        }
+      }
+    }
+
+    // Year-level "after" delay: pauses at year end after after/year_end events.
+    if (
+      !this._pseudoMode &&
+      isLastMarkerOfYear &&
+      hasYearLineOpening &&
+      yearDelay.afterMs > 0 &&
+      !this._yearDelayShownAfter.has(yearNum)
+    ) {
+      const shouldTriggerAfterDelay = rawProgress >= Math.max(curMarker?.globalStart ?? 0, yearEnd - 1e-4)
+      if (shouldTriggerAfterDelay) {
+        const freezeProgress = Math.max(
+          (curMarker?.globalStart ?? rawProgress) + 1e-4,
+          Math.min(1, yearEnd - 1e-4),
+        )
+        this._yearDelayShownAfter.add(yearNum)
+        this._yearDelayHoldUntil = now + this._YEAR_DELAY_VISUAL_SETTLE_MS + yearDelay.afterMs
+        this._yearDelayHoldProgress = freezeProgress
+        this._yearDelayHoldStart = now
+        this._isLinePaused = true
+        this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+        this._renderContinuousFrame(freezeProgress, now)
+        return
+      }
+    }
+
+    // "Year-end" events: fixed to this calendar year's final moment with full-network view.
+    if (
+      !this._pseudoMode &&
+      isLastMarkerOfYear &&
+      hasYearEvent &&
+      hasYearLineOpening &&
+      yearEventGroup.position === 'year_end' &&
+      !this._yearEventShownYears.has(yearNum)
+    ) {
+      const shouldTriggerYearEndHold = rawProgress >= Math.max(curMarker?.globalStart ?? 0, yearEnd - 1e-4)
+      if (shouldTriggerYearEndHold) {
+        const freezeProgress = Math.max(
+          (curMarker?.globalStart ?? rawProgress) + 1e-4,
+          Math.min(1, yearEnd - 1e-4),
+        )
+        if (!this._beginYearEventHold(now, yearNum, index, freezeProgress, 'year_end')) {
+          this._yearEventShownYears.add(yearNum)
+        } else {
+          this._yearEventShownYears.add(yearNum)
+          this._isLinePaused = true
+
+          this._phaseStart += (rawProgress - freezeProgress) * this._getTotalDrawMs()
+          this._renderContinuousFrame(freezeProgress, now)
+          return
+        }
+      }
+    }
+
     // Find the lineId currently being drawn
     let curLineId = null
     let curLineFirstSeg = null
@@ -913,6 +1574,13 @@ export class TimelinePreviewEngine {
     }
 
     if (curLineId && this._pauseLastLineId && curLineId !== this._pauseLastLineId) {
+      if (this._suppressNextLineTransition) {
+        this._pauseLastLineId = curLineId
+        this._yearPauseLastIndex = index
+        this._suppressNextLineTransition = false
+        this._renderContinuousFrame(rawProgress, now)
+        return
+      }
       // Freeze: use a progress slightly past the boundary so last station is revealed
       const freezeProgress = curLineFirstSeg ? curLineFirstSeg.globalStart + 1e-4 : rawProgress
       this._isLinePaused = true
@@ -971,6 +1639,9 @@ export class TimelinePreviewEngine {
     }
     this._pauseLastLineId = curLineId
     this._yearPauseLastIndex = index
+    if (curLineId && this._suppressNextLineTransition) {
+      this._suppressNextLineTransition = false
+    }
 
     this._renderContinuousFrame(rawProgress, now)
   }
@@ -1291,6 +1962,8 @@ export class TimelinePreviewEngine {
     this._smoothCamera = null
     this._fullCamera = null
     this._years = []
+    this._eventOnlyYears = []
+    this._eventOnlyCursor = 0
     this._stationAnimState.clear()
     this._displayStats = null
     this._targetStats = null
@@ -1298,6 +1971,36 @@ export class TimelinePreviewEngine {
     this._targetLineStats = new Map()
     this._loadingComplete = false
     this._loadingProgress = { loaded: 0, total: 0 }
+    this._yearEventHoldUntil = 0
+    this._yearEventHoldProgress = 0
+    this._yearEventHoldIndex = -1
+    this._yearEventHoldYear = null
+    this._yearEventHoldMode = 'before'
+    this._yearEventHoldItemIndex = 0
+    this._yearEventHoldGlobalView = false
+    this._yearEventHoldStart = 0
+    this._yearEventHoldFromCamera = null
+    this._yearEventHoldTargetCamera = null
+    this._yearEventShownYears = new Set()
+    this._yearDelayShownBefore = new Set()
+    this._yearDelayShownAfter = new Set()
+    this._yearDelayHoldUntil = 0
+    this._yearDelayHoldProgress = 0
+    this._yearDelayHoldStart = 0
+    this._yearDelayMap = new Map()
+    this._eventOnlyYears = []
+    this._eventOnlyCursor = 0
+    this._introZoomUntil = 0
+    this._introZoomStart = 0
+    this._introZoomHoldMs = 0
+    this._introZoomFrom = null
+    this._introZoomTarget = null
+    this._introFreezeProgress = 0
+    this._introInfoYear = null
+    this._introInfoText = null
+    this._suppressNextLineTransition = false
+    this._transitionOverlayAlpha = 0
+    this._lastTickYearMarkerIndex = -1
   }
 
   getState() {
