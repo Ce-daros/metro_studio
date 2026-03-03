@@ -32,3 +32,16 @@
 .n-dropdown-option.n-dropdown-option--pending {
   background: rgba(181, 32, 255, 0.12) !important;
 }
+
+/* Prevent wheel scroll chaining from moving the modal container itself. */
+.n-modal-container,
+.n-modal-body-wrapper,
+.n-dialog-container {
+  overscroll-behavior: contain;
+}
+
+/* Keep scrolling inside dialog content instead of bubbling to wrapper. */
+.n-dialog .n-dialog__content,
+.n-card .n-card__content {
+  overscroll-behavior: contain;
+}
