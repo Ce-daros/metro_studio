@@ -17,7 +17,7 @@ import {
 } from './forces'
 import { enforceMinEdgeLength, enforceMinStationSpacing, enforceOctilinearHardConstraints } from './constraints'
 import { computeStationLabelLayout } from './labels'
-import { buildLineChains } from './linePlanning'
+import { applyLineDirectionPlanning, buildLineChains } from './linePlanning'
 import { computeScoreBreakdown, sanitizeBreakdown } from './scoring'
 import { angleToDirectionIndex, distance, toFiniteNumber } from './shared'
 
@@ -112,6 +112,8 @@ function optimizeLayout(payload) {
     temperature *= config.cooling
   }
 
+  applyLineDirectionPlanning(positions, lineChains, stations, nodeDegrees, config)
+  clampDisplacement(positions, original, config.displacementLimit)
   snapEdgesToEightDirections(positions, edgeRecords, 0.18)
   straightenNearLinearSegments(positions, edgeRecords, lines, stations, config)
   compactLongEdges(positions, edgeRecords, config.maxEdgeLength * 1.12)

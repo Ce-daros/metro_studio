@@ -193,6 +193,60 @@ function applyJunctionSpread(forces, positions, adjacency, nodeDegrees, config) 
   }
 }
 
+function resolveEdgePairPushDirection(edgeA, edgeB, a1, a2, b1, b2) {
+  const midDx = (b1[0] + b2[0] - a1[0] - a2[0]) * 0.5
+  const midDy = (b1[1] + b2[1] - a1[1] - a2[1]) * 0.5
+  const midpointLength = Math.hypot(midDx, midDy)
+
+  const edgeADx = a2[0] - a1[0]
+  const edgeADy = a2[1] - a1[1]
+  const edgeBDx = b2[0] - b1[0]
+  const edgeBDy = b2[1] - b1[1]
+  const edgeALength = Math.hypot(edgeADx, edgeADy)
+  const edgeBLength = Math.hypot(edgeBDx, edgeBDy)
+  const parallelness =
+    edgeALength > 1e-6 && edgeBLength > 1e-6
+      ? Math.abs((edgeADx * edgeBDx + edgeADy * edgeBDy) / (edgeALength * edgeBLength))
+      : 0
+
+  if (parallelness < 0.92 && midpointLength > 1e-6) {
+    return [midDx / midpointLength, midDy / midpointLength]
+  }
+
+  let axisX = edgeADx + edgeBDx
+  let axisY = edgeADy + edgeBDy
+  let axisLength = Math.hypot(axisX, axisY)
+  if (axisLength <= 1e-6) {
+    axisX = edgeALength > 1e-6 ? edgeADx : edgeBDx
+    axisY = edgeALength > 1e-6 ? edgeADy : edgeBDy
+    axisLength = Math.hypot(axisX, axisY)
+  }
+
+  if (axisLength > 1e-6) {
+    const nx = -axisY / axisLength
+    const ny = axisX / axisLength
+    const normalProjection = midDx * nx + midDy * ny
+    if (Math.abs(normalProjection) > 1e-6) {
+      const sign = normalProjection >= 0 ? 1 : -1
+      return [nx * sign, ny * sign]
+    }
+
+    const pairSeed =
+      edgeA.fromIndex * 92821 +
+      edgeA.toIndex * 68917 +
+      edgeB.fromIndex * 31337 +
+      edgeB.toIndex * 19997
+    const sign = pairSeed % 2 === 0 ? 1 : -1
+    return [nx * sign, ny * sign]
+  }
+
+  if (midpointLength > 1e-6) {
+    return [midDx / midpointLength, midDy / midpointLength]
+  }
+
+  return [1, 0]
+}
+
 function applyCrossingRepel(forces, positions, edgeRecords, config) {
   const cellSize = (config.maxEdgeLength || 80) * 1.5
   const { grid } = buildEdgeSpatialGrid(positions, edgeRecords, cellSize)
@@ -228,11 +282,9 @@ function applyCrossingRepel(forces, positions, edgeRecords, config) {
           if (!boxesOverlap(aBox, segmentBox(b1, b2))) continue
           if (!segmentsIntersect(a1, a2, b1, b2)) continue
 
-          const dx = (b1[0] + b2[0]) * 0.5 - (a1[0] + a2[0]) * 0.5
-          const dy = (b1[1] + b2[1]) * 0.5 - (a1[1] + a2[1]) * 0.5
-          const d = Math.max(Math.hypot(dx, dy), 0.00001)
+          const [ux, uy] = resolveEdgePairPushDirection(e1, e2, a1, a2, b1, b2)
           const push = config.crossingRepelWeight * 0.032
-          applyCrossingPush(forces || positions, e1, e2, dx / d, dy / d, forces ? push : push * 0.2)
+          applyCrossingPush(forces || positions, e1, e2, ux, uy, forces ? push : push * 0.2)
         }
       }
     }
@@ -421,13 +473,9 @@ function applyProximityRepel(forces, positions, edgeRecords, config) {
           const minDist = segmentDistance(a1, a2, b1, b2)
           if (minDist >= maxDistance) continue
 
-          const dx = (b1[0] + b2[0]) * 0.5 - (a1[0] + a2[0]) * 0.5
-          const dy = (b1[1] + b2[1]) * 0.5 - (a1[1] + a2[1]) * 0.5
-          const d = Math.max(Math.hypot(dx, dy), 0.00001)
+          const [ux, uy] = resolveEdgePairPushDirection(e1, e2, a1, a2, b1, b2)
           const force = (maxDistance - minDist) * config.proximityRepelWeight
           const scaledForce = forces ? force : force * 0.2
-          const ux = dx / d
-          const uy = dy / d
 
           target[e1.fromIndex][0] -= ux * scaledForce * 0.5
           target[e1.fromIndex][1] -= uy * scaledForce * 0.5
