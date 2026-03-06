@@ -19,7 +19,7 @@
 | **optimizeLayout.js** | 主流程编排，协调各模块执行 |
 | **forces.js** | 力导向阶段：力计算、八方向吸附、直线段拉直 |
 | **constraints.js** | 硬约束：八方向投影、最小站间距、最小边长 |
-| **linePlanning.js** | 线路方向规划：链路抽取、DP 优化方向序列 |
+| **linePlanning.js** | 线路链路抽取：构建线路的节点和边序列 |
 | **labelPlacement.js** | 标签放置：模板生成、碰撞检测、位置选择 |
 | **labels.js** | 标签布局集成：协调放置算法与松弛迭代 |
 | **scoring.js** | 质量评分：多维度评分计算与数据清洗 |
@@ -86,17 +86,12 @@
 │     - 最小站间距约束（网格碰撞检测）                                         │
 │     - 最小边长约束（拉长过短的边）                                           │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  4. 线路方向规划 (Line Direction Planning)                                  │
-│     - 抽取线路链路（lineChains）                                            │
-│     - 动态规划计算最优方向序列（Viterbi）                                    │
-│     - 施加规划后的方向约束                                                   │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  5. 标签放置 (Label Placement)                                              │
+│  4. 标签放置 (Label Placement)                                              │
 │     - 为每个站点生成 18 个候选位置模板                                       │
 │     - 基于碰撞检测选择最优位置                                               │
 │     - 松弛迭代消除标签重叠                                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  6. 质量评分 (Scoring)                                                       │
+│  5. 质量评分 (Scoring)                                                       │
 │     - 计算各维度评分                                                         │
 │     - 返回结果                                                               │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -172,42 +167,7 @@ function snapEdgesToEightDirections(positions, edgeRecords, ratio) {
 }
 ```
 
-### 3. 线路方向规划（动态规划）
-
-```javascript
-// Viterbi-like DP 求解最优方向序列
-function solveDirectionSequence(rawAngles, localDirections, config) {
-  const states = 8;  // 8 个方向
-  const n = rawAngles.length;
-
-  // dp[i][d] = 前i条边选择方向d的最小代价
-  const dp = Array(n).fill(null).map(() => Array(states).fill(Infinity));
-  const prev = Array(n).fill(null).map(() => Array(states).fill(-1));
-
-  // 初始化
-  for (let d = 0; d < states; d++) {
-    dp[0][d] = angleCost(rawAngles[0], d * Math.PI / 4);
-  }
-
-  // 转移
-  for (let i = 1; i < n; i++) {
-    for (let d = 0; d < states; d++) {
-      for (let pd = 0; pd < states; pd++) {
-        const cost = dp[i-1][pd] + transitionCost(pd, d, rawAngles[i], config);
-        if (cost < dp[i][d]) {
-          dp[i][d] = cost;
-          prev[i][d] = pd;
-        }
-      }
-    }
-  }
-
-  // 回溯
-  // ...
-}
-```
-
-### 4. 标签放置
+### 3. 标签放置
 
 ```javascript
 // 18 个候选位置模板
