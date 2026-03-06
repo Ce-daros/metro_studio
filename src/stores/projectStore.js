@@ -107,7 +107,7 @@ export const useProjectStore = defineStore('project', {
     timelineFilterYear: null,
     timelinePlayback: {
       state: 'idle',
-      speed: 3,
+      speed: 1.5,
     },
     timelinePreviewBasemapMode: getInitialTimelinePreviewBasemapMode(),
     navigation: {

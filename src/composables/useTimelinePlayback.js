@@ -22,8 +22,8 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
   const currentYear = ref(null)
   const yearIndex = ref(0)
   const totalYears = ref(0)
-  const playbackSpeed = ref(2.5)
-  const zoomOffset = ref(2.5)
+  const playbackSpeed = ref(1.5)
+  const zoomOffset = ref(1)
   const isFullscreen = ref(false)
   const loadingProgress = ref({ loaded: 0, total: 0 })
 

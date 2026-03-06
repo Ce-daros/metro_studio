@@ -80,7 +80,7 @@ export function createEmptyProject(name = '新建工程') {
       {
         id: createId('line'),
         key: 'manual-line-1',
-        nameZh: '1 号线',
+        nameZh: '1号线',
         nameEn: 'Line 1',
         color: pickLineColor(0),
         status: 'open',

@@ -141,8 +141,8 @@ function commitDelayDraft(row, type, value) {
 
 function addCustomYear() {
   const year = Number(createDraft.year)
-  const description = String(createDraft.description || '').trim()
-  if (!Number.isFinite(year) || !description) return
+  if (!Number.isFinite(year)) return
+  const description = String(createDraft.description || '').trim() || '（待补充）'
   const position = createDraft.position === 'after'
     ? 'after'
     : createDraft.position === 'year_end'

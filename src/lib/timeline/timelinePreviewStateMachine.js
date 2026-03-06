@@ -53,7 +53,7 @@ export class TimelinePreviewEngine {
     this._onYearChange = onYearChange
 
     this._speed = 1.5
-    this._zoomOffset = 2.5
+    this._zoomOffset = 1
     this._state = 'idle'
     this._rafId = null
     this._phaseStart = 0
@@ -747,7 +747,7 @@ export class TimelinePreviewEngine {
         centerLat: lat,
         zoom: (this._fullCamera?.zoom || this._camera.zoom) + this._zoomOffset,
       }
-      this._introFreezeProgress = Math.max(0, Math.min(1, (firstSeg.globalStart ?? 0) + 1e-4))
+      this._introFreezeProgress = 0
       this._isLinePaused = true
       this._smoothCamera = this._introZoomFrom ? { ...this._introZoomFrom } : null
 
@@ -845,6 +845,12 @@ export class TimelinePreviewEngine {
 
     // ─── Tip glow effect (disabled) ─────────────────────────
 
+    // ─── Determine current year early for event-only year check ──────
+    const { year, index } = this._findCurrentYear(globalProgress)
+    const isEventOnlyYear = this._yearEventHoldUntil > now &&
+                            Number.isFinite(this._yearEventHoldYear) &&
+                            this._yearEventHoldYear < this._toYearNumber(year)
+
     // ─── Update station animation state ──────────────────────
     const stationLineIds = new Map()
     for (const seg of cp.segments) {
@@ -905,7 +911,6 @@ export class TimelinePreviewEngine {
     })
 
     // ─── Overlays ───────────────────────────────────────────────
-    const { year, index } = this._findCurrentYear(globalProgress)
     if (year != null && year !== this._years[this._currentYearIndex]) {
       this._currentYearIndex = index
       this._emitYearChange()
@@ -1010,7 +1015,14 @@ export class TimelinePreviewEngine {
       const eventText = introInfoActive
         ? this._introInfoText
         : this._getYearEventItemText(yearEventGroup, this._yearEventHoldItemIndex)
-      const lineInfo = this._getCurrentYearLineInfo(index, globalProgress)
+
+      // Check if displayYearNum has any line openings - only show lines that exist at current progress
+      const displayYearRange = this._resolveYearMarkerRange(displayYearNum)
+      const displayYearHasLines = displayYearRange && displayYearRange.firstWithLines >= 0
+      // Only show line info if we've actually drawn to that year's content
+      const shouldShowLineInfo = displayYearHasLines && globalProgress >= (this._continuousPlan.yearMarkers[displayYearRange.firstWithLines]?.globalStart ?? Infinity)
+      const lineInfo = shouldShowLineInfo ? this._getCurrentYearLineInfo(displayYearRange.firstWithLines, globalProgress) : null
+
       const holdMatchesPosition = eventHoldActive && this._yearEventHoldMode === (yearEventGroup?.position || 'before')
       let displayEventText = eventText && (introInfoActive || holdMatchesPosition || eventHoldActive) ? eventText : null
       if (!displayEventText && eventHoldActive) {
@@ -1028,16 +1040,18 @@ export class TimelinePreviewEngine {
       const BANNER_SLIDE_MS = 350
       const bannerElapsed = now - (this._bannerSlideStartTime || now)
       this._bannerSlideT = Math.min(1, bannerElapsed / BANNER_SLIDE_MS)
-      const lineColor = lineInfo?.color || this._continuousPlan.segments.find(s => s.year === yearNum)?.color || '#2563EB'
+      const lineColor = lineInfo?.color || '#2563EB'
 
-      renderOverlayEvent(this._ctx, displayEventText || null, lineColor, overlayAlpha, this._logicalWidth, this._logicalHeight, {
-        nameZh: lineInfo?.nameZh || '',
-        nameEn: lineInfo?.nameEn || '',
-        phase: lineInfo?.phase || '',
-        deltaKm: (lineInfo?.activeLineId && cumulativeLineStats.find(e => e.lineId === lineInfo.activeLineId)?.km) || lineInfo?.deltaKm || 0,
+      renderOverlayEvent(this._ctx, displayEventText || null, lineColor, overlayAlpha, this._logicalWidth, this._logicalHeight, lineInfo ? {
+        nameZh: lineInfo.nameZh || '',
+        nameEn: lineInfo.nameEn || '',
+        phase: lineInfo.phase || '',
+        deltaKm: (lineInfo.activeLineId && cumulativeLineStats.find(e => e.lineId === lineInfo.activeLineId)?.km) || lineInfo.deltaKm || 0,
         slideT: this._bannerSlideT,
-        intervalFrom: lineInfo?.intervalFrom || '',
-        intervalTo: lineInfo?.intervalTo || '',
+        intervalFrom: lineInfo.intervalFrom || '',
+        intervalTo: lineInfo.intervalTo || '',
+      } : {
+        slideT: this._bannerSlideT,
       })
     }
 
@@ -1046,6 +1060,7 @@ export class TimelinePreviewEngine {
     const APPEAR_MS = 400 // milliseconds for the slide-in animation
     for (let i = 0; i <= index && i < this._continuousPlan.yearMarkers.length; i++) {
       const marker = this._continuousPlan.yearMarkers[i]
+      if (marker.globalStart > globalProgress) break
       for (const lp of marker.yearPlan.lineDrawPlans) {
         if (i < index) {
           lineAppearProgress.set(lp.lineId, 1)
@@ -1148,7 +1163,7 @@ export class TimelinePreviewEngine {
       const elapsed = now - this._outroStart
       if (this._outroPhase === 'holdLast') {
         this._renderContinuousFrame(1, now)
-        if (elapsed > 1500) { this._outroPhase = 'zoomOut'; this._outroStart = now }
+        if (elapsed > 3000) { this._outroPhase = 'zoomOut'; this._outroStart = now }
       } else if (this._outroPhase === 'zoomOut') {
         if (!this._outroCamFrom) this._outroCamFrom = { ...this._smoothCamera || this._camera }
         const t = Math.min(1, elapsed / 2000)
@@ -1401,7 +1416,7 @@ export class TimelinePreviewEngine {
         pendingYear <= currentYearNum &&
         !this._yearEventShownYears.has(pendingYear)
       ) {
-        const freezeProgress = Math.max(0, Math.min(1, (curMarker?.globalStart ?? rawProgress) + 1e-4))
+        const freezeProgress = pendingYear < currentYearNum ? 0 : Math.max(0, Math.min(1, (curMarker?.globalStart ?? rawProgress) + 1e-4))
         if (
           pendingDelay.beforeMs > 0 &&
           !this._yearDelayShownBefore.has(pendingYear)
