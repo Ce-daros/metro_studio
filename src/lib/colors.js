@@ -234,7 +234,7 @@ function buildExtendedPalette(size = TARGET_PALETTE_SIZE) {
     palette.push(candidate.hex)
   }
 
-  DEFAULT_COLORS.forEach((color) => select(color))
+  select(DEFAULT_COLORS[0])
 
   while (palette.length < size) {
     let bestCandidate = null
