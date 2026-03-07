@@ -6,6 +6,8 @@
 
 - 懒加载创建 Web Worker 实例
 - 维护请求队列（支持并发调用）
+- 提供语义降维参数到 Worker 配置的投影函数
+- 提供排版参数预设的规范化、应用、导入导出工具
 - 封装 Worker 通信协议
 - 为 Pinia Store 提供简洁的调用接口
 
@@ -14,6 +16,8 @@
 | 文件 | 说明 |
 |------|------|
 | **workerClient.js** | Worker 单例管理、请求队列维护、`optimizeLayoutInWorker()` 接口 |
+| **paramReduction.js** | 五轴语义降维参数定义与 `buildWorkerLayoutConfig()` 投影函数，将 UI 侧的“骨架展开 / 枢纽分流 / 紧凑程度 / 直线优先 / 标签避让”映射为 Worker 使用的完整排版参数 |
+| **presets.js** | 排版参数预设工具：规范化预设结构、从当前 `layoutConfig` 生成预设、应用预设到当前配置、序列化/解析独立的预设 JSON 文件 |
 
 ## 核心 API
 

@@ -15,7 +15,12 @@ import {
   snapEdgesToEightDirections,
   straightenNearLinearSegments,
 } from './forces'
-import { enforceMinEdgeLength, enforceMinStationSpacing, enforceOctilinearHardConstraints } from './constraints'
+import {
+  enforceJunctionCorridorSpacing,
+  enforceMinEdgeLength,
+  enforceMinStationSpacing,
+  enforceOctilinearHardConstraints,
+} from './constraints'
 import { computeStationLabelLayout } from './labels'
 import { buildLineChains } from './linePlanning'
 import { computeScoreBreakdown, sanitizeBreakdown } from './scoring'
@@ -141,6 +146,7 @@ function optimizeLayout(payload) {
   const spacingRefineCycles = Math.max(1, Math.floor(config.stationSpacingRefineCycles || 1))
   for (let cycle = 0; cycle < spacingRefineCycles; cycle += 1) {
     enforceMinEdgeLength(positions, edgeRecords, stations, nodeDegrees, config)
+    enforceJunctionCorridorSpacing(positions, adjacency, stations, nodeDegrees, config)
     enforceMinStationSpacing(positions, stations, edgeRecords, nodeDegrees, config)
     enforceOctilinearHardConstraints(positions, edgeRecords, stations, strictOctilinearConfig)
   }

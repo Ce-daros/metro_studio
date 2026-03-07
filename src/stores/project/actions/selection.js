@@ -1,4 +1,39 @@
 import { dedupeStationIds } from '../helpers'
+import {
+  applyLayoutPresetToConfig,
+  buildLayoutPresetFileName,
+  createLayoutPresetFromConfig,
+  parseLayoutPresetFile,
+  serializeLayoutPreset,
+} from '../../../lib/layout/presets'
+
+function ensureLayoutConfig(project) {
+  if (!project.layoutConfig || typeof project.layoutConfig !== 'object') {
+    project.layoutConfig = {
+      geoSeedScale: 6,
+      displayConfig: {},
+      paramReduction: { enabled: false, deltas: [] },
+      presets: [],
+      activePresetId: null,
+    }
+  }
+  if (!Array.isArray(project.layoutConfig.presets)) {
+    project.layoutConfig.presets = []
+  }
+  if (typeof project.layoutConfig.activePresetId !== 'string') {
+    project.layoutConfig.activePresetId = null
+  }
+}
+
+function downloadTextFile(text, fileName, mimeType = 'application/json') {
+  const blob = new Blob([text], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 function dedupeEdgeIds(ids, edgeIdSet) {
   const result = []
@@ -40,29 +75,14 @@ const selectionActions = {
     const parsed = Number(value)
     if (!Number.isFinite(parsed)) return
     const normalized = Math.max(0.1, Math.min(16, parsed))
-    if (!this.project.layoutConfig || typeof this.project.layoutConfig !== 'object') {
-      this.project.layoutConfig = {
-        geoSeedScale: normalized,
-        displayConfig: {},
-        paramReduction: { enabled: false, deltas: [] },
-      }
-    } else {
-      this.project.layoutConfig.geoSeedScale = normalized
-    }
+    ensureLayoutConfig(this.project)
+    this.project.layoutConfig.geoSeedScale = normalized
     this.touchProject('')
   },
 
   setLayoutParamReductionEnabled(enabled) {
     if (!this.project) return
-    if (!this.project.layoutConfig || typeof this.project.layoutConfig !== 'object') {
-      this.project.layoutConfig = {
-        geoSeedScale: 6,
-        displayConfig: {},
-        paramReduction: { enabled: Boolean(enabled), deltas: [] },
-      }
-      this.touchProject('')
-      return
-    }
+    ensureLayoutConfig(this.project)
     if (!this.project.layoutConfig.paramReduction || typeof this.project.layoutConfig.paramReduction !== 'object') {
       this.project.layoutConfig.paramReduction = { enabled: false, deltas: [] }
     }
@@ -72,6 +92,7 @@ const selectionActions = {
 
   setLayoutParamReductionAxisDelta(index, value) {
     if (!this.project?.layoutConfig) return
+    ensureLayoutConfig(this.project)
     if (!this.project.layoutConfig.paramReduction || typeof this.project.layoutConfig.paramReduction !== 'object') {
       this.project.layoutConfig.paramReduction = { enabled: false, deltas: [] }
     }
@@ -88,11 +109,90 @@ const selectionActions = {
 
   resetLayoutParamReductionAxisDeltas() {
     if (!this.project?.layoutConfig) return
+    ensureLayoutConfig(this.project)
     if (!this.project.layoutConfig.paramReduction || typeof this.project.layoutConfig.paramReduction !== 'object') {
       this.project.layoutConfig.paramReduction = { enabled: false, deltas: [] }
     }
     this.project.layoutConfig.paramReduction.deltas = []
     this.touchProject('')
+  },
+
+  applyLayoutPreset(presetId) {
+    if (!this.project) return
+    ensureLayoutConfig(this.project)
+    const preset = this.project.layoutConfig.presets.find((item) => item.id === presetId)
+    if (!preset) return
+    this.project.layoutConfig = {
+      ...applyLayoutPresetToConfig(this.project.layoutConfig, preset),
+      presets: this.project.layoutConfig.presets,
+      activePresetId: preset.id,
+    }
+    this.touchProject(`已应用预设：${preset.name}`)
+  },
+
+  saveCurrentLayoutPreset(name, options = {}) {
+    if (!this.project) return null
+    ensureLayoutConfig(this.project)
+    const presetName = String(name || '').trim()
+    if (!presetName) return null
+    const overwriteId = options.overwriteId ? String(options.overwriteId) : null
+    const preset = createLayoutPresetFromConfig(this.project.layoutConfig, presetName, overwriteId)
+    const presets = Array.isArray(this.project.layoutConfig.presets) ? [...this.project.layoutConfig.presets] : []
+    const existingIndex = overwriteId ? presets.findIndex((item) => item.id === overwriteId) : -1
+    if (existingIndex >= 0) presets.splice(existingIndex, 1, preset)
+    else presets.push(preset)
+    this.project.layoutConfig.presets = presets
+    this.project.layoutConfig.activePresetId = preset.id
+    this.touchProject(existingIndex >= 0 ? `已更新预设：${preset.name}` : `已保存预设：${preset.name}`)
+    return preset
+  },
+
+  deleteLayoutPreset(presetId) {
+    if (!this.project) return
+    ensureLayoutConfig(this.project)
+    const presets = Array.isArray(this.project.layoutConfig.presets) ? [...this.project.layoutConfig.presets] : []
+    const existingIndex = presets.findIndex((item) => item.id === presetId)
+    if (existingIndex < 0) return
+    const [removed] = presets.splice(existingIndex, 1)
+    this.project.layoutConfig.presets = presets
+    if (this.project.layoutConfig.activePresetId === presetId) {
+      this.project.layoutConfig.activePresetId = null
+    }
+    this.touchProject(`已删除预设：${removed.name}`)
+  },
+
+  exportLayoutPreset(presetId) {
+    if (!this.project) return
+    ensureLayoutConfig(this.project)
+    const targetPreset = presetId
+      ? this.project.layoutConfig.presets.find((item) => item.id === presetId)
+      : createLayoutPresetFromConfig(this.project.layoutConfig, '当前参数')
+    if (!targetPreset) return
+    const payload = serializeLayoutPreset(targetPreset)
+    downloadTextFile(payload, buildLayoutPresetFileName(targetPreset.name))
+    this.statusText = `预设已导出：${targetPreset.name}`
+  },
+
+  async importLayoutPresetFile(file) {
+    if (!this.project || !file) return null
+    ensureLayoutConfig(this.project)
+    const importedPreset = await parseLayoutPresetFile(file)
+    const presets = Array.isArray(this.project.layoutConfig.presets) ? [...this.project.layoutConfig.presets] : []
+    const existingIndex = presets.findIndex((item) => item.id === importedPreset.id)
+    if (existingIndex >= 0) {
+      presets.splice(existingIndex, 1, importedPreset)
+    } else {
+      presets.push(importedPreset)
+    }
+    this.project.layoutConfig.presets = presets
+    this.project.layoutConfig.activePresetId = importedPreset.id
+    this.project.layoutConfig = {
+      ...applyLayoutPresetToConfig(this.project.layoutConfig, importedPreset),
+      presets,
+      activePresetId: importedPreset.id,
+    }
+    this.touchProject(`已导入预设：${importedPreset.name}`)
+    return importedPreset
   },
 
   cancelPendingEdgeStart() {

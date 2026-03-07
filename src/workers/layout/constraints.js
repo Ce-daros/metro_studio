@@ -1,6 +1,7 @@
 import {
   buildSpatialGrid,
   clamp,
+  circularDirectionDistance,
   directionIndexToAngle,
   distance,
   forEachNeighborBucket,
@@ -265,6 +266,96 @@ function enforceMinEdgeLength(positions, edgeRecords, stations, nodeDegrees, con
   }
 }
 
+function enforceJunctionCorridorSpacing(positions, adjacency, stations, nodeDegrees, config) {
+  const passes = Math.max(1, Math.floor(config.junctionSpacingPasses || 1))
+  const step = clamp(toFiniteNumber(config.junctionSpacingStep, 0.46), 0.05, 1)
+  const tolerance = Math.max(0, toFiniteNumber(config.junctionSpacingTolerance, 0.08))
+  const minDistance = Math.max(2, toFiniteNumber(config.minStationDistance, 30))
+  const adjacentMinDistance = Math.max(2, toFiniteNumber(config.junctionAdjacentMinDistance, minDistance * 0.84))
+
+  for (let pass = 0; pass < passes; pass += 1) {
+    const deltas = positions.map(() => [0, 0])
+    let maxShortfall = 0
+
+    for (let center = 0; center < adjacency.length; center += 1) {
+      const neighbors = adjacency[center]
+      if (!Array.isArray(neighbors) || neighbors.length < 3) continue
+
+      const centerPos = positions[center]
+      if (!centerPos) continue
+
+      for (let i = 0; i < neighbors.length; i += 1) {
+        for (let j = i + 1; j < neighbors.length; j += 1) {
+          const aIndex = neighbors[i]
+          const bIndex = neighbors[j]
+          const aPos = positions[aIndex]
+          const bPos = positions[bIndex]
+          if (!aPos || !bPos) continue
+
+          const angleA = snapAngle(Math.atan2(aPos[1] - centerPos[1], aPos[0] - centerPos[0]))
+          const angleB = snapAngle(Math.atan2(bPos[1] - centerPos[1], bPos[0] - centerPos[0]))
+          const directionA = Math.round(angleA / (Math.PI / 4))
+          const directionB = Math.round(angleB / (Math.PI / 4))
+          const directionGap = circularDirectionDistance(directionA, directionB)
+          if (directionGap === 0 || directionGap >= 4) continue
+
+          let requiredDistance = 0
+          if (directionGap === 1) requiredDistance = Math.max(adjacentMinDistance, minDistance * 0.86)
+          else if (directionGap === 2) requiredDistance = Math.max(adjacentMinDistance * 0.82, minDistance * 0.68)
+          else requiredDistance = Math.max(adjacentMinDistance * 0.62, minDistance * 0.5)
+
+          if (stations[center]?.isInterchange || nodeDegrees[center] >= 4) {
+            requiredDistance *= 1.1
+          }
+
+          const dx = bPos[0] - aPos[0]
+          const dy = bPos[1] - aPos[1]
+          const currentDistance = Math.hypot(dx, dy)
+          if (currentDistance >= requiredDistance) continue
+
+          const shortfall = requiredDistance - currentDistance
+          maxShortfall = Math.max(maxShortfall, shortfall)
+
+          let ux = 1
+          let uy = 0
+          if (currentDistance > 1e-6) {
+            ux = dx / currentDistance
+            uy = dy / currentDistance
+          } else {
+            const fallbackAngle = directionIndexToAngle(directionA + 1)
+            ux = Math.cos(fallbackAngle)
+            uy = Math.sin(fallbackAngle)
+          }
+
+          const move = shortfall * 0.5 * step
+          const moveA = stationSpacingMobility(stations[aIndex], nodeDegrees[aIndex]) || 1
+          const moveB = stationSpacingMobility(stations[bIndex], nodeDegrees[bIndex]) || 1
+          const normalizer = Math.max(moveA + moveB, 1e-6)
+          const ratioA = moveA / normalizer
+          const ratioB = moveB / normalizer
+
+          deltas[aIndex][0] -= ux * move * ratioA
+          deltas[aIndex][1] -= uy * move * ratioA
+          deltas[bIndex][0] += ux * move * ratioB
+          deltas[bIndex][1] += uy * move * ratioB
+
+          const centerMobility = stationSpacingMobility(stations[center], nodeDegrees[center]) || 0.2
+          const centerPull = move * 0.18 * centerMobility
+          deltas[center][0] -= ux * centerPull * (ratioB - ratioA)
+          deltas[center][1] -= uy * centerPull * (ratioB - ratioA)
+        }
+      }
+    }
+
+    for (let i = 0; i < positions.length; i += 1) {
+      positions[i][0] += deltas[i][0]
+      positions[i][1] += deltas[i][1]
+    }
+
+    if (maxShortfall <= tolerance) break
+  }
+}
+
 function buildAdjacentPairSet(edgeRecords) {
   const set = new Set()
   for (const edge of edgeRecords || []) {
@@ -311,4 +402,4 @@ function stationSpacingMobility(station, degree) {
 }
 
 
-export { enforceOctilinearHardConstraints, enforceMinStationSpacing, enforceMinEdgeLength }
+export { enforceOctilinearHardConstraints, enforceMinStationSpacing, enforceMinEdgeLength, enforceJunctionCorridorSpacing }

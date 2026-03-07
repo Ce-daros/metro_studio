@@ -1,4 +1,5 @@
 import { openDB } from 'idb'
+import { normalizeLayoutPreset } from '../layout/presets'
 import { normalizeProject } from '../projectModel'
 
 const DB_NAME = 'metro-studio-db'
@@ -155,6 +156,15 @@ function toSerializableProject(project) {
                 : [],
             }
           : { enabled: false, deltas: [] },
+      presets: Array.isArray(normalized.layoutConfig?.presets)
+        ? normalized.layoutConfig.presets
+            .map((preset, index) => normalizeLayoutPreset(preset, index))
+            .filter(Boolean)
+        : [],
+      activePresetId:
+        typeof normalized.layoutConfig?.activePresetId === 'string' && normalized.layoutConfig.activePresetId.trim()
+          ? normalized.layoutConfig.activePresetId
+          : null,
     },
     annotations: (normalized.annotations || []).map((a) => ({
       id: String(a.id || ''),

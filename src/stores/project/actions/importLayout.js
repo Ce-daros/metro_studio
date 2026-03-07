@@ -1,4 +1,5 @@
 import { optimizeLayoutInWorker } from '../../../lib/layout/workerClient'
+import { buildWorkerLayoutConfig } from '../../../lib/layout/paramReduction'
 import { importJinanMetroFromOsm } from '../../../lib/osm/importJinanMetro'
 import { importCityMetroNetwork } from '../../../lib/osm/genericImporter'
 import { findCityPresetById, findCityPresetByRelationId } from '../../../lib/osm/cityPresets'
@@ -191,14 +192,18 @@ const importLayoutActions = {
     this.isLayoutRunning = true
     this.statusText = '正在执行自动排版...'
     try {
+      const paramReductionEnabled = Boolean(this.project.layoutConfig?.paramReduction?.enabled)
       const geoSeedScale = Number(this.project.layoutConfig?.geoSeedScale)
+      const workerConfig = paramReductionEnabled
+        ? buildWorkerLayoutConfig(this.project.layoutConfig)
+        : {
+            geoSeedScale: Number.isFinite(geoSeedScale) ? geoSeedScale : 6,
+          }
       const result = await optimizeLayoutInWorker({
         stations: this.project.stations,
         edges: this.project.edges,
         lines: this.project.lines,
-        config: {
-          geoSeedScale: Number.isFinite(geoSeedScale) ? geoSeedScale : 6,
-        },
+        config: workerConfig,
       })
       this.project.stations = result.stations
       this.project.layoutMeta = {

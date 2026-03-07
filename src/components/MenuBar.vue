@@ -22,8 +22,8 @@ const fileInputRef = ref(null)
 const { menus, handleAction, uiTheme, toggleTheme } = useMenuBarActions(store, emit, { fileInputRef })
 
 const BLOCK_CHARS = { item: '▣', submenu: '▧', toggle_on: '▨', toggle_off: '▢' }
-const blockIcon = (char) => () => h('span', {
-  style: 'font-size:16px;color:var(--ark-pink);line-height:1;display:inline-flex;align-items:center;',
+const blockIcon = (char, color = 'var(--ark-pink)') => () => h('span', {
+  style: `font-size:16px;color:${color};line-height:1;display:inline-flex;align-items:center;`,
 }, char)
 
 function convertMenuItems(items, path = 'root') {
@@ -73,7 +73,7 @@ const lineNDropdownOptions = computed(() =>
   lines.value.map((line) => ({
     key: `line_${line.id}`,
     label: getDisplayLineName(line, 'zh') || line.nameZh || '未命名',
-    icon: blockIcon('▣'),
+    icon: blockIcon('▣', line.color || '#555'),
   }))
 )
 
@@ -267,7 +267,7 @@ function toggleNavigation() {
         >
           <button
             ref="lineButtonRef"
-            class="menu-bar__line-btn ark-glitch-hover"
+            class="menu-bar__line-btn"
             type="button"
             @click="lineDropdownOpen = !lineDropdownOpen"
           >

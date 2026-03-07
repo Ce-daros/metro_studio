@@ -1,5 +1,6 @@
 import { pickLineColor } from './colors'
 import { createId } from './ids'
+import { normalizeLayoutPreset } from './layout/presets'
 import { normalizeLineStyle } from './lineStyles'
 import { normalizeLineNamesForLoop } from './lineNaming'
 
@@ -59,7 +60,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {RailLine[]} lines
  * @property {Array<{createdAt: string, score: number, breakdown: Record<string, number>}>} snapshots
  * @property {{stationLabels: Record<string, {dx:number,dy:number,anchor:string}>, edgeDirections: Record<string, number>}} layoutMeta
- * @property {{geoSeedScale: number, displayConfig: object, paramReduction?: {enabled: boolean, deltas: number[]}}} layoutConfig
+ * @property {{geoSeedScale: number, displayConfig: object, paramReduction?: {enabled: boolean, deltas: number[]}, presets?: Array<object>, activePresetId?: string|null}} layoutConfig
  * @property {{createdAt: string, updatedAt: string}} meta
  * @property {Array<{id: string, year: number, description: string, position: ('before'|'after'|'year_end'), order: number}>} timelineEvents
  * @property {Array<{year: number, beforeMs: number, afterMs: number}>} timelineYearDelays
@@ -110,6 +111,8 @@ export function createEmptyProject(name = '新建工程') {
         enabled: false,
         deltas: [],
       },
+      presets: [],
+      activePresetId: null,
     },
     annotations: [],
     timelineEvents: [],
@@ -188,6 +191,15 @@ export function normalizeProject(raw) {
                       : [],
                   }
                 : base.layoutConfig.paramReduction,
+            presets: Array.isArray(raw.layoutConfig.presets)
+              ? raw.layoutConfig.presets
+                  .map((preset, index) => normalizeLayoutPreset(preset, index))
+                  .filter(Boolean)
+              : base.layoutConfig.presets,
+            activePresetId:
+              typeof raw.layoutConfig.activePresetId === 'string' && raw.layoutConfig.activePresetId.trim()
+                ? raw.layoutConfig.activePresetId
+                : base.layoutConfig.activePresetId,
           }
         : base.layoutConfig,
     annotations: Array.isArray(raw?.annotations)
