@@ -6,14 +6,11 @@ export function useMapEventHandlers({
   store,
   getMap,
   closeContextMenu,
-  closeLineSelectionMenu,
   openContextMenu,
   updateRouteDrawPreview,
   clearRouteDrawPreview,
   openLineSelectionMenu,
-  refreshRouteDrawPreviewProjectedPoints,
   contextMenu,
-  triggerStationNameFocus,
 }) {
   const interactionState = useMapInteractionState()
 
@@ -24,7 +21,6 @@ export function useMapEventHandlers({
     openContextMenu,
     openLineSelectionMenu,
     interactionState,
-    triggerStationNameFocus,
   })
 
   const dragHandlers = useMapDragHandlers({

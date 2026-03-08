@@ -13,7 +13,7 @@ export function useMapDragHandlers({
   clearRouteDrawPreview,
 }) {
   function isRouteDrawMode() {
-    return store.mode === 'route-draw' || store.mode === 'route-draw-naming'
+    return store.mode === 'route-draw'
   }
 
   function startStationDrag(event) {

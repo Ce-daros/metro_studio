@@ -60,7 +60,6 @@ const showHint = ref(false)
 const mapCenterText = ref('--, --')
 const mapZoomText = ref('--')
 const mapZoomLevel = ref(4)
-const stationRenameTrigger = inject('stationRenameTrigger', null)
 let map = null
 let scaleControl = null
 let deferredProjectSyncStyleListener = null
@@ -74,6 +73,31 @@ useAutoAnimate(lineSelectionMenuRef, getAutoAnimateConfig())
 
 function getMap() {
   return map
+}
+
+function getMapEditorDebugSnapshot() {
+  return {
+    mode: store.mode,
+    projectId: store.project?.id || null,
+    projectName: store.project?.name || null,
+    stationCount: store.project?.stations?.length || 0,
+    edgeCount: store.project?.edges?.length || 0,
+    lineCount: store.project?.lines?.length || 0,
+    selectedStationId: store.selectedStationId || null,
+    selectedEdgeId: store.selectedEdgeId || null,
+    navigation: store.navigation || null,
+    reachability: store.reachability || null,
+    styleBrush: store.styleBrush || null,
+    mapReady: Boolean(map),
+    styleLoaded: Boolean(map?.isStyleLoaded?.()),
+  }
+}
+
+function logMapEditor(level, message, extra = {}) {
+  console[level](`[MapEditor] ${message}`, {
+    ...getMapEditorDebugSnapshot(),
+    ...extra,
+  })
 }
 
 // ── Composables ──
@@ -162,25 +186,24 @@ const {
   store,
   getMap,
   closeContextMenu,
-  closeLineSelectionMenu,
   openContextMenu,
   updateRouteDrawPreview,
   clearRouteDrawPreview,
   openLineSelectionMenu,
-  refreshRouteDrawPreviewProjectedPoints,
   contextMenu,
-  triggerStationNameFocus: () => {
-    if (stationRenameTrigger && typeof stationRenameTrigger.value === 'number') {
-      stationRenameTrigger.value += 1
-    }
-  },
 })
 
 const selectionBoxStyle = computed(() => {
-  const left = Math.min(selectionBox.startX, selectionBox.endX)
-  const top = Math.min(selectionBox.startY, selectionBox.endY)
-  const width = Math.abs(selectionBox.endX - selectionBox.startX)
-  const height = Math.abs(selectionBox.endY - selectionBox.startY)
+  const box = selectionBox || {
+    startX: 0,
+    startY: 0,
+    endX: 0,
+    endY: 0,
+  }
+  const left = Math.min(box.startX, box.endX)
+  const top = Math.min(box.startY, box.endY)
+  const width = Math.abs(box.endX - box.startX)
+  const height = Math.abs(box.endY - box.startY)
   return {
     left: `${left}px`,
     top: `${top}px`,
@@ -493,6 +516,7 @@ function setGridVisibility(visible) {
 // ── Lifecycle ──
 
 onMounted(() => {
+  logMapEditor('info', 'mount:start')
   const pmtilesProtocol = new Protocol()
   maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile)
 
@@ -511,6 +535,11 @@ onMounted(() => {
     attributionControl: true,
   })
   lockMapNorthUp()
+  map.on('error', (event) => {
+    logMapEditor('error', 'maplibre:error', {
+      event: event?.error || event,
+    })
+  })
 
   setMapGetter(getMap)
   setQuickNamingMapGetter(getMap)
@@ -525,34 +554,40 @@ onMounted(() => {
   map.addControl(scaleControl, 'top-left')
 
   map.on('load', () => {
-    lockMapNorthUp()
-    ensureSources(map, store)
-    ensureMapLayers(map, store)
-    startSelectionBlink(map)
-    updateMapData(map, store)
-    refreshMapGridLayer()
-    setGridVisibility(store.showMapGrid)
-    refreshViewportMeta()
-    map.resize()
+    try {
+      logMapEditor('info', 'map:load')
+      lockMapNorthUp()
+      ensureSources(map, store)
+      ensureMapLayers(map, store)
+      startSelectionBlink(map)
+      updateMapData(map, store)
+      refreshMapGridLayer()
+      setGridVisibility(store.showMapGrid)
+      refreshViewportMeta()
+      map.resize()
 
-    onBoundaryMapLoad()
+      onBoundaryMapLoad()
 
-    syncOverlays(map, store)
+      syncOverlays(map, store)
 
-    map.on('click', LAYER_STATIONS, handleStationClick)
-    map.on('mousedown', LAYER_STATIONS, startStationDrag)
-    map.on('click', LAYER_EDGES_HIT, handleEdgeClick)
-    map.on('click', LAYER_EDGE_ANCHORS_HIT, handleEdgeAnchorClick)
-    map.on('mousedown', LAYER_EDGE_ANCHORS_HIT, startEdgeAnchorDrag)
-    map.on('mouseenter', LAYER_STATIONS, onInteractiveFeatureEnter)
-    map.on('mouseleave', LAYER_STATIONS, onInteractiveFeatureLeave)
-    map.on('mouseenter', LAYER_EDGES_HIT, onInteractiveFeatureEnter)
-    map.on('mouseleave', LAYER_EDGES_HIT, onInteractiveFeatureLeave)
-    map.on('mouseenter', LAYER_EDGE_ANCHORS_HIT, onInteractiveFeatureEnter)
-    map.on('mouseleave', LAYER_EDGE_ANCHORS_HIT, onInteractiveFeatureLeave)
+      map.on('click', LAYER_STATIONS, handleStationClick)
+      map.on('mousedown', LAYER_STATIONS, startStationDrag)
+      map.on('click', LAYER_EDGES_HIT, handleEdgeClick)
+      map.on('click', LAYER_EDGE_ANCHORS_HIT, handleEdgeAnchorClick)
+      map.on('mousedown', LAYER_EDGE_ANCHORS_HIT, startEdgeAnchorDrag)
+      map.on('mouseenter', LAYER_STATIONS, onInteractiveFeatureEnter)
+      map.on('mouseleave', LAYER_STATIONS, onInteractiveFeatureLeave)
+      map.on('mouseenter', LAYER_EDGES_HIT, onInteractiveFeatureEnter)
+      map.on('mouseleave', LAYER_EDGES_HIT, onInteractiveFeatureLeave)
+      map.on('mouseenter', LAYER_EDGE_ANCHORS_HIT, onInteractiveFeatureEnter)
+      map.on('mouseleave', LAYER_EDGE_ANCHORS_HIT, onInteractiveFeatureLeave)
 
-    initNavigation(map)
-    initReachability(map)
+      initNavigation(map)
+      initReachability(map)
+    } catch (error) {
+      logMapEditor('error', 'map:load handler failed', { error })
+      throw error
+    }
   })
 
   map.on('click', handleMapClick)
@@ -604,7 +639,7 @@ watch(
     pendingEdgeStartStationId: store.pendingEdgeStartStationId,
   }),
   () => {
-    if (!['route-draw', 'route-draw-naming'].includes(store.mode) || !store.pendingEdgeStartStationId) {
+    if (store.mode !== 'route-draw' || !store.pendingEdgeStartStationId) {
       clearRouteDrawPreview()
     }
   },
@@ -619,15 +654,20 @@ watch(
 )
 
 watch(
-  () => store.navigation.active,
+  () => Boolean(store.navigation?.active),
   (active) => {
     if (!map) return
-    const opacity = active ? 0.2 : 0.88
-    if (map.getLayer(LAYER_EDGES)) {
-      map.setPaintProperty(LAYER_EDGES, 'line-opacity', opacity)
-    }
-    if (map.getLayer(LAYER_EDGES_SQUARE)) {
-      map.setPaintProperty(LAYER_EDGES_SQUARE, 'line-opacity', opacity)
+    try {
+      const opacity = active ? 0.2 : 0.88
+      if (map.getLayer(LAYER_EDGES)) {
+        map.setPaintProperty(LAYER_EDGES, 'line-opacity', opacity)
+      }
+      if (map.getLayer(LAYER_EDGES_SQUARE)) {
+        map.setPaintProperty(LAYER_EDGES_SQUARE, 'line-opacity', opacity)
+      }
+    } catch (error) {
+      logMapEditor('error', 'watch:navigation-active failed', { error })
+      throw error
     }
   },
   { immediate: true },
@@ -651,10 +691,15 @@ watch(
       Boolean(map.getSource(SOURCE_EDGES)) &&
       Boolean(map.getSource(SOURCE_EDGE_ANCHORS))
     const doUpdate = () => {
-      ensureSources(map, store)
-      ensureMapLayers(map, store)
-      updateMapData(map, store)
-      if (typeof map.triggerRepaint === 'function') map.triggerRepaint()
+      try {
+        ensureSources(map, store)
+        ensureMapLayers(map, store)
+        updateMapData(map, store)
+        if (typeof map.triggerRepaint === 'function') map.triggerRepaint()
+      } catch (error) {
+        logMapEditor('error', 'watch:project-sync failed', { error, hasCoreSources })
+        throw error
+      }
     }
     if (map.isStyleLoaded() || hasCoreSources) {
       if (deferredProjectSyncStyleListener) {
@@ -775,8 +820,8 @@ watch(
   <section class="map-editor">
     <div class="map-editor__container">
       <div ref="mapContainer" class="map-editor__map" @contextmenu.prevent></div>
-      <div v-if="selectionBox.active" class="map-editor__selection-box" :style="selectionBoxStyle"></div>
-      <svg v-if="routeDrawPreview.visible" class="map-editor__route-preview" aria-hidden="true">
+      <div v-if="selectionBox?.active" class="map-editor__selection-box" :style="selectionBoxStyle"></div>
+      <svg v-if="routeDrawPreview?.visible" class="map-editor__route-preview" aria-hidden="true">
         <line
           :x1="routeDrawPreview.startX"
           :y1="routeDrawPreview.startY"
@@ -789,13 +834,13 @@ watch(
           stroke-dasharray="8 6"
         />
       </svg>
-      <div v-if="routeDrawPreview.visible" class="map-editor__distance-badge" :style="routeDrawDistanceStyle">
+      <div v-if="routeDrawPreview?.visible" class="map-editor__distance-badge" :style="routeDrawDistanceStyle">
         {{ routeDrawDistanceLabel }}
       </div>
 
       <MapContextMenu
         ref="contextMenuCompRef"
-        :visible="contextMenu.visible"
+        :visible="contextMenu?.visible"
         :menu-style="contextMenuStyle"
         :context-menu="contextMenu"
         :mode="store.mode"
@@ -822,7 +867,7 @@ watch(
 
       <MapLineSelectionMenu
         ref="lineSelectionMenuCompRef"
-        :visible="lineSelectionMenu.visible"
+        :visible="lineSelectionMenu?.visible"
         :menu-style="lineSelectionMenuStyle"
         :line-options="lineSelectionMenu.lineOptions"
         @overlay-mousedown="onLineSelectionMenuOverlayMouseDown"
@@ -863,7 +908,7 @@ watch(
 
       <p v-if="showHint" class="map-editor__hint">
         Shift + 拖拽框选站点 | Ctrl/⌘ + 拖拽框选线段 | Alt + 点击线段选中整条线路 | Delete 删除站点/线段/控制点 | Ctrl/Cmd+A 全选站点 | Ctrl/Cmd+Z 撤销 |
-        Ctrl/Cmd+Shift+Z 或 Ctrl/Cmd+Y 重做 | Esc 取消待连接起点/关闭菜单
+        Ctrl/Cmd+Shift+Z 或 Ctrl/Cmd+Y 重做 | 选中单站后 PgUp/PgDn 沿线路切换相邻站 | Esc 取消待连接起点/关闭菜单
       </p>
 
       <div v-if="store.showMapCoordinates" class="map-editor__coords">

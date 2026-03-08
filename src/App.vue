@@ -36,11 +36,12 @@ import { useAutoSave } from './composables/useAutoSave'
 import { useDialog } from './composables/useDialog.js'
 import { useAnimationSettings } from './composables/useAnimationSettings.js'
 import { useShortcuts } from './composables/useShortcuts.js'
-import { useMapSearch } from './composables/useMapSearch.js'
+import { getMapInstance, useMapSearch } from './composables/useMapSearch.js'
 import { setRenameTrigger, setQuickNamingMapGetter, useQuickNaming, exitQuickNaming, setEnglishReviewTrigger, setEnglishReviewMapGetter, useEnglishReview, exitEnglishReview } from './composables/useSequentialStationReview.js'
 import { isTrial, TRIAL_LIMITS } from './composables/useLicense'
 import { findCityPresetById } from './lib/osm/cityPresets'
 import { loadLatestProjectFromDb } from './lib/storage/db'
+import { isTextInputTarget } from './lib/shortcutRegistry'
 
 const store = useProjectStore()
 const { searchVisible, mapViewbox, targetProvince, openSearchDialogWithProvince, closeSearchDialog, onSearchResultSelect } = useMapSearch()
@@ -295,6 +296,35 @@ function getShortcutContext() {
   return 'global'
 }
 
+const STATION_SWITCH_KEY_DIRECTION_MAP = {
+  PageUp: 'up',
+  PageDown: 'down',
+}
+
+function handleStationArrowNavigation(event) {
+  if (activeView.value !== 'map') return
+  if (store.mode !== 'select') return
+  if (isTextInputTarget(event.target)) return
+
+  const direction = STATION_SWITCH_KEY_DIRECTION_MAP[event.key]
+  if (!direction) return
+
+  const result = store.navigateSelectedStationByDirection(direction)
+  if (!result?.stationId) return
+
+  const station = store.stationById.get(result.stationId)
+  const map = getMapInstance()
+  if (map && station?.lngLat) {
+    map.easeTo({
+      center: station.lngLat,
+      duration: 260,
+      essential: true,
+    })
+  }
+
+  event.preventDefault()
+}
+
 const { rebuildBindings } = useShortcuts({
   // 文件
   'file.save': () => {
@@ -360,7 +390,6 @@ const { rebuildBindings } = useShortcuts({
   'tool.addStation': () => store.setMode('add-station'),
   'tool.addEdge': () => store.setMode('add-edge'),
   'tool.routeDraw': () => store.setMode('route-draw'),
-  'tool.routeDrawNaming': () => store.setMode('route-draw-naming'),
   'tool.styleBrush': () => store.setMode('style-brush'),
   'tool.boxSelect': () => store.setMode('box-select'),
   'tool.anchorEdit': () => store.setMode('anchor-edit'),
@@ -375,12 +404,14 @@ const { rebuildBindings } = useShortcuts({
 onMounted(async () => {
   loadWorkspaceViewState()
   window.addEventListener('beforeunload', handleBeforeUnload)
+  window.addEventListener('keydown', handleStationArrowNavigation, true)
   store._showUpgradeDialog = showUpgradeDialog
   await store.initialize()
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('keydown', handleStationArrowNavigation, true)
 })
 </script>
 

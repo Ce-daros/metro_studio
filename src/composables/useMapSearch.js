@@ -16,6 +16,10 @@ export function setStoreGetter(fn) {
   getStoreFn = fn
 }
 
+export function getMapInstance() {
+  return typeof getMapFn === 'function' ? getMapFn() : null
+}
+
 function removeCurrentMarker() {
   if (currentMarkerRemover) {
     currentMarkerRemover()

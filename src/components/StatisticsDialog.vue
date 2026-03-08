@@ -12,6 +12,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'show-reachability'])
 
 const store = useProjectStore()
+const reachabilityState = computed(() => store.reachability || {
+  active: false,
+  stationId: null,
+  thresholdMeters: 0,
+  result: null,
+})
 const activeTab = ref('basics')
 const loading = ref(false)
 const stats = ref(null)
@@ -549,11 +555,11 @@ watch(
                 <button class="stats-dialog__btn stats-dialog__btn--primary" :disabled="!reachStation" type="button" @click="applyReachability">分析</button>
               </div>
 
-              <template v-if="store.reachability.active && store.reachability.result">
+              <template v-if="reachabilityState.active && reachabilityState.result">
                 <div class="reach-summary">
-                  共可达 <strong>{{ store.reachability.result.totalCount }}</strong> 个站点
+                  共可达 <strong>{{ reachabilityState.result.totalCount }}</strong> 个站点
                 </div>
-                <div v-for="band in store.reachability.result.bands" :key="band.label" class="reach-band">
+                <div v-for="band in reachabilityState.result.bands" :key="band.label" class="reach-band">
                   <div class="reach-band__header">
                     <span class="reach-band__dot" :style="{ background: band.color }" />
                     {{ band.label }}（{{ band.stations.length }} 站）

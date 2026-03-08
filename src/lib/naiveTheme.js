@@ -1,4 +1,3 @@
-import { computed } from 'vue'
 import { darkTheme } from 'naive-ui'
 
 const PRIMARY = '#f900bf'
@@ -64,8 +63,4 @@ export const naiveThemeOverrides = {
   },
 }
 
-export const naiveDarkTheme = darkTheme
-
-export function setNaiveThemeDark() {}
-
-export const naiveTheme = computed(() => darkTheme)
+export const naiveTheme = darkTheme

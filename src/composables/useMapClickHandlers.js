@@ -22,21 +22,14 @@ function hitTestAnnotation(map, screenPoint, store) {
 }
 
 function isLineDrawMode(store) {
-  return store.mode === 'add-edge' || store.mode === 'route-draw' || store.mode === 'route-draw-naming'
+  return store.mode === 'add-edge' || store.mode === 'route-draw'
 }
 
 function isRouteDrawMode(store) {
-  return store.mode === 'route-draw' || store.mode === 'route-draw-naming'
+  return store.mode === 'route-draw'
 }
 
-export function useMapClickHandlers({ store, getMap, closeContextMenu, openContextMenu, openLineSelectionMenu, interactionState, triggerStationNameFocus }) {
-  function maybeFocusStationNameInput() {
-    if (store.mode !== 'route-draw-naming') return
-    if (typeof triggerStationNameFocus === 'function') {
-      triggerStationNameFocus()
-    }
-  }
-
+export function useMapClickHandlers({ store, getMap, closeContextMenu, openContextMenu, openLineSelectionMenu, interactionState }) {
   function handleStationClick(event) {
     if (store.navigation?.active) return
     closeContextMenu()
@@ -81,7 +74,6 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
 
     if (isRouteDrawMode(store)) {
       store.selectStation(stationId)
-      maybeFocusStationNameInput()
       return
     }
 
@@ -263,7 +255,6 @@ export function useMapClickHandlers({ store, getMap, closeContextMenu, openConte
       const station = store.addStationAt([event.lngLat.lng, event.lngLat.lat])
       if (station?.id) {
         store.selectStation(station.id)
-        maybeFocusStationNameInput()
       }
       return
     }

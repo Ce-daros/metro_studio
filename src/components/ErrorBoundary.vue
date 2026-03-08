@@ -7,6 +7,7 @@ const errorMessage = ref('')
 onErrorCaptured((err) => {
   hasError.value = true
   errorMessage.value = err?.message || String(err)
+  console.error('[ErrorBoundary] Captured render error:', err)
   return false
 })
 

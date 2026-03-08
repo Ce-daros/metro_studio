@@ -39,15 +39,34 @@ export function useMapNavigation({ store, getMap }) {
   let dashOffset = 0
   let navClickHandler = null
 
+  function logNavigation(level, message, extra = {}) {
+    console[level](`[MapNavigation] ${message}`, {
+      navigation: store.navigation || null,
+      projectId: store.project?.id || null,
+      stationCount: store.project?.stations?.length || 0,
+      edgeCount: store.project?.edges?.length || 0,
+      mapReady: Boolean(getMap()),
+      styleLoaded: Boolean(getMap()?.isStyleLoaded?.()),
+      ...extra,
+    })
+  }
+
+  const navigationState = computed(() => store.navigation || {
+    active: false,
+    originLngLat: null,
+    destinationLngLat: null,
+    result: null,
+  })
+
   const navPrompt = computed(() => {
-    if (!store.navigation.active) return ''
-    if (!store.navigation.originLngLat) return '点击地图选择起点'
-    if (!store.navigation.destinationLngLat) return '点击地图选择终点'
+    if (!navigationState.value.active) return ''
+    if (!navigationState.value.originLngLat) return '点击地图选择起点'
+    if (!navigationState.value.destinationLngLat) return '点击地图选择终点'
     return ''
   })
 
   const navResultVisible = computed(() => {
-    return store.navigation.active && store.navigation.destinationLngLat != null
+    return navigationState.value.active && navigationState.value.destinationLngLat != null
   })
 
   // ── 图层管理 ──
@@ -165,7 +184,7 @@ export function useMapNavigation({ store, getMap }) {
   // ── 数据构建 ──
 
   function buildRouteGeoJson() {
-    const result = store.navigation.result
+    const result = navigationState.value.result
     if (!result) return EMPTY_FC
 
     const project = store.project
@@ -202,8 +221,8 @@ export function useMapNavigation({ store, getMap }) {
   }
 
   function buildWalkGeoJson() {
-    const result = store.navigation.result
-    const nav = store.navigation
+    const result = navigationState.value.result
+    const nav = navigationState.value
     if (!result || !nav.originLngLat || !nav.destinationLngLat) return EMPTY_FC
 
     const project = store.project
@@ -241,7 +260,7 @@ export function useMapNavigation({ store, getMap }) {
   }
 
   function buildMarkersGeoJson() {
-    const nav = store.navigation
+    const nav = navigationState.value
     const features = []
 
     if (nav.originLngLat) {
@@ -269,16 +288,21 @@ export function useMapNavigation({ store, getMap }) {
     const map = getMap()
     if (!map || !map.isStyleLoaded()) return
 
-    ensureSources(map)
-    ensureLayers(map)
+    try {
+      ensureSources(map)
+      ensureLayers(map)
 
-    const routeSrc = map.getSource(SOURCE_NAV_ROUTE)
-    const walkSrc = map.getSource(SOURCE_NAV_WALK)
-    const markersSrc = map.getSource(SOURCE_NAV_MARKERS)
+      const routeSrc = map.getSource(SOURCE_NAV_ROUTE)
+      const walkSrc = map.getSource(SOURCE_NAV_WALK)
+      const markersSrc = map.getSource(SOURCE_NAV_MARKERS)
 
-    if (routeSrc) routeSrc.setData(buildRouteGeoJson())
-    if (walkSrc) walkSrc.setData(buildWalkGeoJson())
-    if (markersSrc) markersSrc.setData(buildMarkersGeoJson())
+      if (routeSrc) routeSrc.setData(buildRouteGeoJson())
+      if (walkSrc) walkSrc.setData(buildWalkGeoJson())
+      if (markersSrc) markersSrc.setData(buildMarkersGeoJson())
+    } catch (error) {
+      logNavigation('error', 'updateNavLayers failed', { error })
+      throw error
+    }
   }
 
   function clearNavLayers() {
@@ -324,7 +348,7 @@ export function useMapNavigation({ store, getMap }) {
   // ── 点击拦截 ──
 
   function onNavMapClick(e) {
-    if (!store.navigation.active) return
+    if (!navigationState.value.active) return
 
     const lngLat = [e.lngLat.lng, e.lngLat.lat]
 
@@ -361,12 +385,13 @@ export function useMapNavigation({ store, getMap }) {
   // 监听导航状态变化，更新图层
   watch(
     () => ({
-      active: store.navigation.active,
-      origin: store.navigation.originLngLat,
-      dest: store.navigation.destinationLngLat,
-      result: store.navigation.result,
+      active: navigationState.value.active,
+      origin: navigationState.value.originLngLat,
+      dest: navigationState.value.destinationLngLat,
+      result: navigationState.value.result,
     }),
     (newVal) => {
+      logNavigation('info', 'watch:navigation-state', { state: newVal })
       if (!newVal.active) {
         stopAnimation()
         clearNavLayers()

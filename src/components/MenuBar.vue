@@ -10,7 +10,7 @@ const props = defineProps({
   activeView: { type: String, default: 'map' },
 })
 
-const emit = defineEmits(['set-view', 'action', 'show-project-list', 'show-ai-config', 'show-tts-dialog', 'show-shortcut-settings', 'show-statistics', 'show-about', 'show-batch-name-edit', 'show-quick-naming', 'show-search', 'show-help', 'show-landuse-legend'])
+const emit = defineEmits(['set-view', 'action', 'show-project-list', 'show-ai-config', 'show-tts-dialog', 'show-shortcut-settings', 'show-statistics', 'show-about', 'show-batch-name-edit', 'show-quick-naming', 'show-english-review', 'show-activation-code', 'show-search', 'show-help', 'show-landuse-legend'])
 
 const store = useProjectStore()
 const openMenuKey = ref(null)
@@ -19,7 +19,7 @@ const lineDropdownOpen = ref(false)
 const lineButtonRef = ref(null)
 const fileInputRef = ref(null)
 
-const { menus, handleAction, uiTheme, toggleTheme } = useMenuBarActions(store, emit, { fileInputRef })
+const { menus, handleAction } = useMenuBarActions(store, emit, { fileInputRef })
 
 const BLOCK_CHARS = { item: '▣', submenu: '▧', toggle_on: '▨', toggle_off: '▢' }
 const blockIcon = (char, color = 'var(--ark-pink)') => () => h('span', {
@@ -132,6 +132,8 @@ const activeLineName = computed(() => {
   return getDisplayLineName(activeLine.value, 'zh') || activeLine.value.nameZh || '未命名'
 })
 
+const navigationActive = computed(() => Boolean(store.navigation?.active))
+
 const timelinePreviewBasemapMode = computed(() => (
   store.timelinePreviewBasemapMode === 'dark' ? 'dark' : 'light'
 ))
@@ -183,7 +185,7 @@ async function onFileSelected(event) {
 }
 
 function toggleNavigation() {
-  if (store.navigation.active) {
+  if (navigationActive.value) {
     store.exitNavigation()
   } else {
     store.enterNavigation()
@@ -246,7 +248,7 @@ function toggleNavigation() {
         <template #trigger>
           <button
             class="menu-bar__nav-btn ark-glitch-hover"
-            :class="{ 'menu-bar__nav-btn--active': store.navigation.active }"
+            :class="{ 'menu-bar__nav-btn--active': navigationActive }"
             type="button"
             @click="toggleNavigation"
             aria-label="导航"

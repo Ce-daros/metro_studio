@@ -12,6 +12,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {string} nameZh
  * @property {string} nameEn
  * @property {boolean} nameEnFixed - 英文名是否已固定（不会被 AI 翻译覆盖）
+ * @property {number|null} [osmNodeId]
  * @property {[number, number]} lngLat
  * @property {[number, number]} displayPos
  * @property {boolean} isInterchange
@@ -251,6 +252,8 @@ export function normalizeProject(raw) {
     id: station.id || createId('station'),
     nameZh: station.nameZh || station.name || '未命名站',
     nameEn: station.nameEn || station.nameZh || station.name || '',
+    nameEnFixed: Boolean(station.nameEnFixed),
+    osmNodeId: Number.isFinite(Number(station.osmNodeId)) ? Number(station.osmNodeId) : null,
     lngLat: station.lngLat || [117.0, 36.65],
     displayPos: station.displayPos || station.lngLat || [117.0, 36.65],
     isInterchange: Boolean(station.isInterchange),

@@ -1,11 +1,5 @@
-import { computed, ref, onMounted } from 'vue'
+import { computed } from 'vue'
 import { CITY_PRESETS } from '../lib/osm/cityPresets'
-import {
-  DEFAULT_UI_THEME,
-  UI_THEME_STORAGE_KEY,
-  normalizeUiTheme,
-} from '../lib/uiPreferences'
-import { setNaiveThemeDark } from '../lib/naiveTheme'
 import { useAnimationSettings } from './useAnimationSettings.js'
 import { useDialog } from './useDialog.js'
 import { getEffectiveBindings, formatBindingDisplay } from '../lib/shortcutRegistry'
@@ -99,7 +93,6 @@ function buildChineseCityMenuItems(importing) {
  * @returns Menu item computeds, action handler, and UI preference helpers
  */
 export function useMenuBarActions(store, emit, refs) {
-  const uiTheme = ref(DEFAULT_UI_THEME)
   const { enabled: animationsEnabled, toggleAnimation } = useAnimationSettings()
   const { prompt, info } = useDialog()
 
@@ -110,24 +103,6 @@ export function useMenuBarActions(store, emit, refs) {
     do { idx = Math.floor(Math.random() * doYouKnowData.length) } while (idx === _lastTipIndex && doYouKnowData.length > 1)
     _lastTipIndex = idx
     info({ title: '💡 你知道吗', message: doYouKnowData[idx].text, confirmText: '涨知识了' })
-  }
-
-  // ── UI preference helpers ──
-
-  function applyUiTheme(theme) {
-    const next = normalizeUiTheme(theme)
-    uiTheme.value = next
-    document.documentElement.setAttribute('data-ui-theme', next)
-    setNaiveThemeDark(next === 'dark')
-    try { window.localStorage.setItem(UI_THEME_STORAGE_KEY, next) } catch { /* noop */ }
-  }
-
-  function restoreUiPreferences() {
-    try {
-      applyUiTheme(window.localStorage.getItem(UI_THEME_STORAGE_KEY) || DEFAULT_UI_THEME)
-    } catch {
-      applyUiTheme(DEFAULT_UI_THEME)
-    }
   }
 
   // ── Menu structure definitions ──
@@ -291,10 +266,6 @@ export function useMenuBarActions(store, emit, refs) {
     { key: 'help', label: '帮助', items: helpMenuItems.value },
   ])
 
-  function toggleTheme() {
-    applyUiTheme(uiTheme.value === 'light' ? 'dark' : 'light')
-  }
-
   async function handleConfigProtomapsKey() {
     const key = await prompt({
       title: '配置 Protomaps API Key',
@@ -441,19 +412,11 @@ export function useMenuBarActions(store, emit, refs) {
     emit('action', action)
   }
 
-  onMounted(() => {
-    restoreUiPreferences()
-  })
-
   return {
-    uiTheme,
     menus,
     fileMenuItems,
     editMenuItems,
     exportMenuItems,
     handleAction,
-    applyUiTheme,
-    restoreUiPreferences,
-    toggleTheme,
   }
 }

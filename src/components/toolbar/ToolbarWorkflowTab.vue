@@ -69,15 +69,6 @@ function redoEdit() {
         </template>
         连续画线模式 (R)
       </NTooltip>
-      <NTooltip>
-        <template #trigger>
-          <button class="toolbar__btn" :class="{ active: store.mode === 'route-draw-naming' }" @click="store.setMode('route-draw-naming')">
-            <IconBase name="route" :size="14" />
-            <span>命名布线</span>
-          </button>
-        </template>
-        命名布线模式 (T)
-      </NTooltip>
     </div>
     <div class="toolbar__row">
       <NTooltip>

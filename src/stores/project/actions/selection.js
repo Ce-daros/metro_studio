@@ -46,10 +46,31 @@ function dedupeEdgeIds(ids, edgeIdSet) {
   return result
 }
 
+function getVisibleEdges(project, timelineFilterYear) {
+  const edges = project?.edges || []
+  if (timelineFilterYear == null) return edges
+  return edges.filter((edge) => edge.openingYear == null || edge.openingYear <= timelineFilterYear)
+}
+
+function getDirectionVector(direction) {
+  switch (direction) {
+    case 'left':
+      return [-1, 0]
+    case 'right':
+      return [1, 0]
+    case 'up':
+      return [0, 1]
+    case 'down':
+      return [0, -1]
+    default:
+      return null
+  }
+}
+
 const selectionActions = {
   setMode(mode) {
     this.mode = mode
-    if (mode !== 'add-edge' && mode !== 'route-draw' && mode !== 'route-draw-naming') {
+    if (mode !== 'add-edge' && mode !== 'route-draw') {
       this.pendingEdgeStartStationId = null
     }
     // 样式刷模式特殊处理
@@ -198,7 +219,7 @@ const selectionActions = {
   cancelPendingEdgeStart() {
     if (!this.pendingEdgeStartStationId) return
     this.pendingEdgeStartStationId = null
-    if (this.mode === 'add-edge' || this.mode === 'route-draw' || this.mode === 'route-draw-naming') {
+    if (this.mode === 'add-edge' || this.mode === 'route-draw') {
       this.statusText = '已取消待连接起点'
     }
   },
@@ -399,7 +420,7 @@ const selectionActions = {
       this.pendingEdgeStartStationId = null
       return
     }
-    if (this.mode === 'route-draw' || this.mode === 'route-draw-naming') {
+    if (this.mode === 'route-draw') {
       if (!this.pendingEdgeStartStationId) {
         this.pendingEdgeStartStationId = stationId
         this.statusText = '连续布线已开始：请继续点击下一个点'
@@ -417,6 +438,77 @@ const selectionActions = {
       }
       this.pendingEdgeStartStationId = stationId
       this.statusText = '已连接并继续布线：请点击下一个点'
+    }
+  },
+
+  navigateSelectedStationByDirection(direction) {
+    if (!this.project || this.selectedStationIds.length !== 1 || !this.selectedStationId) return null
+    const directionVector = getDirectionVector(direction)
+    if (!directionVector) return null
+
+    const currentStation = this.stationById.get(this.selectedStationId)
+    if (!Array.isArray(currentStation?.lngLat) || currentStation.lngLat.length !== 2) return null
+
+    const currentLng = Number(currentStation.lngLat[0])
+    const currentLat = Number(currentStation.lngLat[1])
+    if (!Number.isFinite(currentLng) || !Number.isFinite(currentLat)) return null
+
+    const candidateMap = new Map()
+    for (const edge of getVisibleEdges(this.project, this.timelineFilterYear)) {
+      let neighborId = null
+      if (edge.fromStationId === currentStation.id) neighborId = edge.toStationId
+      else if (edge.toStationId === currentStation.id) neighborId = edge.fromStationId
+      if (!neighborId) continue
+
+      const existing = candidateMap.get(neighborId) || { stationId: neighborId, lineIds: new Set() }
+      for (const lineId of edge.sharedByLineIds || []) {
+        existing.lineIds.add(lineId)
+      }
+      candidateMap.set(neighborId, existing)
+    }
+
+    let bestCandidate = null
+    for (const candidate of candidateMap.values()) {
+      const station = this.stationById.get(candidate.stationId)
+      if (!Array.isArray(station?.lngLat) || station.lngLat.length !== 2) continue
+      const rawDx = Number(station.lngLat[0]) - currentLng
+      const dy = Number(station.lngLat[1]) - currentLat
+      if (!Number.isFinite(rawDx) || !Number.isFinite(dy)) continue
+
+      const avgLatRadians = ((currentLat + Number(station.lngLat[1])) / 2) * Math.PI / 180
+      const dx = rawDx * Math.cos(avgLatRadians)
+      const distance = Math.hypot(dx, dy)
+      if (!(distance > 0)) continue
+
+      const dot = (dx * directionVector[0] + dy * directionVector[1]) / distance
+      if (dot <= 0.2) continue
+
+      const activeLineBonus = this.activeLineId && candidate.lineIds.has(this.activeLineId) ? 0.15 : 0
+      const score = dot + activeLineBonus - distance * 0.0001
+      if (!bestCandidate || score > bestCandidate.score) {
+        bestCandidate = {
+          station,
+          score,
+          lineIds: [...candidate.lineIds],
+        }
+      }
+    }
+
+    if (!bestCandidate) return null
+
+    const nextLineId = bestCandidate.lineIds.includes(this.activeLineId)
+      ? this.activeLineId
+      : (bestCandidate.lineIds[0] || null)
+
+    if (nextLineId) {
+      this.activeLineId = nextLineId
+    }
+    this.setSelectedStations([bestCandidate.station.id], { keepEdges: true })
+    this.statusText = `已切换到站点: ${bestCandidate.station.nameZh || bestCandidate.station.nameEn || bestCandidate.station.id}`
+
+    return {
+      stationId: bestCandidate.station.id,
+      lineId: nextLineId,
     }
   },
 

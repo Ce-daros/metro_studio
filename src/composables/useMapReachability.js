@@ -1,4 +1,4 @@
-import { watch, onBeforeUnmount } from 'vue'
+import { computed, watch, onBeforeUnmount } from 'vue'
 
 const SOURCE_REACH_POINTS = 'metro-studio-reach-points'
 const SOURCE_REACH_ORIGIN = 'metro-studio-reach-origin'
@@ -13,6 +13,23 @@ const ALL_SOURCES = [SOURCE_REACH_POINTS, SOURCE_REACH_ORIGIN]
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
 export function useMapReachability({ store, getMap }) {
+  const reachabilityState = computed(() => store.reachability || {
+    active: false,
+    stationId: null,
+    thresholdMeters: 0,
+    result: null,
+  })
+
+  function logReachability(level, message, extra = {}) {
+    console[level](`[MapReachability] ${message}`, {
+      reachability: store.reachability || null,
+      projectId: store.project?.id || null,
+      stationCount: store.project?.stations?.length || 0,
+      mapReady: Boolean(getMap()),
+      styleLoaded: Boolean(getMap()?.isStyleLoaded?.()),
+      ...extra,
+    })
+  }
 
   function removeLayers(map) {
     for (const id of ALL_LAYERS) {
@@ -82,7 +99,7 @@ export function useMapReachability({ store, getMap }) {
   }
 
   function buildPointsGeoJson() {
-    const result = store.reachability.result
+    const result = reachabilityState.value.result
     if (!result) return EMPTY_FC
     const features = []
     for (const band of result.bands) {
@@ -99,7 +116,7 @@ export function useMapReachability({ store, getMap }) {
   }
 
   function buildOriginGeoJson() {
-    const result = store.reachability.result
+    const result = reachabilityState.value.result
     if (!result?.originLngLat) return EMPTY_FC
     return {
       type: 'FeatureCollection',
@@ -114,12 +131,17 @@ export function useMapReachability({ store, getMap }) {
   function updateLayers() {
     const map = getMap()
     if (!map || !map.isStyleLoaded()) return
-    ensureSources(map)
-    ensureLayers(map)
-    const ptsSrc = map.getSource(SOURCE_REACH_POINTS)
-    const oriSrc = map.getSource(SOURCE_REACH_ORIGIN)
-    if (ptsSrc) ptsSrc.setData(buildPointsGeoJson())
-    if (oriSrc) oriSrc.setData(buildOriginGeoJson())
+    try {
+      ensureSources(map)
+      ensureLayers(map)
+      const ptsSrc = map.getSource(SOURCE_REACH_POINTS)
+      const oriSrc = map.getSource(SOURCE_REACH_ORIGIN)
+      if (ptsSrc) ptsSrc.setData(buildPointsGeoJson())
+      if (oriSrc) oriSrc.setData(buildOriginGeoJson())
+    } catch (error) {
+      logReachability('error', 'updateLayers failed', { error })
+      throw error
+    }
   }
 
   function clearLayers() {
@@ -139,10 +161,11 @@ export function useMapReachability({ store, getMap }) {
 
   watch(
     () => ({
-      active: store.reachability.active,
-      result: store.reachability.result,
+      active: reachabilityState.value.active,
+      result: reachabilityState.value.result,
     }),
     (val) => {
+      logReachability('info', 'watch:reachability-state', { state: val })
       if (!val.active || !val.result) {
         clearLayers()
         return

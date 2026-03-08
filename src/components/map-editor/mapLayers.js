@@ -137,7 +137,7 @@ function updateStationVisibilityFilter(map, store) {
   if (!map || !map.getLayer(LAYER_STATIONS)) return
   
   // 布线模式和添加边模式下显示所有站点
-  if (store.mode === 'route-draw' || store.mode === 'route-draw-naming' || store.mode === 'add-edge') {
+  if (store.mode === 'route-draw' || store.mode === 'add-edge') {
     map.setFilter(LAYER_STATIONS, ['==', ['get', 'id'], ['get', 'id']])
     return
   }

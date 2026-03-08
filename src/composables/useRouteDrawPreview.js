@@ -16,7 +16,7 @@ const ROUTE_DRAW_LONG_COLOR = '#A855F7'
  */
 export function useRouteDrawPreview({ store, getMap }) {
   function isRouteDrawMode() {
-    return store.mode === 'route-draw' || store.mode === 'route-draw-naming'
+    return store.mode === 'route-draw'
   }
 
   const routeDrawPreview = reactive({
