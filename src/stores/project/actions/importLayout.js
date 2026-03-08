@@ -63,7 +63,7 @@ const importLayoutActions = {
    * @param {boolean} [importOptions.includeProposed]      Override store toggle
    */
   async importCityNetwork(cityPresetOrRelationId, importOptions = {}) {
-    if (!this.project || this.isImporting) return
+    if (this.isImporting) return
 
     let preset = null
     let relationId = null
@@ -106,7 +106,7 @@ const importLayoutActions = {
       })
 
       this.importProgress = 100
-      this._applyImportedNetwork(imported)
+      this._applyImportedNetwork(imported, importOptions)
     } catch (error) {
       this.statusText = `导入失败: ${error.message || 'unknown error'}`
     } finally {
@@ -119,13 +119,15 @@ const importLayoutActions = {
    * Shared logic: apply an imported network result to current project.
    * @param {object} imported  Return value from importJinanMetroFromOsm or importCityMetroNetwork
    */
-  _applyImportedNetwork(imported) {
+  _applyImportedNetwork(imported, options = {}) {
     const now = new Date().toISOString()
-    const currentProjectName = String(this.project.name || '').trim() || '新建工程'
+    const currentProjectName = String(this.project?.name || '').trim() || '新建工程'
     const cityLabel = imported.region?.name || 'OSM'
     const isEmptyProject = isProjectEmptyForImport(this.project)
+    const requestedProjectName = String(options.newProjectName || '').trim()
+    const shouldCreateProject = Boolean(options.forceCreateProject) || !this.project || !isEmptyProject
 
-    if (isEmptyProject) {
+    if (!shouldCreateProject) {
       this.project.region = imported.region
       this.project.regionBoundary = imported.boundary
       this.project.stations = imported.stations
@@ -138,9 +140,9 @@ const importLayoutActions = {
       }
       this.project.meta.updatedAt = now
     } else {
-      this.project = normalizeProject({
+      const nextProject = {
         id: createId('project'),
-        name: `${currentProjectName} (${cityLabel} OSM 导入)`,
+        name: requestedProjectName || `${currentProjectName} (${cityLabel} OSM 导入)`,
         region: imported.region,
         regionBoundary: imported.boundary,
         stations: imported.stations,
@@ -157,7 +159,11 @@ const importLayoutActions = {
           createdAt: now,
           updatedAt: now,
         },
-      })
+      }
+      if (this.project?.layoutConfig) {
+        nextProject.layoutConfig = this.project.layoutConfig
+      }
+      this.project = normalizeProject(nextProject)
     }
 
     this.regionBoundary = imported.boundary
@@ -178,7 +184,7 @@ const importLayoutActions = {
     }
     this.recomputeStationLineMembership()
 
-    this.statusText = isEmptyProject 
+    this.statusText = !shouldCreateProject
       ? `导入完成: ${this.project.lines.length} 条线 / ${this.project.stations.length} 站`
       : `导入完成（已新建工程）: ${this.project.lines.length} 条线 / ${this.project.stations.length} 站`
     this.resetHistoryBaseline()

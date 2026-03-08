@@ -233,10 +233,7 @@ async function handleMenuAction(action) {
     const cityId = action.slice('importCity_'.length)
     const preset = findCityPresetById(cityId)
     const cityName = preset ? preset.name : cityId
-    // 没有活跃工程时（从主页面点击城市按钮），先创建一个以城市命名的空工程
-    if (!store.project) {
-      await store.createNewProject(`${cityName}地铁线网`)
-    } else {
+    if (store.project) {
       const isEmptyProject = !store.project?.stations?.length && !store.project?.lines?.length
       if (!isEmptyProject) {
         const ok = await confirm({
@@ -248,7 +245,10 @@ async function handleMenuAction(action) {
         if (!ok) return
       }
     }
-    store.importCityNetwork(cityId)
+    await store.importCityNetwork(cityId, {
+      forceCreateProject: true,
+      newProjectName: `${cityName}地铁线网`,
+    })
     return
   }
 
