@@ -243,7 +243,14 @@ export function normalizeProject(raw) {
     meta: {
       ...base.meta,
       ...(raw?.meta || {}),
-      updatedAt: new Date().toISOString(),
+      createdAt:
+        raw?.meta?.createdAt != null && String(raw.meta.createdAt).trim()
+          ? String(raw.meta.createdAt)
+          : base.meta.createdAt,
+      updatedAt:
+        raw?.meta?.updatedAt != null && String(raw.meta.updatedAt).trim()
+          ? String(raw.meta.updatedAt)
+          : base.meta.updatedAt,
       hasAutoLayoutTriggered: Boolean(raw?.meta?.hasAutoLayoutTriggered),
     },
   }

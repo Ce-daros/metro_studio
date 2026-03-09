@@ -25,6 +25,6 @@
 - **ranking/** — 全球轨道交通排行榜与工程里程排名计算（Wikipedia 实时榜单解析），详见 `ranking/README.md`
 - **schematic/** — 示意图渲染模型（预览与导出共享，支持线段级线型覆盖），详见 `schematic/README.md`
 - **osm/** — OSM 导入与 Overpass 请求，详见 `osm/README.md`
-- **storage/** — 本地存储与工程文件读写（含线段级线型覆盖持久化），详见 `storage/README.md`
+- **storage/** — 本地存储与工程文件读写（含线段级线型覆盖持久化、工程创建/修改时间保真），详见 `storage/README.md`
 - **timeline/** — 时间轴动画引擎，详见 `timeline/README.md`
 - **tts/** — 站内播报文案与语音拼接（模板生成、片段合成）
