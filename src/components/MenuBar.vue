@@ -5,6 +5,7 @@ import { NTooltip, NDropdown } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
 import { getDisplayLineName } from '../lib/lineNaming'
 import { useMenuBarActions } from '../composables/useMenuBarActions'
+import IconBase from './IconBase.vue'
 
 const props = defineProps({
   activeView: { type: String, default: 'map' },
@@ -238,7 +239,7 @@ function toggleNavigation() {
             @click="emit('show-search')"
             aria-label="搜索地点"
           >
-            <span class="menu-bar__block-icon">▣</span>
+            <IconBase name="search" :size="16" />
           </button>
         </template>
         搜索地点 (Ctrl+F)
@@ -253,7 +254,7 @@ function toggleNavigation() {
             @click="toggleNavigation"
             aria-label="导航"
           >
-            <span class="menu-bar__block-icon">▧</span>
+            <IconBase name="navigation" :size="16" />
           </button>
         </template>
         导航
@@ -699,6 +700,7 @@ function toggleNavigation() {
   transition: color var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast);
   display: flex;
   align-items: center;
+  justify-content: center;
   clip-path: var(--clip-chamfer-sm);
 }
 

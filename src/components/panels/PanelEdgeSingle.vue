@@ -1,21 +1,20 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
-import { useProjectStore } from '../../stores/projectStore'
 import { getDisplayLineName } from '../../lib/lineNaming'
-import { LINE_STYLE_OPTIONS } from '../../lib/lineStyles'
-import { NTooltip } from 'naive-ui'
+import { LINE_STYLE_OPTIONS, normalizeLineStyle } from '../../lib/lineStyles'
+import { useProjectStore } from '../../stores/projectStore'
 
 const store = useProjectStore()
 
 const selectedEdge = computed(() => {
   if (!store.project || !store.selectedEdgeIds.length) return null
   const primaryEdgeId = store.selectedEdgeId || store.selectedEdgeIds[store.selectedEdgeIds.length - 1]
-  return store.project.edges.find((e) => e.id === primaryEdgeId) || null
+  return store.project.edges.find((edge) => edge.id === primaryEdgeId) || null
 })
 
 const selectedEdgeStations = computed(() => {
   if (!selectedEdge.value || !store.project) return { from: null, to: null }
-  const stationMap = new Map(store.project.stations.map((s) => [s.id, s]))
+  const stationMap = new Map(store.project.stations.map((station) => [station.id, station]))
   return {
     from: stationMap.get(selectedEdge.value.fromStationId) || null,
     to: stationMap.get(selectedEdge.value.toStationId) || null,
@@ -24,40 +23,52 @@ const selectedEdgeStations = computed(() => {
 
 const selectedEdgeLines = computed(() => {
   if (!selectedEdge.value || !store.project) return []
-  const lineMap = new Map(store.project.lines.map((l) => [l.id, l]))
+  const lineMap = new Map(store.project.lines.map((line) => [line.id, line]))
   return (selectedEdge.value.sharedByLineIds || []).map((lineId) => lineMap.get(lineId)).filter(Boolean)
 })
 
+const primaryLine = computed(() => selectedEdgeLines.value[0] || null)
 const edgeReassignTargets = computed(() => store.project?.lines || [])
 
-const edgeBatchForm = reactive({
+const edgeForm = reactive({
   targetLineId: '',
   lineStyle: '',
-  curveMode: 'keep',
+  curveMode: 'straight',
   openingYear: '',
   phase: '',
-  // 跟踪初始值，用于判断字段是否被修改
-  _initialOpeningYear: '',
-  _initialPhase: '',
+})
+
+const currentLineStyle = computed(() => {
+  if (!selectedEdge.value) return 'solid'
+  return normalizeLineStyle(selectedEdge.value.lineStyleOverride || primaryLine.value?.style)
+})
+
+const hasUnsavedChanges = computed(() => {
+  if (!selectedEdge.value) return false
+  const nextYear = edgeForm.openingYear === '' ? null : Number(edgeForm.openingYear)
+  const currentYear = selectedEdge.value.openingYear ?? null
+  const nextPhase = edgeForm.phase.trim() || null
+  const currentPhase = selectedEdge.value.phase ?? null
+  return (
+    edgeForm.targetLineId !== (selectedEdge.value.sharedByLineIds?.[0] || '') ||
+    edgeForm.lineStyle !== currentLineStyle.value ||
+    edgeForm.curveMode !== (selectedEdge.value.isCurved ? 'curved' : 'straight') ||
+    nextYear !== currentYear ||
+    nextPhase !== currentPhase
+  )
 })
 
 watch(
-  () => selectedEdge.value,
+  selectedEdge,
   (edge) => {
     if (!edge) return
-    // 显示当前值，但记录初始值
-    const yearValue = edge.openingYear != null ? String(edge.openingYear) : ''
-    const phaseValue = edge.phase || ''
-    edgeBatchForm.openingYear = yearValue
-    edgeBatchForm.phase = phaseValue
-    edgeBatchForm._initialOpeningYear = yearValue
-    edgeBatchForm._initialPhase = phaseValue
+    edgeForm.targetLineId = edge.sharedByLineIds?.[0] || ''
+    edgeForm.lineStyle = normalizeLineStyle(edge.lineStyleOverride || primaryLine.value?.style)
+    edgeForm.curveMode = edge.isCurved ? 'curved' : 'straight'
+    edgeForm.openingYear = edge.openingYear != null ? String(edge.openingYear) : ''
+    edgeForm.phase = edge.phase || ''
   },
   { immediate: true },
-)
-
-const canApplyBatch = computed(
-  () => Boolean(edgeBatchForm.targetLineId) || Boolean(edgeBatchForm.lineStyle) || edgeBatchForm.curveMode !== 'keep' || edgeBatchForm.openingYear !== '' || edgeBatchForm.phase !== '',
 )
 
 function displayLineName(line) {
@@ -69,173 +80,196 @@ function displayStationName(station) {
   return station.nameZh || ''
 }
 
-function applyBatch() {
-  const edgeIds = store.selectedEdgeIds || []
-  if (!edgeIds.length) return
+function resetEdgeForm() {
+  if (!selectedEdge.value) return
+  edgeForm.targetLineId = selectedEdge.value.sharedByLineIds?.[0] || ''
+  edgeForm.lineStyle = currentLineStyle.value
+  edgeForm.curveMode = selectedEdge.value.isCurved ? 'curved' : 'straight'
+  edgeForm.openingYear = selectedEdge.value.openingYear != null ? String(selectedEdge.value.openingYear) : ''
+  edgeForm.phase = selectedEdge.value.phase || ''
+}
+
+function applyEdgeChanges() {
+  if (!selectedEdge.value) return
 
   const patch = {}
-  if (edgeBatchForm.targetLineId) patch.targetLineId = edgeBatchForm.targetLineId
-  if (edgeBatchForm.lineStyle) patch.lineStyle = edgeBatchForm.lineStyle
-  if (edgeBatchForm.curveMode === 'curved') patch.isCurved = true
-  else if (edgeBatchForm.curveMode === 'straight') patch.isCurved = false
+  const currentLineId = selectedEdge.value.sharedByLineIds?.[0] || ''
+  const currentCurveMode = selectedEdge.value.isCurved ? 'curved' : 'straight'
+  const currentYear = selectedEdge.value.openingYear ?? null
+  const currentPhase = selectedEdge.value.phase ?? null
 
-  // 只有当用户修改了年份字段时才应用更新
-  if (edgeBatchForm.openingYear !== edgeBatchForm._initialOpeningYear) {
-    const parsed = Number(edgeBatchForm.openingYear)
-    patch.openingYear = Number.isFinite(parsed) && Number.isInteger(parsed) ? parsed : null
+  if (edgeForm.targetLineId && edgeForm.targetLineId !== currentLineId) {
+    patch.targetLineId = edgeForm.targetLineId
   }
 
-  // 只有当用户修改了分期字段时才应用更新
-  if (edgeBatchForm.phase !== edgeBatchForm._initialPhase) {
-    patch.phase = edgeBatchForm.phase
+  if (edgeForm.lineStyle !== currentLineStyle.value) {
+    patch.lineStyle = edgeForm.lineStyle
   }
 
-  if (!Object.keys(patch).length) {
-    store.statusText = '请先选择至少一个批量变更项'
-    return
+  if (edgeForm.curveMode !== currentCurveMode) {
+    patch.isCurved = edgeForm.curveMode === 'curved'
   }
 
-  const { updatedCount } = store.updateEdgesBatch(edgeIds, patch)
-  if (!updatedCount) {
-    store.statusText = '所选线段未发生变化'
-    return
+  const nextYear = edgeForm.openingYear === '' ? null : Number(edgeForm.openingYear)
+  if (nextYear !== currentYear) {
+    patch.openingYear = Number.isInteger(nextYear) ? nextYear : null
   }
-  store.statusText = `已批量更新 ${updatedCount} 条线段`
+
+  const nextPhase = edgeForm.phase.trim() || null
+  if (nextPhase !== currentPhase) {
+    patch.phase = nextPhase
+  }
+
+  if (!Object.keys(patch).length) return
+  store.updateEdgesBatch([selectedEdge.value.id], patch)
+  resetEdgeForm()
 }
-
-function resetBatchForm() {
-  edgeBatchForm.targetLineId = ''
-  edgeBatchForm.lineStyle = ''
-  edgeBatchForm.curveMode = 'keep'
-  edgeBatchForm.openingYear = ''
-  edgeBatchForm.phase = ''
-  edgeBatchForm._initialOpeningYear = ''
-  edgeBatchForm._initialPhase = ''
-}
-
-watch(
-  [() => store.selectedEdgeIds, () => store.project?.lines],
-  ([edgeIds]) => {
-    const lines = store.project?.lines || []
-    const edges = (edgeIds || []).map((id) => store.project?.edges?.find((e) => e.id === id)).filter(Boolean)
-    if (!edges.length || !lines.length) {
-      resetBatchForm()
-      return
-    }
-    const currentLineIds = new Set(
-      edges.flatMap((edge) => (edge.sharedByLineIds || []).map((lineId) => String(lineId))),
-    )
-    const targetStillAvailable = lines.some((line) => line.id === edgeBatchForm.targetLineId)
-    if (targetStillAvailable) return
-    const preferred = lines.find((line) => !currentLineIds.has(String(line.id)))
-    if (preferred) {
-      edgeBatchForm.targetLineId = preferred.id
-      return
-    }
-    edgeBatchForm.targetLineId = lines[0].id
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
-  <div class="panel-edge-single" v-if="selectedEdge">
-    <div class="pp-context">
-      <div class="pp-kv">
-        <span class="pp-kv-label">连接</span>
-        <span class="pp-kv-value">
-          {{ displayStationName(selectedEdgeStations.from) || selectedEdge.fromStationId }}
-          ↔
-          {{ displayStationName(selectedEdgeStations.to) || selectedEdge.toStationId }}
+  <div v-if="selectedEdge" class="pp-inspector panel-edge-single">
+    <section class="pp-summary">
+      <span class="pp-summary__eyebrow">Edge Inspector</span>
+      <h2 class="pp-summary__title">
+        {{ displayStationName(selectedEdgeStations.from) || selectedEdge.fromStationId }}
+        ↔
+        {{ displayStationName(selectedEdgeStations.to) || selectedEdge.toStationId }}
+      </h2>
+      <p class="pp-summary__subtitle">编辑当前线段。</p>
+
+      <div class="pp-chip-row" v-if="selectedEdgeLines.length">
+        <span
+          v-for="line in selectedEdgeLines"
+          :key="line.id"
+          class="pp-chip"
+        >
+          <span class="pp-chip__swatch" :style="{ backgroundColor: line.color }" />
+          {{ displayLineName(line) }}
         </span>
       </div>
-      <div class="pp-kv" v-if="selectedEdgeLines.length">
-        <span class="pp-kv-label">线路</span>
-        <ul class="pp-kv-value edge-line-tags">
-          <li v-for="line in selectedEdgeLines" :key="line.id" :title="line.nameZh">
-            <span class="edge-line-swatch" :style="{ backgroundColor: line.color }" />
-            <span>{{ displayLineName(line) }}</span>
-          </li>
-        </ul>
+
+      <div class="pp-chip-row">
+        <span class="pp-chip" :class="selectedEdge.isCurved ? 'pp-chip--accent' : 'pp-chip--muted'">
+          {{ selectedEdge.isCurved ? '曲线段' : '直线段' }}
+        </span>
+        <span class="pp-chip pp-chip--muted">{{ selectedEdge.openingYear || '未设年份' }}</span>
       </div>
-    </div>
+    </section>
 
-    <div class="pp-fields">
-      <select v-model="edgeBatchForm.targetLineId" class="pp-select" :disabled="!edgeReassignTargets.length">
-        <option value="">所属线路（保持不变）</option>
-        <option v-for="line in edgeReassignTargets" :key="`eb_line_${line.id}`" :value="line.id">
-          {{ displayLineName(line) }}
-        </option>
-      </select>
-      <select v-model="edgeBatchForm.lineStyle" class="pp-select">
-        <option value="">线型（保持不变）</option>
-        <option v-for="s in LINE_STYLE_OPTIONS" :key="`eb_style_${s.id}`" :value="s.id">{{ s.label }}</option>
-      </select>
-      <select v-model="edgeBatchForm.curveMode" class="pp-select">
-        <option value="keep">曲线状态（保持不变）</option>
-        <option value="curved">设为曲线</option>
-        <option value="straight">设为直线（清控制点）</option>
-      </select>
-      <input v-model="edgeBatchForm.openingYear" type="number" class="pp-input" placeholder="开通年份" min="1900" max="2100" step="1" />
-      <input v-model="edgeBatchForm.phase" type="text" class="pp-input" placeholder="分期标签，如：一期" />
-    </div>
+    <section class="pp-card">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">几何与归属</h3>
+          <p class="pp-card__subtitle">编辑线路、线型和曲线状态。</p>
+        </div>
+        <span class="pp-chip" :class="hasUnsavedChanges ? 'pp-chip--accent' : 'pp-chip--muted'">
+          {{ hasUnsavedChanges ? '已修改' : '已同步' }}
+        </span>
+      </div>
 
-    <div class="pp-actions">
-      <div class="pp-row" style="margin-top:0">
-        <NTooltip placement="bottom">
-          <template #trigger>
-            <button class="pp-btn pp-btn--primary" style="flex:1" :disabled="!canApplyBatch" @click="applyBatch">保存</button>
-          </template>
-          保存属性
-        </NTooltip>
-        <NTooltip placement="bottom">
-          <template #trigger>
-            <button class="pp-btn" @click="resetBatchForm">重置</button>
-          </template>
-          重置
-        </NTooltip>
-        <NTooltip placement="bottom">
-          <template #trigger>
-            <button class="pp-btn pp-btn--danger" @click="store.deleteSelectedEdge()">删除</button>
-          </template>
+      <div class="pp-field-stack">
+        <label class="pp-field">
+          <span class="pp-field__label">所属线路</span>
+          <select v-model="edgeForm.targetLineId" class="pp-select" :disabled="!edgeReassignTargets.length">
+            <option v-for="line in edgeReassignTargets" :key="`edge-line-${line.id}`" :value="line.id">
+              {{ displayLineName(line) }}
+            </option>
+          </select>
+        </label>
+
+        <div class="pp-split">
+          <label class="pp-field">
+            <span class="pp-field__label">线型</span>
+            <select v-model="edgeForm.lineStyle" class="pp-select">
+              <option v-for="style in LINE_STYLE_OPTIONS" :key="`edge-style-${style.id}`" :value="style.id">
+                {{ style.label }}
+              </option>
+            </select>
+          </label>
+
+          <div class="pp-field">
+            <span class="pp-field__label">曲线状态</span>
+            <div class="pp-segment">
+              <button
+                class="pp-segment__item"
+                :class="{ 'pp-segment__item--active': edgeForm.curveMode === 'straight' }"
+                type="button"
+                @click="edgeForm.curveMode = 'straight'"
+              >
+                直线
+              </button>
+              <button
+                class="pp-segment__item"
+                :class="{ 'pp-segment__item--active': edgeForm.curveMode === 'curved' }"
+                type="button"
+                @click="edgeForm.curveMode = 'curved'"
+              >
+                曲线
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-card pp-card--muted">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">时间元数据</h3>
+          <p class="pp-card__subtitle">编辑年份和分期。</p>
+        </div>
+      </div>
+
+      <div class="pp-split">
+        <label class="pp-field">
+          <span class="pp-field__label">开通年份</span>
+          <input
+            v-model="edgeForm.openingYear"
+            type="number"
+            class="pp-input"
+            min="1900"
+            max="2100"
+            step="1"
+            placeholder="例如 1999"
+          />
+        </label>
+
+        <label class="pp-field">
+          <span class="pp-field__label">分期标签</span>
+          <input
+            v-model="edgeForm.phase"
+            type="text"
+            class="pp-input"
+            placeholder="例如：一期"
+          />
+        </label>
+      </div>
+
+      <div class="pp-card__footer">
+        <div class="pp-row">
+          <button class="pp-btn pp-btn--primary" type="button" :disabled="!hasUnsavedChanges" @click="applyEdgeChanges">
+            保存属性
+          </button>
+          <button class="pp-btn pp-btn--ghost" type="button" :disabled="!hasUnsavedChanges" @click="resetEdgeForm">
+            放弃修改
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-card pp-card--danger">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">危险操作</h3>
+          <p class="pp-card__subtitle">删除当前线段。</p>
+        </div>
+      </div>
+
+      <div class="pp-row">
+        <button class="pp-btn pp-btn--danger" type="button" @click="store.deleteSelectedEdge()">
           删除线段
-        </NTooltip>
+        </button>
       </div>
-    </div>
+    </section>
   </div>
 </template>
-
-<style scoped>
-.panel-edge-single {
-  display: flex;
-  flex-direction: column;
-}
-
-.edge-line-tags {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.edge-line-tags li {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border: 1px solid var(--toolbar-input-border);
-  border-radius: 4px;
-  background: var(--toolbar-input-bg);
-  font-size: 11px;
-  color: var(--toolbar-text);
-}
-
-.edge-line-swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-</style>

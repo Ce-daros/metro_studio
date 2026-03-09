@@ -1,16 +1,14 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
-import { NCollapse, NCollapseItem } from 'naive-ui'
-import { NTooltip } from 'naive-ui'
-import { useProjectStore } from '../../stores/projectStore'
+import { computed, reactive, watch } from 'vue'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { LINE_STYLE_OPTIONS, normalizeLineStyle } from '../../lib/lineStyles'
+import { useProjectStore } from '../../stores/projectStore'
 
 const store = useProjectStore()
 
 const activeLine = computed(() => {
   if (!store.project || !store.activeLineId) return null
-  return store.project.lines.find((l) => l.id === store.activeLineId) || null
+  return store.project.lines.find((line) => line.id === store.activeLineId) || null
 })
 
 const lineForm = reactive({
@@ -21,12 +19,61 @@ const lineForm = reactive({
   style: 'solid',
 })
 
+const projectStats = computed(() => {
+  if (!store.project) {
+    return { lines: 0, stations: 0, edges: 0 }
+  }
+  return {
+    lines: store.project.lines.length,
+    stations: store.project.stations.length,
+    edges: store.project.edges.length,
+  }
+})
+
+const lineOptions = computed(() => {
+  return (store.project?.lines || []).map((line) => ({
+    id: line.id,
+    color: line.color || '#005BBB',
+    label: displayLineName(line) || line.id,
+    edgeCount: line.edgeIds?.length || 0,
+  }))
+})
+
+const hasUnsavedLineChanges = computed(() => {
+  if (!activeLine.value) return false
+  return (
+    lineForm.nameZh !== (activeLine.value.nameZh || '') ||
+    lineForm.nameEn !== (activeLine.value.nameEn || '') ||
+    lineForm.color !== (activeLine.value.color || '#005BBB') ||
+    lineForm.status !== (activeLine.value.status || 'open') ||
+    lineForm.style !== normalizeLineStyle(activeLine.value.style)
+  )
+})
+
+watch(
+  activeLine,
+  (line) => {
+    lineForm.nameZh = line?.nameZh || ''
+    lineForm.nameEn = line?.nameEn || ''
+    lineForm.color = line?.color || '#005BBB'
+    lineForm.status = line?.status || 'open'
+    lineForm.style = normalizeLineStyle(line?.style)
+  },
+  { immediate: true },
+)
+
 function displayLineName(line) {
   return getDisplayLineName(line, 'zh') || line?.nameZh || ''
 }
 
 function addLine() {
   store.addLine({})
+}
+
+function handleActiveLineChange(event) {
+  const nextLineId = String(event.target.value || '')
+  if (!nextLineId) return
+  store.setActiveLine(nextLineId)
 }
 
 function applyLineChanges() {
@@ -40,181 +87,183 @@ function applyLineChanges() {
   })
 }
 
+function resetLineForm() {
+  if (!activeLine.value) return
+  lineForm.nameZh = activeLine.value.nameZh || ''
+  lineForm.nameEn = activeLine.value.nameEn || ''
+  lineForm.color = activeLine.value.color || '#005BBB'
+  lineForm.status = activeLine.value.status || 'open'
+  lineForm.style = normalizeLineStyle(activeLine.value.style)
+}
+
 function deleteActiveLine() {
   if (!activeLine.value) return
   store.deleteLine(activeLine.value.id)
 }
-
-watch(
-  activeLine,
-  (line) => {
-    lineForm.nameZh = line?.nameZh || ''
-    lineForm.nameEn = line?.nameEn || ''
-    lineForm.color = line?.color || '#005BBB'
-    lineForm.status = line?.status || 'open'
-    lineForm.style = normalizeLineStyle(line?.style)
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
-  <div class="panel-no-sel">
-    <NCollapse :default-expanded-names="['line-mgmt']">
-    <NCollapseItem title="线路管理" name="line-mgmt">
-      <NTooltip placement="bottom">
-        <template #trigger>
-          <button class="add-line-btn" @click="addLine">
-            <span style="font-size:14px;color:var(--ark-pink);line-height:1;">▣</span>
-            新增线路
-          </button>
-        </template>
-        新增线路
-      </NTooltip>
-      <ul class="line-list">
-        <li v-for="line in store.project?.lines || []" :key="line.id">
-          <button
-            class="line-item"
-            :class="{ active: store.activeLineId === line.id }"
-            @click="store.setActiveLine(line.id)"
-          >
-            <span class="line-swatch" :style="{ backgroundColor: line.color }" />
-            <span>{{ displayLineName(line) }}</span>
-          </button>
-        </li>
-      </ul>
+  <div class="pp-inspector panel-no-sel">
+    <section class="pp-summary">
+      <span class="pp-summary__eyebrow">Project Workspace</span>
+      <h2 class="pp-summary__title">工程侧栏</h2>
+      <p class="pp-summary__subtitle">未选中对象时，在这里管理线路与工程信息。</p>
 
-      <template v-if="activeLine">
-        <div class="pp-divider" />
-        <p class="pp-hint">当前线路: {{ displayLineName(activeLine) }}</p>
-        <input v-model="lineForm.nameZh" class="pp-input" placeholder="中文线路名" />
-        <input v-model="lineForm.nameEn" class="pp-input" placeholder="English line name" />
-        <input v-model="lineForm.color" type="color" class="pp-color" />
-        <div class="pp-row">
-          <select v-model="lineForm.status" class="pp-select">
-            <option value="open">运营</option>
-            <option value="construction">在建</option>
-            <option value="proposed">规划</option>
-          </select>
-          <select v-model="lineForm.style" class="pp-select">
-            <option v-for="s in LINE_STYLE_OPTIONS" :key="s.id" :value="s.id">{{ s.label }}</option>
-          </select>
+      <div class="pp-stat-grid">
+        <div class="pp-stat">
+          <span class="pp-stat__label">线路</span>
+          <span class="pp-stat__value">{{ projectStats.lines }}</span>
         </div>
-        <div class="pp-row">
-          <NTooltip placement="bottom">
-            <template #trigger>
-              <button class="pp-btn pp-btn--primary" @click="applyLineChanges">保存线路</button>
-            </template>
-            保存线路属性
-          </NTooltip>
-          <NTooltip placement="bottom">
-            <template #trigger>
-              <button class="pp-btn pp-btn--danger" @click="deleteActiveLine">删除线路</button>
-            </template>
-            删除当前线路
-          </NTooltip>
+        <div class="pp-stat">
+          <span class="pp-stat__label">站点</span>
+          <span class="pp-stat__value">{{ projectStats.stations }}</span>
         </div>
-      </template>
-    </NCollapseItem>
-    </NCollapse>
+        <div class="pp-stat">
+          <span class="pp-stat__label">线段</span>
+          <span class="pp-stat__value">{{ projectStats.edges }}</span>
+        </div>
+        <div class="pp-stat">
+          <span class="pp-stat__label">当前线路</span>
+          <span class="pp-stat__value">{{ activeLine ? displayLineName(activeLine) : '未选择' }}</span>
+        </div>
+      </div>
+    </section>
 
+    <section class="pp-card">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">线路库</h3>
+          <p class="pp-card__subtitle">在这里查看和切换线路，下方编辑当前线路。</p>
+        </div>
+      </div>
+
+      <div class="pp-row">
+        <button class="pp-btn pp-btn--primary" type="button" @click="addLine">
+          新增线路
+        </button>
+      </div>
+
+      <div v-if="lineOptions.length" class="pp-field-stack">
+        <label class="pp-field">
+          <span class="pp-field__label">选择线路</span>
+          <div class="panel-no-sel__line-select-wrap">
+            <span
+              v-if="activeLine"
+              class="panel-no-sel__line-select-swatch"
+              :style="{ backgroundColor: activeLine.color || '#005BBB' }"
+            />
+            <select
+              class="pp-select panel-no-sel__line-select"
+              :value="store.activeLineId || ''"
+              @change="handleActiveLineChange"
+            >
+              <option v-for="line in lineOptions" :key="line.id" :value="line.id">
+                {{ line.label }} · {{ line.edgeCount }} 段
+              </option>
+            </select>
+          </div>
+          <p class="pp-field__help">在线路库中快速切换当前线路，下方同步显示并编辑该线路属性。</p>
+        </label>
+      </div>
+      <div v-else class="pp-empty">当前还没有线路。</div>
+    </section>
+
+    <section v-if="activeLine" class="pp-card pp-card--muted">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">当前线路</h3>
+          <p class="pp-card__subtitle">编辑当前线路。</p>
+        </div>
+        <span class="pp-chip" :class="hasUnsavedLineChanges ? 'pp-chip--accent' : 'pp-chip--muted'">
+          {{ hasUnsavedLineChanges ? '已修改' : '已同步' }}
+        </span>
+      </div>
+
+      <div class="pp-field-stack">
+        <label class="pp-field">
+          <span class="pp-field__label">中文线路名</span>
+          <input v-model="lineForm.nameZh" class="pp-input" placeholder="例如：2号线" />
+        </label>
+
+        <label class="pp-field">
+          <span class="pp-field__label">英文线路名</span>
+          <input v-model="lineForm.nameEn" class="pp-input" placeholder="For example: Line 2" />
+        </label>
+
+        <div class="pp-split">
+          <label class="pp-field">
+            <span class="pp-field__label">线路状态</span>
+            <select v-model="lineForm.status" class="pp-select">
+              <option value="open">运营</option>
+              <option value="construction">在建</option>
+              <option value="proposed">规划</option>
+            </select>
+          </label>
+
+          <label class="pp-field">
+            <span class="pp-field__label">默认线型</span>
+            <select v-model="lineForm.style" class="pp-select">
+              <option v-for="style in LINE_STYLE_OPTIONS" :key="style.id" :value="style.id">
+                {{ style.label }}
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <label class="pp-field">
+          <span class="pp-field__label">线路色</span>
+          <input v-model="lineForm.color" type="color" class="pp-color" />
+        </label>
+      </div>
+
+      <div class="pp-card__footer">
+        <div class="pp-row">
+          <button class="pp-btn pp-btn--primary" type="button" :disabled="!hasUnsavedLineChanges" @click="applyLineChanges">
+            保存线路
+          </button>
+          <button class="pp-btn pp-btn--ghost" type="button" :disabled="!hasUnsavedLineChanges" @click="resetLineForm">
+            放弃修改
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="activeLine" class="pp-card pp-card--danger">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">危险操作</h3>
+          <p class="pp-card__subtitle">删除当前线路。</p>
+        </div>
+      </div>
+
+      <div class="pp-row">
+        <button class="pp-btn pp-btn--danger" type="button" @click="deleteActiveLine">
+          删除当前线路
+        </button>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.panel-no-sel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.add-line-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 8px 12px;
-  border: 1.5px dashed var(--ark-pink);
-  background: transparent;
-  color: var(--ark-pink);
-  font-size: 12px;
-  cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.add-line-btn:hover {
-  background: rgba(255, 45, 120, 0.08);
-}
-
-.line-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.line-item {
+.panel-no-sel__line-select-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px 6px 12px;
-  border: 1px solid var(--toolbar-input-border);
-  background: var(--toolbar-input-bg);
-  color: var(--toolbar-text);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
 }
 
-.line-item:hover {
-  border-color: var(--ark-pink);
-  box-shadow: 0 0 6px var(--ark-pink-glow);
-}
-
-.line-item:hover::before {
-  content: '';
+.panel-no-sel__line-select-swatch {
   position: absolute;
-  left: 0;
+  left: 12px;
   top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
   transform: translateY(-50%);
-  width: 2px;
-  height: 16px;
-  background: var(--ark-pink);
-}
-
-.line-item.active {
-  background: var(--toolbar-tab-active-bg);
-  border-color: var(--ark-pink);
-}
-
-.line-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 16px;
-  background: var(--ark-pink);
-  box-shadow: 0 0 6px var(--ark-pink-glow);
-}
-
-.line-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
-  flex-shrink: 0;
   pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.28);
 }
 
-.line-item > span {
-  pointer-events: none;
+.panel-no-sel__line-select {
+  padding-left: 30px;
 }
 </style>

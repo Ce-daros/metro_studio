@@ -7,6 +7,7 @@
 - **App.vue** — 应用主壳（菜单栏、四视图工作区、无已打开工程欢迎页、状态栏与全局弹窗挂载）
 - **main.js** — 应用挂载、全局依赖注入与缓存主题/字体预加载
 - **style.css** — 全局样式与主题变量（深色战术终端基底、粉紫高对比强调色、硬边/切角规范、中文字体栈与 14px 字号基线、全局滚动条与 Naive UI 覆盖、纹理/网格/噪点装饰层）
+  - `styles/properties-panel.css` 统一定义 Inspector / Tool Panel 语言（摘要卡、字段组、状态芯片、危险区、分组 footer）
   - `styles/naive-overrides.css` 额外约束弹窗滚动链（`overscroll-behavior`），避免弹窗内部滚轮滚动时外层容器跟随位移
 
 ## 子目录

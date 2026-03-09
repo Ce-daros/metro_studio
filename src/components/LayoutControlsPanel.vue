@@ -1,13 +1,17 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { NTooltip } from 'naive-ui'
 import { usePanelResize } from '../composables/usePanelResize'
-import SchematicControls from './SchematicControls.vue'
 import { useProjectStore } from '../stores/projectStore'
+import SchematicControls from './SchematicControls.vue'
 
 const { width, onPointerDown } = usePanelResize()
 const collapsed = ref(false)
 const store = useProjectStore()
+
+const layoutSummary = computed(() => {
+  return store.project?.layoutConfig?.paramReduction?.enabled ? '语义降维' : '地理种子'
+})
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
@@ -15,40 +19,62 @@ function toggleCollapse() {
 </script>
 
 <template>
-  <aside class="layout-controls-panel ark-terminal-corner" :class="{ 'layout-controls-panel--collapsed': collapsed }" :style="collapsed ? {} : { width: `${width}px` }">
+  <aside
+    class="layout-controls-panel ark-terminal-corner"
+    :class="{ 'layout-controls-panel--collapsed': collapsed }"
+    :style="collapsed ? {} : { width: `${width}px` }"
+  >
     <div v-if="!collapsed" class="layout-controls-panel__resize-handle" @pointerdown="onPointerDown" />
+
     <div class="layout-controls-panel__header">
-      <div class="layout-controls-panel__header-indicator"></div>
+      <div class="layout-controls-panel__header-indicator" />
+
       <template v-if="!collapsed">
-        <span class="layout-controls-panel__block-icon">▣</span>
-        <span class="layout-controls-panel__title">排版控制</span>
-        <span class="layout-controls-panel__meta">AUTO-LYT</span>
+        <div class="layout-controls-panel__header-copy">
+          <span class="layout-controls-panel__eyebrow">Tool Panel</span>
+          <span class="layout-controls-panel__title">排版控制</span>
+          <span class="layout-controls-panel__subtitle">{{ layoutSummary }} · {{ store.project?.stations?.length || 0 }} 个站点</span>
+        </div>
+
+        <div class="layout-controls-panel__header-actions">
+          <span class="layout-controls-panel__meta">AUTO-LYT</span>
+          <NTooltip placement="left">
+            <template #trigger>
+              <button class="layout-controls-panel__collapse-btn ark-glitch-hover" type="button" @click="toggleCollapse">
+                <span class="layout-controls-panel__block-icon">{{ collapsed ? '◂' : '▸' }}</span>
+              </button>
+            </template>
+            {{ collapsed ? '展开面板' : '折叠面板' }}
+          </NTooltip>
+        </div>
       </template>
-      <NTooltip :text="collapsed ? '展开面板' : '折叠面板'" placement="left">
-        <template #trigger>
-          <button class="layout-controls-panel__collapse-btn ark-glitch-hover" type="button" @click="toggleCollapse">
-            <span class="layout-controls-panel__block-icon">{{ collapsed ? '◂' : '▸' }}</span>
-          </button>
-        </template>
-        {{ collapsed ? '展开面板' : '折叠面板' }}
-      </NTooltip>
+
+      <template v-else>
+        <NTooltip placement="left">
+          <template #trigger>
+            <button class="layout-controls-panel__collapse-btn ark-glitch-hover" type="button" @click="toggleCollapse">
+              <span class="layout-controls-panel__block-icon">{{ collapsed ? '◂' : '▸' }}</span>
+            </button>
+          </template>
+          {{ collapsed ? '展开面板' : '折叠面板' }}
+        </NTooltip>
+      </template>
     </div>
+
     <div v-if="!collapsed" class="layout-controls-panel__body">
       <SchematicControls />
     </div>
+
     <div v-if="!collapsed" class="layout-controls-panel__footer">
-      <NTooltip placement="top">
-        <template #trigger>
-          <button
-            class="pp-btn pp-btn--primary pp-btn--full"
-            :disabled="store.isLayoutRunning || !store.project?.stations?.length"
-            @click="store.runAutoLayout()"
-          >
-            {{ store.isLayoutRunning ? '排版中...' : '自动生成官方风' }}
-          </button>
-        </template>
-        自动排版为官方风格
-      </NTooltip>
+      <p class="layout-controls-panel__footer-text">修改参数后，手动执行一次生成。</p>
+      <button
+        class="pp-btn pp-btn--primary layout-controls-panel__run-btn"
+        type="button"
+        :disabled="store.isLayoutRunning || !store.project?.stations?.length"
+        @click="store.runAutoLayout()"
+      >
+        {{ store.isLayoutRunning ? '排版中...' : '生成官方风示意图' }}
+      </button>
     </div>
   </aside>
 </template>
@@ -58,17 +84,17 @@ function toggleCollapse() {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(14, 14, 17, 0.9), rgba(8, 8, 11, 0.86));
-  backdrop-filter: blur(14px) saturate(1.24);
-  border: 1px solid rgba(188, 31, 255, 0.45);
-  box-shadow: 0 0 0 1px rgba(188, 31, 255, 0.14), 0 0 16px rgba(188, 31, 255, 0.18);
+  background: linear-gradient(180deg, rgba(15, 15, 18, 0.94), rgba(8, 8, 10, 0.96));
+  backdrop-filter: blur(16px) saturate(1.16);
+  border: 1px solid rgba(188, 31, 255, 0.28);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(188, 31, 255, 0.08);
   overflow: hidden;
   flex-shrink: 0;
   transition: width var(--transition-slow, 0.25s ease);
 }
 
 .layout-controls-panel--collapsed {
-  width: 40px;
+  width: 44px;
 }
 
 .layout-controls-panel__resize-handle {
@@ -90,94 +116,132 @@ function toggleCollapse() {
 .layout-controls-panel__header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--toolbar-border);
-  background: linear-gradient(180deg, rgba(12, 12, 15, 0.82), rgba(9, 9, 12, 0.74));
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(188, 31, 255, 0.16);
+  background:
+    radial-gradient(circle at top left, rgba(255, 10, 192, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(12, 12, 16, 0.98), rgba(10, 10, 14, 0.94));
   flex-shrink: 0;
+}
+
+.layout-controls-panel__header-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.layout-controls-panel__eyebrow {
+  color: var(--toolbar-muted);
+  font-family: var(--app-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.layout-controls-panel__title {
+  color: var(--toolbar-text);
+  font-family: var(--app-font-display);
+  font-size: 16px;
+  line-height: 1.1;
+}
+
+.layout-controls-panel__subtitle {
+  color: var(--toolbar-muted);
+  font-family: var(--app-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.layout-controls-panel__header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .layout-controls-panel__block-icon {
   font-size: 14px;
   color: var(--ark-pink);
   line-height: 1;
-  flex-shrink: 0;
-}
-
-.layout-controls-panel__title {
-  font-family: var(--app-font-display);
-  font-size: 14px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--toolbar-text);
-  flex: 0 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .layout-controls-panel__meta {
-  margin-left: auto;
+  color: rgba(168, 210, 255, 0.56);
+  font-family: var(--app-font-mono);
   font-size: 11px;
-  color: rgba(168, 210, 255, 0.52);
-  letter-spacing: 0.12em;
-  white-space: nowrap;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .layout-controls-panel__collapse-btn {
-  border: 1px solid rgba(188, 31, 255, 0.26);
-  background: rgba(8, 8, 10, 0.68);
+  border: 1px solid rgba(188, 31, 255, 0.22);
+  background: rgba(8, 8, 10, 0.76);
   color: var(--toolbar-muted);
   cursor: pointer;
-  padding: 2px;
+  padding: 4px;
   display: flex;
   align-items: center;
-  transition: color var(--transition-fast, 0.1s ease), background var(--transition-fast, 0.1s ease), border-color var(--transition-fast);
+  transition:
+    color var(--transition-fast, 0.1s ease),
+    background var(--transition-fast, 0.1s ease),
+    border-color var(--transition-fast);
   clip-path: var(--clip-chamfer-sm);
 }
 
 .layout-controls-panel__collapse-btn:hover {
   color: var(--toolbar-text);
   border-color: rgba(249, 0, 191, 0.58);
-  background: rgba(188, 31, 255, 0.2);
+  background: rgba(188, 31, 255, 0.18);
 }
 
 .layout-controls-panel__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  background-image:
-    linear-gradient(var(--ark-grid-bold) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ark-grid-bold) 1px, transparent 1px);
-  background-size: 36px 36px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(9, 9, 12, 0.98), rgba(7, 7, 10, 0.98)),
+    repeating-linear-gradient(135deg, transparent 0 16px, rgba(255, 10, 192, 0.025) 16px 17px);
 }
 
 .layout-controls-panel__body::-webkit-scrollbar {
-  width: 5px;
+  width: 6px;
 }
 
 .layout-controls-panel__body::-webkit-scrollbar-thumb {
   background: var(--toolbar-scrollbar-thumb);
-  border: 1px solid rgba(188, 31, 255, 0.3);
+  border: 1px solid rgba(188, 31, 255, 0.22);
 }
 
 .layout-controls-panel__footer {
-  padding: 12px 14px;
-  border-top: 1px solid var(--toolbar-border);
-  background: var(--toolbar-bg);
-  flex-shrink: 0;
+  padding: 12px;
+  border-top: 1px solid rgba(188, 31, 255, 0.16);
+  background: linear-gradient(180deg, rgba(12, 12, 16, 0.96), rgba(9, 9, 12, 0.94));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.pp-btn--full {
+.layout-controls-panel__footer-text {
+  margin: 0;
+  color: var(--toolbar-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.layout-controls-panel__run-btn {
   width: 100%;
 }
 
 .layout-controls-panel__header-indicator {
   width: 3px;
   align-self: stretch;
-  background: var(--ark-border-dim);
+  background: var(--ark-pink);
+  box-shadow: 0 0 6px var(--ark-pink-glow);
   flex-shrink: 0;
 }
 </style>

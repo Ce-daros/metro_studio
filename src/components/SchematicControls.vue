@@ -1,6 +1,5 @@
 <script setup>
 import { computed, useTemplateRef } from 'vue'
-import { NCollapse, NCollapseItem } from 'naive-ui'
 import { LAYOUT_REDUCTION_AXES } from '../lib/layout/paramReduction'
 import { useProjectStore } from '../stores/projectStore'
 
@@ -11,13 +10,17 @@ const displayConfig = computed(() => store.project?.layoutConfig?.displayConfig 
 const paramReductionEnabled = computed(() => Boolean(store.project?.layoutConfig?.paramReduction?.enabled))
 const layoutPresets = computed(() => store.project?.layoutConfig?.presets || [])
 const activePresetId = computed(() => store.project?.layoutConfig?.activePresetId || '')
+const activePresetName = computed(() => {
+  return layoutPresets.value.find((preset) => preset.id === activePresetId.value)?.name || '未选择预设'
+})
+const reductionAxes = LAYOUT_REDUCTION_AXES
 
 const layoutGeoSeedScale = computed({
   get: () => Number(store.project?.layoutConfig?.geoSeedScale ?? 6),
   set: (value) => store.setLayoutGeoSeedScale(value),
 })
 
-const reductionAxes = LAYOUT_REDUCTION_AXES
+const canEditControls = computed(() => Boolean(store.project) && !store.isLayoutRunning)
 
 function getAxisValue(index) {
   return Number(store.project?.layoutConfig?.paramReduction?.deltas?.[index] ?? 0)
@@ -96,263 +99,292 @@ function updateConfig(key, value) {
 </script>
 
 <template>
-  <div class="schematic-controls">
-    <NCollapse :default-expanded-names="['station', 'line', 'layout']">
-      <NCollapseItem title="站点显示" name="station">
-        <label class="pp-checkbox">
-          <input
-            type="checkbox"
-            :checked="displayConfig.showStationNumbers ?? false"
-            @change="updateConfig('showStationNumbers', $event.target.checked)"
-          />
-          <span>显示站点编号</span>
-        </label>
-        <label class="pp-checkbox">
-          <input
-            type="checkbox"
-            :checked="displayConfig.showInterchangeMarkers ?? true"
-            @change="updateConfig('showInterchangeMarkers', $event.target.checked)"
-          />
-          <span>显示换乘站标记</span>
-        </label>
-        <label class="pp-label">站点图标大小</label>
-        <div class="pp-range-row">
-          <input
-            class="pp-range"
-            type="range"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            :value="displayConfig.stationIconSize ?? 1.0"
-            @input="updateConfig('stationIconSize', parseFloat($event.target.value))"
-          />
-          <span class="pp-range-value">{{ (displayConfig.stationIconSize ?? 1.0).toFixed(1) }}x</span>
-        </div>
-        <label class="pp-label">站点样式</label>
-        <select
-          class="pp-select"
-          :value="displayConfig.stationIconStyle ?? 'circle'"
-          @change="updateConfig('stationIconStyle', $event.target.value)"
-        >
-          <option value="circle">圆形</option>
-          <option value="square">方形</option>
-        </select>
-      </NCollapseItem>
+  <div class="pp-inspector schematic-controls">
+    <section class="pp-summary">
+      <span class="pp-summary__eyebrow">Auto Layout Studio</span>
+      <h2 class="pp-summary__title">官方风排版</h2>
+      <p class="pp-summary__subtitle">调整显示、布局参数和预设。</p>
 
-      <NCollapseItem title="线路显示" name="line">
-        <label class="pp-checkbox">
-          <input
-            type="checkbox"
-            :checked="displayConfig.showLineBadges ?? true"
-            @change="updateConfig('showLineBadges', $event.target.checked)"
-          />
-          <span>显示线路编号</span>
-        </label>
-        <label class="pp-label">线条粗细</label>
-        <div class="pp-range-row">
-          <input
-            class="pp-range"
-            type="range"
-            min="0.5"
-            max="2.0"
-            step="0.1"
-            :value="displayConfig.edgeWidthScale ?? 1.0"
-            @input="updateConfig('edgeWidthScale', parseFloat($event.target.value))"
-          />
-          <span class="pp-range-value">{{ (displayConfig.edgeWidthScale ?? 1.0).toFixed(1) }}x</span>
-        </div>
-        <label class="pp-label">线条透明度</label>
-        <div class="pp-range-row">
-          <input
-            class="pp-range"
-            type="range"
-            min="0.3"
-            max="1.0"
-            step="0.05"
-            :value="displayConfig.edgeOpacity ?? 1.0"
-            @input="updateConfig('edgeOpacity', parseFloat($event.target.value))"
-          />
-          <span class="pp-range-value">{{ Math.round((displayConfig.edgeOpacity ?? 1.0) * 100) }}%</span>
-        </div>
-      </NCollapseItem>
+      <div class="pp-chip-row">
+        <span class="pp-chip pp-chip--accent">{{ paramReductionEnabled ? '语义降维模式' : '地理种子模式' }}</span>
+        <span class="pp-chip pp-chip--muted">{{ activePresetName }}</span>
+        <span class="pp-chip pp-chip--muted">{{ store.project?.stations?.length || 0 }} 个站点</span>
+      </div>
+    </section>
 
-      <NCollapseItem title="布局参数" name="layout">
-        <label class="pp-label">转角圆滑度</label>
-        <div class="pp-range-row">
-          <input
-            class="pp-range"
-            type="range"
-            min="0"
-            max="30"
-            step="1"
-            :value="displayConfig.cornerRadius ?? 10"
-            @input="updateConfig('cornerRadius', parseInt($event.target.value, 10))"
-          />
-          <span class="pp-range-value">{{ displayConfig.cornerRadius ?? 10 }}px</span>
+    <section class="pp-card">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">显示层</h3>
+          <p class="pp-card__subtitle">调整站点和线路显示。</p>
         </div>
-        <p class="pp-hint">值越大，线路转角越圆滑。设为 0 时为直角。</p>
+      </div>
+
+      <div class="pp-field-stack">
+        <div class="pp-card pp-card--muted">
+          <div class="pp-card__header">
+            <div>
+              <h4 class="pp-card__title">站点显示</h4>
+              <p class="pp-card__subtitle">调整站点显示。</p>
+            </div>
+          </div>
+
+          <label class="pp-checkbox">
+            <input
+              type="checkbox"
+              :checked="displayConfig.showStationNumbers ?? false"
+              @change="updateConfig('showStationNumbers', $event.target.checked)"
+            />
+            <span>显示站点编号</span>
+          </label>
+
+          <label class="pp-checkbox">
+            <input
+              type="checkbox"
+              :checked="displayConfig.showInterchangeMarkers ?? true"
+              @change="updateConfig('showInterchangeMarkers', $event.target.checked)"
+            />
+            <span>显示换乘站标记</span>
+          </label>
+
+          <label class="pp-field">
+            <span class="pp-field__label">站点图标大小</span>
+            <div class="pp-range-row">
+              <input
+                class="pp-range"
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                :value="displayConfig.stationIconSize ?? 1"
+                @input="updateConfig('stationIconSize', parseFloat($event.target.value))"
+              />
+              <span class="pp-range-value">{{ (displayConfig.stationIconSize ?? 1).toFixed(1) }}x</span>
+            </div>
+          </label>
+
+          <label class="pp-field">
+            <span class="pp-field__label">站点样式</span>
+            <select
+              class="pp-select"
+              :value="displayConfig.stationIconStyle ?? 'circle'"
+              @change="updateConfig('stationIconStyle', $event.target.value)"
+            >
+              <option value="circle">圆形</option>
+              <option value="square">方形</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="pp-card pp-card--muted">
+          <div class="pp-card__header">
+            <div>
+              <h4 class="pp-card__title">线路显示</h4>
+              <p class="pp-card__subtitle">调整线路显示。</p>
+            </div>
+          </div>
+
+          <label class="pp-checkbox">
+            <input
+              type="checkbox"
+              :checked="displayConfig.showLineBadges ?? true"
+              @change="updateConfig('showLineBadges', $event.target.checked)"
+            />
+            <span>显示线路编号</span>
+          </label>
+
+          <label class="pp-field">
+            <span class="pp-field__label">线条粗细</span>
+            <div class="pp-range-row">
+              <input
+                class="pp-range"
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                :value="displayConfig.edgeWidthScale ?? 1"
+                @input="updateConfig('edgeWidthScale', parseFloat($event.target.value))"
+              />
+              <span class="pp-range-value">{{ (displayConfig.edgeWidthScale ?? 1).toFixed(1) }}x</span>
+            </div>
+          </label>
+
+          <label class="pp-field">
+            <span class="pp-field__label">线条透明度</span>
+            <div class="pp-range-row">
+              <input
+                class="pp-range"
+                type="range"
+                min="0.3"
+                max="1"
+                step="0.05"
+                :value="displayConfig.edgeOpacity ?? 1"
+                @input="updateConfig('edgeOpacity', parseFloat($event.target.value))"
+              />
+              <span class="pp-range-value">{{ Math.round((displayConfig.edgeOpacity ?? 1) * 100) }}%</span>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section class="pp-card">
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">布局引擎</h3>
+          <p class="pp-card__subtitle">调整布局参数。</p>
+        </div>
+      </div>
+
+      <div class="pp-field-stack">
+        <label class="pp-field">
+          <span class="pp-field__label">转角圆滑度</span>
+          <div class="pp-range-row">
+            <input
+              class="pp-range"
+              type="range"
+              min="0"
+              max="30"
+              step="1"
+              :value="displayConfig.cornerRadius ?? 10"
+              @input="updateConfig('cornerRadius', parseInt($event.target.value, 10))"
+            />
+            <span class="pp-range-value">{{ displayConfig.cornerRadius ?? 10 }}px</span>
+          </div>
+          <p class="pp-field__help">值越大，转角越圆。</p>
+        </label>
+
         <label class="pp-checkbox">
           <input
             type="checkbox"
             :checked="paramReductionEnabled"
-            :disabled="!store.project || store.isLayoutRunning"
+            :disabled="!canEditControls"
             @change="setParamReductionEnabled($event.target.checked)"
           />
           <span>启用语义降维参数</span>
         </label>
-        <p class="pp-hint">
-          开启后使用 5 个语义轴映射到底层排版参数，适合手动调风格；关闭后仅使用地理种子缩放。
-        </p>
-        <label class="pp-label">地理种子缩放</label>
-        <div class="pp-range-row">
-          <input
-            class="pp-range"
-            v-model.number="layoutGeoSeedScale"
-            type="range"
-            min="0.1"
-            max="16"
-            step="0.1"
-            :disabled="!store.project || store.isLayoutRunning || paramReductionEnabled"
-          />
-          <span class="pp-range-value">{{ layoutGeoSeedScale.toFixed(1) }}</span>
-        </div>
-        <p class="pp-hint">
-          <template v-if="paramReductionEnabled">已由“骨架展开 / 紧凑程度”共同接管。</template>
-          <template v-else>值越大，初始地理骨架展开越明显。</template>
-        </p>
-        <div class="pp-preset-block">
-          <input
-            ref="presetFileInput"
-            type="file"
-            accept=".json,.layout-preset.json,application/json"
-            class="pp-file-input"
-            @change="importPreset"
-          />
-          <label class="pp-label">参数预设</label>
-          <select
-            class="pp-select"
-            :value="activePresetId"
-            :disabled="!store.project || store.isLayoutRunning || !layoutPresets.length"
-            @change="handlePresetChange"
-          >
-            <option value="">{{ layoutPresets.length ? '选择已保存预设' : '暂无已保存预设' }}</option>
-            <option
-              v-for="preset in layoutPresets"
-              :key="preset.id"
-              :value="preset.id"
-            >
-              {{ preset.name }}
-            </option>
-          </select>
-          <div class="pp-preset-actions">
-            <button class="pp-action-btn" type="button" :disabled="!store.project || store.isLayoutRunning" @click="savePreset">
-              另存预设
-            </button>
-            <button class="pp-action-btn" type="button" :disabled="!activePresetId || store.isLayoutRunning" @click="overwritePreset">
-              覆盖保存
-            </button>
-            <button class="pp-action-btn" type="button" :disabled="!store.project" @click="exportPreset">
-              导出预设
-            </button>
-            <button class="pp-action-btn" type="button" :disabled="!store.project || store.isLayoutRunning" @click="openPresetImport">
-              导入预设
-            </button>
-            <button class="pp-action-btn" type="button" :disabled="!activePresetId || store.isLayoutRunning" @click="deletePreset">
-              删除预设
-            </button>
-          </div>
-          <p class="pp-hint">预设会跟随工程保存，也可单独导出/导入 JSON 文件。</p>
-        </div>
-        <div v-if="paramReductionEnabled" class="pp-reduction">
-          <div class="pp-reduction__header">
-            <span class="pp-label">语义轴</span>
-            <button
-              class="pp-reset-btn"
-              type="button"
-              :disabled="!store.project || store.isLayoutRunning"
-              @click="resetAxes"
-            >
-              归零
-            </button>
-          </div>
-          <div
-            v-for="(axis, index) in reductionAxes"
-            :key="axis.key"
-            class="pp-reduction__axis"
-          >
-            <div class="pp-reduction__axis-head">
-              <span>{{ axis.label }}</span>
-              <span class="pp-range-value">{{ getAxisValue(index).toFixed(1) }}</span>
-            </div>
+
+        <label class="pp-field">
+          <span class="pp-field__label">地理种子缩放</span>
+          <div class="pp-range-row">
             <input
+              v-model.number="layoutGeoSeedScale"
               class="pp-range"
               type="range"
-              min="-3"
-              max="3"
+              min="0.1"
+              max="16"
               step="0.1"
-              :value="getAxisValue(index)"
-              :disabled="!store.project || store.isLayoutRunning"
-              @input="updateAxisValue(index, parseFloat($event.target.value))"
+              :disabled="!canEditControls || paramReductionEnabled"
             />
-            <p class="pp-hint">{{ axis.hint }}</p>
+            <span class="pp-range-value">{{ layoutGeoSeedScale.toFixed(1) }}</span>
+          </div>
+          <p class="pp-field__help">
+            <template v-if="paramReductionEnabled">当前由语义轴控制。</template>
+            <template v-else>值越大，展开越明显。</template>
+          </p>
+        </label>
+
+        <div v-if="paramReductionEnabled" class="schematic-controls__axis-list">
+          <div class="pp-card pp-card--muted">
+            <div class="pp-card__header">
+              <div>
+                <h4 class="pp-card__title">语义轴</h4>
+                <p class="pp-card__subtitle">调整语义轴。</p>
+              </div>
+              <button class="pp-btn pp-btn--ghost" type="button" :disabled="!canEditControls" @click="resetAxes">
+                归零
+              </button>
+            </div>
+
+            <div class="pp-field-stack">
+              <label
+                v-for="(axis, index) in reductionAxes"
+                :key="axis.key"
+                class="pp-field"
+              >
+                <div class="pp-field__head">
+                  <span class="pp-field__label">{{ axis.label }}</span>
+                  <span class="pp-field__meta">{{ getAxisValue(index).toFixed(1) }}</span>
+                </div>
+                <input
+                  class="pp-range"
+                  type="range"
+                  min="-3"
+                  max="3"
+                  step="0.1"
+                  :value="getAxisValue(index)"
+                  :disabled="!canEditControls"
+                  @input="updateAxisValue(index, parseFloat($event.target.value))"
+                />
+                <p class="pp-field__help">{{ axis.hint }}</p>
+              </label>
+            </div>
           </div>
         </div>
-      </NCollapseItem>
-    </NCollapse>
+      </div>
+    </section>
+
+    <section class="pp-card">
+      <input
+        ref="presetFileInput"
+        type="file"
+        accept=".json,.layout-preset.json,application/json"
+        class="schematic-controls__file-input"
+        @change="importPreset"
+      />
+
+      <div class="pp-card__header">
+        <div>
+          <h3 class="pp-card__title">预设库</h3>
+          <p class="pp-card__subtitle">管理排版预设。</p>
+        </div>
+      </div>
+
+      <label class="pp-field">
+        <span class="pp-field__label">当前预设</span>
+        <select
+          class="pp-select"
+          :value="activePresetId"
+          :disabled="!canEditControls || !layoutPresets.length"
+          @change="handlePresetChange"
+        >
+          <option value="">{{ layoutPresets.length ? '选择已保存预设' : '暂无已保存预设' }}</option>
+          <option v-for="preset in layoutPresets" :key="preset.id" :value="preset.id">
+            {{ preset.name }}
+          </option>
+        </select>
+      </label>
+
+      <div class="pp-toolbar">
+        <button class="pp-btn pp-btn--primary" type="button" :disabled="!canEditControls" @click="savePreset">
+          另存预设
+        </button>
+        <button class="pp-btn" type="button" :disabled="!activePresetId || store.isLayoutRunning" @click="overwritePreset">
+          覆盖保存
+        </button>
+        <button class="pp-btn pp-btn--ghost" type="button" :disabled="!store.project" @click="exportPreset">
+          导出
+        </button>
+        <button class="pp-btn pp-btn--ghost" type="button" :disabled="!canEditControls" @click="openPresetImport">
+          导入
+        </button>
+        <button class="pp-btn pp-btn--danger" type="button" :disabled="!activePresetId || store.isLayoutRunning" @click="deletePreset">
+          删除
+        </button>
+      </div>
+
+      <p class="pp-note">预设会随工程保存，也可导出为 JSON。</p>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.schematic-controls {
-  background: var(--toolbar-bg);
-  border: 1px solid var(--toolbar-border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin: 8px 12px;
-  overflow-y: auto;
-}
-
-.pp-reduction {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px solid color-mix(in srgb, var(--toolbar-border) 72%, transparent);
-}
-
-.pp-preset-block {
-  margin-top: 12px;
-}
-
-.pp-preset-actions {
+.schematic-controls__axis-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  flex-direction: column;
 }
 
-.pp-action-btn,
-.pp-reset-btn {
-  border: 1px solid var(--toolbar-border);
-  background: transparent;
-  color: inherit;
-  border-radius: 6px;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-
-.pp-file-input {
+.schematic-controls__file-input {
   display: none;
 }
-
-.pp-reduction__header,
-.pp-reduction__axis-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.pp-reduction__axis {
-  margin-top: 10px;
-}
-
 </style>
