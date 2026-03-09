@@ -59,6 +59,12 @@ const defaultEnglishStationIds = computed(() => {
   })
 })
 
+const projectDefaultEnglishStationIds = computed(() => {
+  return (store.project?.stations || [])
+    .filter((station) => !station?.nameEnFixed && DEFAULT_EN_NAME_PATTERN.test(String(station?.nameEn || '').trim()))
+    .map((station) => station.id)
+})
+
 const selectedRangeStationIds = computed(() => {
   const startIdx = orderedStationIds.value.indexOf(selectedStartId.value)
   const endIdx = orderedStationIds.value.indexOf(selectedEndId.value)
@@ -94,6 +100,16 @@ async function translateDefaultEnglishStations() {
   if (!defaultEnglishStationIds.value.length || store.isStationEnglishRetranslating) return
   try {
     await store.retranslateStationEnglishNamesByIdsWithAi(defaultEnglishStationIds.value)
+    emit('close')
+  } catch {
+    // Keep the dialog open so the user can retry or adjust the range.
+  }
+}
+
+async function translateAllDefaultEnglishStations() {
+  if (!projectDefaultEnglishStationIds.value.length || store.isStationEnglishRetranslating) return
+  try {
+    await store.retranslateStationEnglishNamesByIdsWithAi(projectDefaultEnglishStationIds.value)
     emit('close')
   } catch {
     // Keep the dialog open so the user can retry or adjust the range.
@@ -140,12 +156,23 @@ function doClose() {
       <div v-if="stationOptions.length" class="er-count">
         默认英文占位名: {{ defaultEnglishStationIds.length }} 个站点
       </div>
-      <div v-else class="er-hint">该线路暂无站点</div>
+      <div class="er-count">
+        全图默认英文占位名: {{ projectDefaultEnglishStationIds.length }} 个站点
+      </div>
+      <div v-if="!stationOptions.length" class="er-hint">该线路暂无站点</div>
     </div>
 
     <template #footer>
       <div class="er-footer">
         <button class="er-btn" type="button" @click="doClose">取消</button>
+        <button
+          class="er-btn"
+          type="button"
+          :disabled="!projectDefaultEnglishStationIds.length || store.isStationEnglishRetranslating"
+          @click="translateAllDefaultEnglishStations"
+        >
+          {{ store.isStationEnglishRetranslating ? '翻译中...' : `翻译全图默认英文站 (${projectDefaultEnglishStationIds.length})` }}
+        </button>
         <button
           class="er-btn"
           type="button"

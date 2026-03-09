@@ -110,6 +110,38 @@ export function createSequentialStationReview(options) {
     goToStation(0)
   }
 
+  function startWithStationIds(stationIdsInput = [], runtimeOptions = {}) {
+    const store = useProjectStore()
+    const stationIdSet = new Set(store.project?.stations?.map((station) => station.id) || [])
+    let ids = (Array.isArray(stationIdsInput) ? stationIdsInput : [])
+      .map((stationId) => String(stationId || '').trim())
+      .filter((stationId, index, array) => stationId && array.indexOf(stationId) === index && stationIdSet.has(stationId))
+
+    const effectiveFilter = typeof runtimeOptions?.filterStations === 'function'
+      ? runtimeOptions.filterStations
+      : filterStations
+    const effectiveEmptyFilterMessage = String(runtimeOptions?.emptyFilterMessage || '').trim() || emptyFilterMessage
+
+    if (effectiveFilter) {
+      ids = effectiveFilter(ids, store)
+      if (!ids.length) {
+        if (effectiveEmptyFilterMessage) store.statusText = effectiveEmptyFilterMessage
+        return
+      }
+    }
+
+    if (!ids.length) {
+      if (effectiveEmptyFilterMessage) store.statusText = effectiveEmptyFilterMessage
+      return
+    }
+
+    stationIds.value = ids
+    active.value = true
+    index.value = 0
+
+    goToStation(0)
+  }
+
   function advance() {
     const next = index.value + 1
     if (next >= stationIds.value.length) {
@@ -142,6 +174,7 @@ export function createSequentialStationReview(options) {
     setTrigger,
     setMapGetter,
     start,
+    startWithStationIds,
     advance,
     exit,
     useReview,
@@ -163,6 +196,7 @@ const quickNaming = createSequentialStationReview({
 export const setRenameTrigger = quickNaming.setTrigger
 export const setQuickNamingMapGetter = quickNaming.setMapGetter
 export const startQuickNaming = quickNaming.start
+export const startQuickNamingWithStationIds = quickNaming.startWithStationIds
 export const advanceQuickNaming = quickNaming.advance
 export const exitQuickNaming = quickNaming.exit
 export function useQuickNaming() {
@@ -200,6 +234,7 @@ const englishReview = createSequentialStationReview({
 export const setEnglishReviewTrigger = englishReview.setTrigger
 export const setEnglishReviewMapGetter = englishReview.setMapGetter
 export const startEnglishReview = englishReview.start
+export const startEnglishReviewWithStationIds = englishReview.startWithStationIds
 export const advanceEnglishReview = englishReview.advance
 export const exitEnglishReview = englishReview.exit
 export function useEnglishReview() {

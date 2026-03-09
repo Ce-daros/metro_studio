@@ -4,7 +4,7 @@ import { NModal } from 'naive-ui'
 import { useProjectStore } from '../stores/projectStore'
 import { getOrderedStationIds } from '../lib/lineGraph'
 import { getDisplayLineName } from '../lib/lineNaming'
-import { startQuickNaming } from '../composables/useSequentialStationReview'
+import { startQuickNaming, startQuickNamingWithStationIds } from '../composables/useSequentialStationReview'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -53,6 +53,12 @@ const defaultNamedStationCount = computed(() => {
   }).length
 })
 
+const projectDefaultNamedStationIds = computed(() => {
+  return (store.project?.stations || [])
+    .filter((station) => DEFAULT_ZH_NAME_PATTERN.test(String(station?.nameZh || '').trim()))
+    .map((station) => station.id)
+})
+
 watch(() => props.visible, (v) => {
   if (v) {
     selectedLineId.value = store.activeLineId || lines.value[0]?.id || ''
@@ -90,6 +96,14 @@ function startDefaultNamedStationsOnly() {
   emit('close')
 }
 
+function startAllDefaultNamedStations() {
+  if (!projectDefaultNamedStationIds.value.length) return
+  startQuickNamingWithStationIds(projectDefaultNamedStationIds.value, {
+    emptyFilterMessage: '全图没有仍使用默认中文名（新站 X）的站点',
+  })
+  emit('close')
+}
+
 function doClose() {
   emit('close')
 }
@@ -123,12 +137,18 @@ function doClose() {
       <div v-if="selectedRangeStationIds.length" class="qn-count">
         默认中文名: {{ defaultNamedStationCount }} 个站点
       </div>
+      <div class="qn-count">
+        全图默认中文名: {{ projectDefaultNamedStationIds.length }} 个站点
+      </div>
       <div v-if="!stationOptions.length" class="qn-hint">该线路暂无站点</div>
     </div>
 
     <template #footer>
       <div class="qn-footer">
         <button class="qn-btn" type="button" @click="doClose">取消</button>
+        <button class="qn-btn" type="button" :disabled="!projectDefaultNamedStationIds.length" @click="startAllDefaultNamedStations">
+          命名全图默认站 ({{ projectDefaultNamedStationIds.length }})
+        </button>
         <button class="qn-btn" type="button" :disabled="!defaultNamedStationCount" @click="startDefaultNamedStationsOnly">
           只命名默认站 ({{ defaultNamedStationCount }})
         </button>
