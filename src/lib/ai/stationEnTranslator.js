@@ -5,42 +5,33 @@ import { toFiniteNumber } from "../async/utils";
 const TRANSLATION_BATCH_SIZE = 10;
 const STATIONS_PER_REQUEST = 4;
 
-// Few-shot 示例：中文站名 → 英文站名
 const TRANSLATION_FEW_SHOT_EXAMPLES = [
+  ["玉符河", "Yufu River"],
   ["创新谷", "Innovation Valley"],
   ["大学城", "University Town"],
-  ["玉符河", "Yufu River"],
+  ["紫薇路", "Ziwei Road"],
+  ["飞跃大道东", "Feiyue Avenue East"],
+  ["八一立交桥", "Bayi Interchange"],
+  ["奥体中心", "Olympic Sports Center"],
   ["济南站", "Jinan Railway Station"],
   ["长途汽车站", "Coach Station"],
-  ["紫薇路", "Ziwei Road"],
-  ["遥墙机场南", "Jinan International Airport South"],
-  ["奥体中心", "Olympic Sports Center"],
-  ["龙奥大厦", "Long'ao Building"],
-  ["济南西站西广场", "Jinanxi Railway Station West Square"],
-  ["八一立交桥", "Bayi Interchange"],
-  ["黄金产业园", "Gold Industrial Park"],
   ["玉函小区", "Yuhan Xiaoqu"],
-  ["齐鲁软件园", "Qilu Software Park"],
-  ["世纪大道", "Century Avenue"],
   ["机床二厂", "Jichuang Erchang"],
-  ["经七纬二", "Jingqi Weier"],
-  ["彩虹湖", "Rainbow Lake"],
-  ["飞跃大道东", "Feiyue Avenue East"],
-  ["济北小学", "Jibei Primary School"],
-  ["杆石桥", "Ganshiqiao"],["工人新村", "Gongren Xincun"],["玉函小区南路", "Yuhan Xiaoqu South Rd."]
-];
+  ["经七纬二", "Jingqi Weier"]
+]
 
 const ENGLISH_NAMING_STANDARD = `
 ## 一、专名翻译规则
 - 使用汉语拼音，不标声调
 - 多音节连写，各词首字母大写
-- 示例：二环南路 → Erhuan Nanlu
+示例：二环 → Erhuan
 
 ## 二、通名翻译规则
 道路类：
-  - 路/马路 → Road
+  - 路 → Road
   - 大道 → Avenue
   - 街 → Street
+  - 巷 → Lane
   - 立交桥 → Interchange
 
 公共设施类：
@@ -50,30 +41,41 @@ const ENGLISH_NAMING_STANDARD = `
   - 学校 → School
   - 体育中心 → Sports Center
   - 机场 → Airport
-  - 小区 Xiaoqu（中国特有名词）
-## 三、方位词处理
-- 如果方位词是道路专名的固有组成部分，保留拼音
-  示例：二环南路 → Erhuan Nanlu（不是 Erhuan South Road）
-  示例：山师东路 → Shanshi Donglu（不是 Shanshi East Road）
-- 仅在表达独立方位修饰时才使用 East/West/South/North
-  示例：机场南 → Airport South
+
+中国特有名词：
+  - 小区 → Xiaoqu
+  - 新村 → Xincun
+
+## 三、道路命名结构
+道路统一使用结构：
+  [专名拼音] + [方位词] + [Road/Avenue/Street]
+
+示例：
+  经十路 → Jingshi Road
+  工业北路 → Gongye North Road
+  奥体中路 → Aoti Middle Road
+
+环路例外：
+  二环南路 → South 2nd Ring Road
 
 ## 四、Station 后缀规则
 必须保留 Station 的情况：
   - 火车站 → Railway Station
   - 汽车站 → Bus Station
   - 长途汽车站 → Coach Station
-  示例：济南站 → Jinan Railway Station
+
+示例：
+  济南站 → Jinan Railway Station
 
 禁止添加 Station 的情况：
-  - 普通地名、道路、建筑、区域等
+  - 普通地名、道路、建筑、区域
   - 不得添加 Metro Station / Subway Station
-  示例：大学城 → University Town（不是 University Town Station）
 
 ## 五、特殊规则
-- 公共机构名称必须意译通名，不得整词音译
+- 公共机构名称必须意译通名
+- 企业、单位名称优先拼音
+- 特有地名直接使用拼音
 - 多线换乘站中英文统一
-- 特有地名直接用罗马字转写
 `.trim();
 const CHINESE_STATION_SUFFIX_REGEX = /(地铁站|车站|站)$/u;
 
