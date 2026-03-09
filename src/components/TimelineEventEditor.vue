@@ -1,6 +1,7 @@
 <script setup>
 import { computed, reactive, watchEffect } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
+import { hasEdgeOpeningAtYear } from '../lib/edgeTimeline'
 
 const store = useProjectStore()
 
@@ -52,7 +53,7 @@ const groupedRows = computed(() => {
       year,
       position: group.position,
       items: group.items,
-      edgeCount: (store.project?.edges || []).filter((e) => e.openingYear === year).length,
+      edgeCount: (store.project?.edges || []).filter((edge) => hasEdgeOpeningAtYear(edge, year)).length,
       beforeDelayMs: delayMap.get(year)?.beforeMs || 0,
       afterDelayMs: delayMap.get(year)?.afterMs || 0,
     }

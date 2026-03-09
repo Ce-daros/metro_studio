@@ -1,3 +1,5 @@
+import { applyEdgeTimelinePatchToAllLines } from '../../../lib/edgeTimeline'
+
 export const styleBrushActions = {
   activateStyleBrush(objectId, objectType) {
     if (!this.project) return false
@@ -107,10 +109,7 @@ export const styleBrushActions = {
       changed = true
     }
 
-    if (targetEdge.openingYear !== sourceStyle.openingYear) {
-      targetEdge.openingYear = sourceStyle.openingYear
-      changed = true
-    }
+    changed = applyEdgeTimelinePatchToAllLines(targetEdge, { openingYear: sourceStyle.openingYear }) || changed
 
     if (changed) {
       this.recomputeStationLineMembership()
@@ -225,10 +224,7 @@ export const styleBrushActions = {
         changed = true
       }
 
-      if (edge.openingYear !== sourceStyle.openingYear) {
-        edge.openingYear = sourceStyle.openingYear
-        changed = true
-      }
+      changed = applyEdgeTimelinePatchToAllLines(edge, { openingYear: sourceStyle.openingYear }) || changed
 
       if (changed) appliedCount++
     }

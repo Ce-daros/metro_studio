@@ -1,4 +1,5 @@
 import { bboxFromXY, buildOctilinearPolyline, segmentIntersects } from '../geo'
+import { getEdgeSnapshotAtYear } from '../edgeTimeline'
 import { getLineStyleSchematic } from '../lineStyles'
 import { getDisplayLineName } from '../lineNaming'
 
@@ -13,7 +14,7 @@ export function buildSchematicRenderModel(project, options = {}) {
   const filterYear = options.filterYear ?? null
   const allEdges = project?.edges || []
   const edges = filterYear != null
-    ? allEdges.filter((e) => e.openingYear == null || e.openingYear <= filterYear)
+    ? allEdges.map((edge) => getEdgeSnapshotAtYear(edge, filterYear)).filter(Boolean)
     : allEdges
   const visibleStationIds = filterYear != null
     ? new Set(edges.flatMap((e) => [e.fromStationId, e.toStationId]))

@@ -9,6 +9,7 @@
 
 import { TileCache, renderTiles, lngLatToPixel } from './timelineTileRenderer'
 import { buildTimelineAnimationPlan, buildPseudoTimelineAnimationPlan, slicePolylineByProgress } from './timelineAnimationPlan'
+import { getEdgeTimelineEntries } from '../edgeTimeline'
 import {
   computeGeoCamera,
   computeStatsForYear,
@@ -1413,7 +1414,12 @@ export class TimelinePreviewEngine {
         pendingYear <= currentYearNum &&
         !this._yearEventShownYears.has(pendingYear)
       ) {
-        const freezeProgress = pendingYear < currentYearNum ? 0 : Math.max(0, Math.min(1, (curMarker?.globalStart ?? rawProgress) + 1e-4))
+        const freezeProgress = pendingYear < currentYearNum
+          // A delayed event-only year may be discovered after playback has already
+          // advanced into a later marker. Freezing at 0 would rewind the whole
+          // animation and clear the canvas, so late catches must hold in place.
+          ? Math.max(0, Math.min(1, rawProgress))
+          : Math.max(0, Math.min(1, (curMarker?.globalStart ?? rawProgress) + 1e-4))
         if (
           pendingDelay.beforeMs > 0 &&
           !this._yearDelayShownBefore.has(pendingYear)
@@ -1725,7 +1731,7 @@ export class TimelinePreviewEngine {
 
     const allEdges = this._pseudoMode
       ? (this._project?.edges || [])
-      : (this._project?.edges || []).filter(e => e.openingYear != null)
+      : (this._project?.edges || []).filter((edge) => getEdgeTimelineEntries(edge).some((entry) => entry.openingYear != null))
     renderPrevEdges(this._ctx, allEdges, cam, this._logicalWidth, this._logicalHeight, this._stationMap, this._lineMap)
     const allStationIds = new Set()
     for (const e of allEdges) {

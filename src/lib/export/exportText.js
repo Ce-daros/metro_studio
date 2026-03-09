@@ -8,6 +8,7 @@ import {
   findPathEndpoints,
   findFarthestNode,
 } from '../graphUtils'
+import { getEdgeLineTimeline } from '../edgeTimeline'
 
 const STATUS_LABELS = {
   open: '运营中',
@@ -88,8 +89,9 @@ function buildYearStats(project) {
     const lineName = line.nameZh || line.nameEn || line.id
 
     for (const edge of lineEdges) {
-      const year = edge.openingYear
-      const phase = edge.phase || ''
+      const timeline = getEdgeLineTimeline(edge, line.id)
+      const year = timeline.openingYear
+      const phase = timeline.phase || ''
       const key = `${lineName}|${phase}`
 
       if (!yearLineMap.has(year)) yearLineMap.set(year, new Map())

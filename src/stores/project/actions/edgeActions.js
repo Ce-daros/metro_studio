@@ -1,4 +1,12 @@
 import { haversineDistanceMeters } from '../../../lib/geo'
+import {
+  applyEdgeTimelinePatchForLine,
+  applyEdgeTimelinePatchToAllLines,
+  cloneEdgeLineTimeline,
+  getEdgeLineTimeline,
+  haveSameEdgeTimelineForLineIds,
+  syncEdgeTimelineSummary,
+} from '../../../lib/edgeTimeline'
 import { createId } from '../../../lib/ids'
 import { normalizeLineStyle } from '../../../lib/lineStyles'
 import {
@@ -200,10 +208,27 @@ export const edgeActions = {
         isCurved: false,
         openingYear: this.currentEditYear,
         phase: this.currentEditPhase || null,
+        lineTimeline: {
+          [line.id]: {
+            openingYear: this.currentEditYear,
+            phase: this.currentEditPhase || '',
+          },
+        },
       }
-      this.project.edges.push(edge)
+      this.project.edges.push(syncEdgeTimelineSummary(edge))
     } else if (!edge.sharedByLineIds.includes(line.id)) {
       edge.sharedByLineIds.push(line.id)
+      const reference = getEdgeLineTimeline(edge, edge.sharedByLineIds[0])
+      edge.lineTimeline = {
+        ...cloneEdgeLineTimeline(edge),
+        [line.id]: {
+          openingYear: this.currentEditYear ?? reference.openingYear ?? null,
+          phase: this.currentEditPhase || reference.phase || '',
+        },
+      }
+      syncEdgeTimelineSummary(edge)
+    } else {
+      syncEdgeTimelineSummary(edge)
     }
 
     if (!line.edgeIds.includes(edge.id)) {
@@ -325,7 +350,15 @@ export const edgeActions = {
         const previous = Array.isArray(edge.sharedByLineIds) ? edge.sharedByLineIds : []
         const sameLine = previous.length === 1 && previous[0] === targetLine.id
         if (!sameLine) {
+          const referenceTimeline = getEdgeLineTimeline(edge, previous[0] || targetLine.id)
           edge.sharedByLineIds = [targetLine.id]
+          edge.lineTimeline = {
+            [targetLine.id]: {
+              openingYear: referenceTimeline.openingYear ?? null,
+              phase: referenceTimeline.phase || '',
+            },
+          }
+          syncEdgeTimelineSummary(edge)
           changed = true
         }
       }
@@ -365,20 +398,16 @@ export const edgeActions = {
       }
 
       if (patch.openingYear !== undefined) {
-        const prev = edge.openingYear ?? null
-        const next = patch.openingYear
-        if (prev !== next) {
-          edge.openingYear = next
-          changed = true
-        }
+        changed = applyEdgeTimelinePatchToAllLines(edge, { openingYear: patch.openingYear }) || changed
       }
 
       if (patch.phase !== undefined) {
-        const prev = edge.phase ?? null
-        const next = patch.phase || null
-        if (prev !== next) {
-          edge.phase = next
-          changed = true
+        changed = applyEdgeTimelinePatchToAllLines(edge, { phase: patch.phase || '' }) || changed
+      }
+
+      if (patch.lineTimelineByLineId && typeof patch.lineTimelineByLineId === 'object') {
+        for (const [lineId, timelinePatch] of Object.entries(patch.lineTimelineByLineId)) {
+          changed = applyEdgeTimelinePatchForLine(edge, lineId, timelinePatch || {}) || changed
         }
       }
 
@@ -435,7 +464,15 @@ export const edgeActions = {
       const previous = Array.isArray(edge.sharedByLineIds) ? edge.sharedByLineIds : []
       const unchanged = previous.length === 1 && previous[0] === targetLine.id
       if (unchanged) continue
+      const referenceTimeline = getEdgeLineTimeline(edge, previous[0] || targetLine.id)
       edge.sharedByLineIds = [targetLine.id]
+      edge.lineTimeline = {
+        [targetLine.id]: {
+          openingYear: referenceTimeline.openingYear ?? null,
+          phase: referenceTimeline.phase || '',
+        },
+      }
+      syncEdgeTimelineSummary(edge)
       movedCount += 1
     }
 
@@ -501,7 +538,7 @@ export const edgeActions = {
     const firstEdgeWaypoints = resolvedWaypoints.slice(0, insertIndex + 1)
     const secondEdgeWaypoints = resolvedWaypoints.slice(insertIndex)
 
-    const firstEdge = {
+    const firstEdge = syncEdgeTimelineSummary({
       id: createId('edge'),
       fromStationId: edge.fromStationId,
       toStationId: newStation.id,
@@ -510,9 +547,11 @@ export const edgeActions = {
       lengthMeters: haversineDistanceMeters(fromStation.lngLat, newStation.lngLat),
       isCurved: firstEdgeWaypoints.length > 2,
       openingYear: edge.openingYear,
-    }
+      phase: edge.phase || '',
+      lineTimeline: cloneEdgeLineTimeline(edge),
+    })
 
-    const secondEdge = {
+    const secondEdge = syncEdgeTimelineSummary({
       id: createId('edge'),
       fromStationId: newStation.id,
       toStationId: edge.toStationId,
@@ -521,7 +560,9 @@ export const edgeActions = {
       lengthMeters: haversineDistanceMeters(newStation.lngLat, toStation.lngLat),
       isCurved: secondEdgeWaypoints.length > 2,
       openingYear: edge.openingYear,
-    }
+      phase: edge.phase || '',
+      lineTimeline: cloneEdgeLineTimeline(edge),
+    })
 
     this.project.edges = this.project.edges.filter((e) => e.id !== edge.id)
     this.project.edges.push(firstEdge, secondEdge)
@@ -566,14 +607,16 @@ export const edgeActions = {
     if (connectedEdges.length !== 2) return false
 
     const [edgeA, edgeB] = connectedEdges
-    const lineIdsA = new Set(edgeA.sharedByLineIds || [])
-    const lineIdsB = new Set(edgeB.sharedByLineIds || [])
+    const lineIdsA = [...new Set(edgeA.sharedByLineIds || [])]
+    const lineIdsB = [...new Set(edgeB.sharedByLineIds || [])]
+    if (lineIdsA.length !== lineIdsB.length) return false
 
+    const setB = new Set(lineIdsB)
     for (const lineId of lineIdsA) {
-      if (lineIdsB.has(lineId)) return true
+      if (!setB.has(lineId)) return false
     }
 
-    return false
+    return haveSameEdgeTimelineForLineIds(edgeA, edgeB, lineIdsA)
   },
 
   mergeEdgesAtStation(stationId) {
@@ -591,10 +634,17 @@ export const edgeActions = {
     }
 
     const [edgeA, edgeB] = connectedEdges
-    const sharedLineIds = (edgeA.sharedByLineIds || []).filter((id) => (edgeB.sharedByLineIds || []).includes(id))
+    const lineIdsA = [...new Set(edgeA.sharedByLineIds || [])]
+    const lineIdsB = [...new Set(edgeB.sharedByLineIds || [])]
+    const sameLineSet = lineIdsA.length === lineIdsB.length && lineIdsA.every((lineId) => lineIdsB.includes(lineId))
 
-    if (sharedLineIds.length === 0) {
-      this.statusText = '相连的两条线段不属于同一线路，无法合并'
+    if (!sameLineSet) {
+      this.statusText = '共线归属不一致，无法合并线段'
+      return false
+    }
+
+    if (!haveSameEdgeTimelineForLineIds(edgeA, edgeB, lineIdsA)) {
+      this.statusText = '共线段的开通年份或分期不同，无法合并'
       return false
     }
 
@@ -625,9 +675,9 @@ export const edgeActions = {
 
     const mergedWaypoints = [...firstWaypoints.slice(0, -1), ...secondWaypoints.slice(1)]
 
-    const mergedLineIds = [...new Set([...(firstEdge.sharedByLineIds || []), ...(secondEdge.sharedByLineIds || [])])]
+    const mergedLineIds = [...new Set(firstEdge.sharedByLineIds || [])]
 
-    const mergedEdge = {
+    const mergedEdge = syncEdgeTimelineSummary({
       id: createId('edge'),
       fromStationId: firstStationId,
       toStationId: secondStationId,
@@ -635,7 +685,8 @@ export const edgeActions = {
       sharedByLineIds: mergedLineIds,
       lengthMeters: haversineDistanceMeters(firstStation.lngLat, secondStation.lngLat),
       isCurved: mergedWaypoints.length > 2,
-    }
+      lineTimeline: cloneEdgeLineTimeline(firstEdge, mergedLineIds),
+    })
 
     this.project.edges = this.project.edges.filter((e) => e.id !== firstEdge.id && e.id !== secondEdge.id)
     this.project.edges.push(mergedEdge)

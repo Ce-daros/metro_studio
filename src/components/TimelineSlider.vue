@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useProjectStore } from '../stores/projectStore'
+import { hasEdgeOpeningAtYear } from '../lib/edgeTimeline'
 
 const store = useProjectStore()
 
@@ -38,7 +39,7 @@ const yearMarkers = computed(() => {
   return years.value.map((y) => ({
     year: y,
     percent: ((y - min) / range) * 100,
-    isNew: store.project?.edges.some((e) => e.openingYear === y),
+    isNew: store.project?.edges.some((edge) => hasEdgeOpeningAtYear(edge, y)),
   }))
 })
 

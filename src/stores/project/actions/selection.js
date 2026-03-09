@@ -1,4 +1,5 @@
 import { dedupeStationIds } from '../helpers'
+import { getEdgeSnapshotAtYear } from '../../../lib/edgeTimeline'
 import {
   applyLayoutPresetToConfig,
   buildLayoutPresetFileName,
@@ -49,7 +50,9 @@ function dedupeEdgeIds(ids, edgeIdSet) {
 function getVisibleEdges(project, timelineFilterYear) {
   const edges = project?.edges || []
   if (timelineFilterYear == null) return edges
-  return edges.filter((edge) => edge.openingYear == null || edge.openingYear <= timelineFilterYear)
+  return edges
+    .map((edge) => getEdgeSnapshotAtYear(edge, timelineFilterYear))
+    .filter(Boolean)
 }
 
 function getDirectionVector(direction) {
@@ -312,9 +315,7 @@ const selectionActions = {
 
     if (filterYear != null) {
       // 只选择在当前年份已开通的线段相关的站点
-      const visibleEdges = this.project.edges.filter(
-        (edge) => edge.openingYear == null || edge.openingYear <= filterYear
-      )
+      const visibleEdges = getVisibleEdges(this.project, filterYear)
       const visibleStationIds = new Set()
       for (const edge of visibleEdges) {
         visibleStationIds.add(edge.fromStationId)
@@ -336,9 +337,7 @@ const selectionActions = {
 
     if (filterYear != null) {
       // 只选择在当前年份已开通的线段
-      visibleEdges = this.project.edges.filter(
-        (edge) => edge.openingYear == null || edge.openingYear <= filterYear
-      )
+      visibleEdges = getVisibleEdges(this.project, filterYear)
     }
 
     const allEdgeIds = this.project.lines.flatMap((l) => l.edgeIds || [])
@@ -360,9 +359,12 @@ const selectionActions = {
     if (!this.project) return
     const line = this.project.lines.find((l) => l.id === lineId)
     if (!line) return
-    const edgeIdSet = new Set(line.edgeIds || [])
+    const visibleEdges = this.timelineFilterYear == null
+      ? (this.project.edges || []).filter((edge) => (edge.sharedByLineIds || []).includes(lineId))
+      : getVisibleEdges(this.project, this.timelineFilterYear).filter((edge) => (edge.sharedByLineIds || []).includes(lineId))
+    const edgeIdSet = new Set(visibleEdges.map((edge) => edge.id))
     const stationIdSet = new Set()
-    for (const edge of this.project.edges || []) {
+    for (const edge of visibleEdges) {
       if (!edgeIdSet.has(edge.id)) continue
       if (edge.fromStationId) stationIdSet.add(edge.fromStationId)
       if (edge.toStationId) stationIdSet.add(edge.toStationId)
@@ -375,20 +377,22 @@ const selectionActions = {
     if (!this.project) return
     const line = this.project.lines.find((l) => l.id === lineId)
     if (!line) return
-    if (!Array.isArray(line.edgeIds) || !line.edgeIds.length) {
+    const visibleEdges = this.timelineFilterYear == null
+      ? (this.project.edges || []).filter((edge) => (edge.sharedByLineIds || []).includes(lineId))
+      : getVisibleEdges(this.project, this.timelineFilterYear).filter((edge) => (edge.sharedByLineIds || []).includes(lineId))
+    if (!visibleEdges.length) {
       this.statusText = `线路 ${line.nameZh} 无线段`
       return
     }
-    const edgeIdSet = new Set(line.edgeIds)
+    const edgeIds = visibleEdges.map((edge) => edge.id)
     const stationIdSet = new Set()
-    for (const edge of this.project.edges || []) {
-      if (!edgeIdSet.has(edge.id)) continue
+    for (const edge of visibleEdges) {
       if (edge.fromStationId) stationIdSet.add(edge.fromStationId)
       if (edge.toStationId) stationIdSet.add(edge.toStationId)
     }
-    this.setSelectedEdges([...line.edgeIds], { keepStations: false })
+    this.setSelectedEdges(edgeIds, { keepStations: false })
     this.setSelectedStations([...stationIdSet], { keepEdges: true, keepPrimary: true })
-    this.statusText = `已选中 ${line.nameZh}: ${line.edgeIds.length} 条线段, ${stationIdSet.size} 个站点`
+    this.statusText = `已选中 ${line.nameZh}: ${edgeIds.length} 条线段, ${stationIdSet.size} 个站点`
   },
 
   selectStation(stationId, options = {}) {

@@ -124,7 +124,7 @@ function resetBatchForm() {
       <div class="pp-card__header">
         <div>
           <h3 class="pp-card__title">批量属性</h3>
-          <p class="pp-card__subtitle">留空表示不修改。</p>
+          <p class="pp-card__subtitle">留空表示不修改；时间元数据会统一写入每条线段当前涉及的所有线路。</p>
         </div>
       </div>
 

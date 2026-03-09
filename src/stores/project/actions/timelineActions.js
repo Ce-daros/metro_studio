@@ -1,4 +1,5 @@
 import { createId } from '../../../lib/ids'
+import { getEdgeSnapshotAtYear } from '../../../lib/edgeTimeline'
 
 function normalizePosition(position) {
   if (position === 'after') return 'after'
@@ -78,10 +79,11 @@ const timelineActions = {
     const visibleEdgeIds = new Set()
     const visibleStationIds = new Set()
     for (const edge of this.project.edges || []) {
-      if (edge.openingYear != null && edge.openingYear > normalizedYear) continue
-      visibleEdgeIds.add(edge.id)
-      visibleStationIds.add(edge.fromStationId)
-      visibleStationIds.add(edge.toStationId)
+      const visibleEdge = getEdgeSnapshotAtYear(edge, normalizedYear)
+      if (!visibleEdge) continue
+      visibleEdgeIds.add(visibleEdge.id)
+      visibleStationIds.add(visibleEdge.fromStationId)
+      visibleStationIds.add(visibleEdge.toStationId)
     }
 
     if (Array.isArray(this.selectedEdgeIds) && this.selectedEdgeIds.length) {

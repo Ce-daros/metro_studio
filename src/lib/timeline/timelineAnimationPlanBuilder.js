@@ -12,6 +12,7 @@
  */
 
 import { haversineDistanceMeters } from '../geo'
+import { getEdgeTimelineEntries } from '../edgeTimeline'
 import { getDisplayLineName } from '../lineNaming'
 
 const CURVE_SEGMENTS = 14
@@ -382,19 +383,31 @@ export function buildTimelineAnimationPlan(project) {
   const stationMap = new Map((project.stations || []).map(s => [s.id, s]))
   const lineMap = new Map((project.lines || []).map(l => [l.id, l]))
   const edgeMap = new Map((project.edges || []).map(e => [e.id, e]))
+  const lineTimelineEntries = []
 
   // Collect unique year+phase combinations (同一年多期不合并)
   const yearPhaseSet = new Set()
   const phaseFirstAppearance = new Map()
+  let timelineIndex = 0
   for (let edgeIndex = 0; edgeIndex < (project.edges || []).length; edgeIndex++) {
     const edge = project.edges[edgeIndex]
-    if (edge.openingYear != null) {
-      const phase = edge.phase || ''
-      const key = `${edge.openingYear}|${phase}`
+    for (const entry of getEdgeTimelineEntries(edge)) {
+      if (entry.openingYear == null) continue
+      const phase = entry.phase || ''
+      const key = `${entry.openingYear}|${phase}`
       yearPhaseSet.add(key)
+      lineTimelineEntries.push({
+        edge,
+        edgeIndex,
+        lineId: entry.lineId,
+        openingYear: entry.openingYear,
+        phase,
+        order: timelineIndex,
+      })
       if (!phaseFirstAppearance.has(key)) {
-        phaseFirstAppearance.set(key, edgeIndex)
+        phaseFirstAppearance.set(key, timelineIndex)
       }
+      timelineIndex += 1
     }
   }
   // Sort by year, then by first appearance order in project data.
@@ -421,12 +434,10 @@ export function buildTimelineAnimationPlan(project) {
   // Group edges by year+phase
   const edgesByYearPhase = new Map()
   for (const key of sortedYearPhases) edgesByYearPhase.set(key, [])
-  for (const edge of project.edges || []) {
-    if (edge.openingYear != null) {
-      const key = `${edge.openingYear}|${edge.phase || ''}`
-      if (edgesByYearPhase.has(key)) {
-        edgesByYearPhase.get(key).push(edge)
-      }
+  for (const entry of lineTimelineEntries) {
+    const key = `${entry.openingYear}|${entry.phase || ''}`
+    if (edgesByYearPhase.has(key)) {
+      edgesByYearPhase.get(key).push(entry)
     }
   }
 
@@ -434,22 +445,26 @@ export function buildTimelineAnimationPlan(project) {
   const yearPlans = new Map()
   const cumulativeStationIds = new Set()
   const cumulativeEdges = []
+  const cumulativeEdgeIds = new Set()
 
   for (let i = 0; i < sortedYearPhases.length; i++) {
     const key = sortedYearPhases[i]
     const [yearStr, phase] = key.split('|')
     const year = Number(yearStr)
-    const yearEdges = edgesByYearPhase.get(key) || []
+    const yearEntries = edgesByYearPhase.get(key) || []
+    const yearEdges = [...new Map(yearEntries.map((entry) => [entry.edge.id, entry.edge])).values()]
     const prevStationIds = new Set(cumulativeStationIds)
     const prevEdges = [...cumulativeEdges]
 
     // Group this year's edges by line
     const edgesByLine = new Map()
-    for (const edge of yearEdges) {
-      for (const lineId of edge.sharedByLineIds || []) {
-        if (!edgesByLine.has(lineId)) edgesByLine.set(lineId, [])
-        edgesByLine.get(lineId).push(edge)
-      }
+    const phasesByLine = new Map()
+    for (const entry of yearEntries) {
+      if (!edgesByLine.has(entry.lineId)) edgesByLine.set(entry.lineId, [])
+      edgesByLine.get(entry.lineId).push(entry.edge)
+
+      if (!phasesByLine.has(entry.lineId)) phasesByLine.set(entry.lineId, [])
+      phasesByLine.get(entry.lineId).push(entry.phase || '')
     }
 
     const lineDrawPlans = []
@@ -535,14 +550,14 @@ export function buildTimelineAnimationPlan(project) {
       }
 
       // Collect phase from edges (pick the most common non-empty phase)
-      const phases = new Map()
-      for (const entry of orderedEntries) {
-        const edge = edgeMap.get(entry.edgeId)
-        if (edge?.phase) phases.set(edge.phase, (phases.get(edge.phase) || 0) + 1)
+      const phaseStats = new Map()
+      for (const value of phasesByLine.get(lineId) || []) {
+        if (!value) continue
+        phaseStats.set(value, (phaseStats.get(value) || 0) + 1)
       }
       let phase = ''
-      if (phases.size > 0) {
-        phase = [...phases.entries()].sort((a, b) => b[1] - a[1])[0][0]
+      if (phaseStats.size > 0) {
+        phase = [...phaseStats.entries()].sort((a, b) => b[1] - a[1])[0][0]
       }
 
       // Compute interval station names (first and last station of this draw plan)
@@ -583,7 +598,11 @@ export function buildTimelineAnimationPlan(project) {
 
     // Update cumulative state
     for (const sid of newStationIds) cumulativeStationIds.add(sid)
-    for (const edge of yearEdges) cumulativeEdges.push(edge)
+    for (const edge of yearEdges) {
+      if (cumulativeEdgeIds.has(edge.id)) continue
+      cumulativeEdgeIds.add(edge.id)
+      cumulativeEdges.push(edge)
+    }
 
     const focusBounds = Number.isFinite(focusMinLng)
       ? { minLng: focusMinLng, minLat: focusMinLat, maxLng: focusMaxLng, maxLat: focusMaxLat }

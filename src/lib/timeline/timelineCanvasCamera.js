@@ -4,6 +4,7 @@
 
 import { selectZoomLevelFractional } from './timelineTileRenderer'
 import { easeInOutCubic } from './timelineCanvasEasing'
+import { getEdgeSnapshotAtYear, getEdgeVisibleLineIdsAtYear } from '../edgeTimeline'
 
 /**
  * Compute a geographic camera that fits the given bounds.
@@ -61,14 +62,16 @@ export function lerpGeoCamera(from, to, t) {
  * Compute stats for a given year.
  */
 export function computeStatsForYear(project, year) {
-  const edges = (project?.edges || []).filter(e => e.openingYear == null || e.openingYear <= year)
+  const edges = (project?.edges || [])
+    .map((edge) => getEdgeSnapshotAtYear(edge, year))
+    .filter(Boolean)
   const stationIds = new Set()
   const lineIds = new Set()
   let totalMeters = 0
   for (const e of edges) {
     stationIds.add(e.fromStationId)
     stationIds.add(e.toStationId)
-    for (const lid of e.sharedByLineIds) lineIds.add(lid)
+    for (const lid of getEdgeVisibleLineIdsAtYear(e, year)) lineIds.add(lid)
     totalMeters += e.lengthMeters || 0
   }
   return { lines: lineIds.size, stations: stationIds.size, km: totalMeters / 1000 }

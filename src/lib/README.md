@@ -5,11 +5,12 @@
 ## 根目录文件
 
 - **colors.js** — 线路颜色选择与规范化（基于 OKLab/OKLCH 感知色空间的长色板与自动避让选色，适配 30-40 条线路区分）
+- **edgeTimeline.js** — 线段-线路时间元数据助手（共线段按线路记录 `openingYear/phase`，提供旧字段兼容、按年份可见线路过滤、时间线快照与摘要同步）
 - **geo.js** — 地理/几何计算（投影、距离、相交、包围盒、八向折线路径生成）
 - **ids.js** — 全局 ID 生成
 - **lineNaming.js** — 线路命名工具（环线名去"起终点"后缀、显示名归一化）
 - **lineStyles.js** — 线路线型定义与归一化（单线/双线、虚线、点线等跨渲染层配置）
-- **projectModel.js** — 工程数据模型与标准化（含线路状态、线型、自动排版配置 `layoutConfig`、排版参数预设、线段级线型覆盖 `lineStyleOverride`、站点英文名锁定 `nameEnFixed` 与 `osmNodeId` 保留、`timelineEvents` 年份字段数值化兼容）
+- **projectModel.js** — 工程数据模型与标准化（含线路状态、线型、自动排版配置 `layoutConfig`、排版参数预设、线段级线型覆盖 `lineStyleOverride`、共线段按线路保存的 `lineTimeline`、站点英文名锁定 `nameEnFixed` 与 `osmNodeId` 保留、`timelineEvents` 年份字段数值化兼容）
 - **shortcutRegistry.js** — 快捷键注册与持久化（默认绑定、冲突检测、显示格式化；工具项文案使用“添加站点工具/添加线段工具/连续布线工具”等全称）
 - **transfer.js** — 手动换乘关系工具（站点对归一化、换乘联通分组、有效换乘线路集合计算）
 - **validation.js** — 工程数据校验

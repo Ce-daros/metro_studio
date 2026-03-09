@@ -1,4 +1,5 @@
 import { CURVE_SEGMENTS_PER_SPAN } from './constants'
+import { getEdgeSnapshotAtYear } from '../../lib/edgeTimeline'
 import { normalizeLineStyle } from '../../lib/lineStyles'
 
 function sanitizeFileName(value, fallback = 'metro-studio') {
@@ -151,7 +152,9 @@ function buildBoundaryGeoJson(regionBoundary) {
 
 function filterEdgesByYear(edges, filterYear) {
   if (filterYear == null) return edges
-  return edges.filter((edge) => edge.openingYear == null || edge.openingYear <= filterYear)
+  return edges
+    .map((edge) => getEdgeSnapshotAtYear(edge, filterYear))
+    .filter(Boolean)
 }
 
 function filterStationsByVisibleEdges(stations, visibleEdges) {

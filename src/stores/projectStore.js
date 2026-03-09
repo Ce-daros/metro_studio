@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { DEFAULT_EDIT_YEAR } from '../lib/constants'
+import { getProjectTimelineYears, getEdgeSnapshotAtYear, getEdgeVisibleLineIdsAtYear } from '../lib/edgeTimeline'
 import { calculateNetworkMetrics } from '../lib/network/networkStatistics'
 import { exportPersistenceActions } from './project/actions/exportPersistence'
 import { historyActions } from './project/actions/history'
@@ -199,10 +200,7 @@ export const useProjectStore = defineStore('project', {
     /** @returns {number[]} */
     timelineYears(state) {
       if (!state.project) return []
-      const years = new Set()
-      for (const edge of state.project.edges) {
-        if (edge.openingYear != null) years.add(edge.openingYear)
-      }
+      const years = new Set(getProjectTimelineYears(state.project))
       for (const evt of state.project.timelineEvents || []) {
         const year = Number(evt?.year)
         if (Number.isFinite(year)) years.add(year)
@@ -224,17 +222,16 @@ export const useProjectStore = defineStore('project', {
       const filterYear = state.timelineFilterYear
       if (filterYear == null || !state.project) return null
       const edges = state.project.edges
-      const visibleEdgeIds = new Set()
       const visibleStationIds = new Set()
       const lineIds = new Set()
       let totalMeters = 0
       for (const edge of edges) {
-        if (edge.openingYear != null && edge.openingYear > filterYear) continue
-        visibleEdgeIds.add(edge.id)
-        visibleStationIds.add(edge.fromStationId)
-        visibleStationIds.add(edge.toStationId)
-        for (const lid of edge.sharedByLineIds) lineIds.add(lid)
-        totalMeters += edge.lengthMeters || 0
+        const visibleEdge = getEdgeSnapshotAtYear(edge, filterYear)
+        if (!visibleEdge) continue
+        visibleStationIds.add(visibleEdge.fromStationId)
+        visibleStationIds.add(visibleEdge.toStationId)
+        for (const lid of getEdgeVisibleLineIdsAtYear(edge, filterYear)) lineIds.add(lid)
+        totalMeters += visibleEdge.lengthMeters || 0
       }
       return {
         lines: lineIds.size,

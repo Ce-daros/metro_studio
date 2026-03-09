@@ -4,6 +4,7 @@ import { useProjectStore } from '../stores/projectStore'
 import MetroSavingIcon from './MetroSavingIcon.vue'
 import { useWorldMetroRanking } from '../composables/useWorldMetroRanking'
 import { NTooltip } from 'naive-ui'
+import { getEdgeSnapshotAtYear } from '../lib/edgeTimeline'
 
 const store = useProjectStore()
 const { state: ranking, rankingMessage, comparisonMessage, timestamp, refresh: refreshRanking } = useWorldMetroRanking()
@@ -71,7 +72,9 @@ const selectionSummary = computed(() => {
 const projectSummary = computed(() => {
   if (!store.project) return '无工程'
   const year = store.currentEditYear
-  const edges = (store.project.edges || []).filter(e => e.openingYear != null && e.openingYear <= year)
+  const edges = (store.project.edges || [])
+    .map((edge) => getEdgeSnapshotAtYear(edge, year))
+    .filter(Boolean)
   const lineIds = new Set()
   const stationIds = new Set()
   for (const e of edges) {

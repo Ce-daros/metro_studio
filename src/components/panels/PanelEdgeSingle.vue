@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import { getEdgeLineTimeline } from '../../lib/edgeTimeline'
 import { getDisplayLineName } from '../../lib/lineNaming'
 import { LINE_STYLE_OPTIONS, normalizeLineStyle } from '../../lib/lineStyles'
 import { useProjectStore } from '../../stores/projectStore'
@@ -34,9 +35,8 @@ const edgeForm = reactive({
   targetLineId: '',
   lineStyle: '',
   curveMode: 'straight',
-  openingYear: '',
-  phase: '',
 })
+const timelineDraftByLineId = reactive({})
 
 const currentLineStyle = computed(() => {
   if (!selectedEdge.value) return 'solid'
@@ -45,28 +45,38 @@ const currentLineStyle = computed(() => {
 
 const hasUnsavedChanges = computed(() => {
   if (!selectedEdge.value) return false
-  const nextYear = edgeForm.openingYear === '' ? null : Number(edgeForm.openingYear)
-  const currentYear = selectedEdge.value.openingYear ?? null
-  const nextPhase = edgeForm.phase.trim() || null
-  const currentPhase = selectedEdge.value.phase ?? null
+  const hasTimelineChanges = selectedEdgeLines.value.some((line) => {
+    const current = getEdgeLineTimeline(selectedEdge.value, line.id)
+    const draft = timelineDraftByLineId[line.id] || { openingYear: '', phase: '' }
+    const nextYear = draft.openingYear === '' ? null : Number(draft.openingYear)
+    const nextPhase = String(draft.phase || '').trim()
+    return nextYear !== (current.openingYear ?? null) || nextPhase !== (current.phase || '')
+  })
   return (
     edgeForm.targetLineId !== (selectedEdge.value.sharedByLineIds?.[0] || '') ||
     edgeForm.lineStyle !== currentLineStyle.value ||
     edgeForm.curveMode !== (selectedEdge.value.isCurved ? 'curved' : 'straight') ||
-    nextYear !== currentYear ||
-    nextPhase !== currentPhase
+    hasTimelineChanges
   )
 })
 
 watch(
-  selectedEdge,
-  (edge) => {
+  [selectedEdge, () => selectedEdgeLines.value.map((line) => line.id).join('|')],
+  ([edge]) => {
     if (!edge) return
     edgeForm.targetLineId = edge.sharedByLineIds?.[0] || ''
     edgeForm.lineStyle = normalizeLineStyle(edge.lineStyleOverride || primaryLine.value?.style)
     edgeForm.curveMode = edge.isCurved ? 'curved' : 'straight'
-    edgeForm.openingYear = edge.openingYear != null ? String(edge.openingYear) : ''
-    edgeForm.phase = edge.phase || ''
+    for (const key of Object.keys(timelineDraftByLineId)) {
+      delete timelineDraftByLineId[key]
+    }
+    for (const line of selectedEdgeLines.value) {
+      const timeline = getEdgeLineTimeline(edge, line.id)
+      timelineDraftByLineId[line.id] = {
+        openingYear: timeline.openingYear != null ? String(timeline.openingYear) : '',
+        phase: timeline.phase || '',
+      }
+    }
   },
   { immediate: true },
 )
@@ -85,8 +95,16 @@ function resetEdgeForm() {
   edgeForm.targetLineId = selectedEdge.value.sharedByLineIds?.[0] || ''
   edgeForm.lineStyle = currentLineStyle.value
   edgeForm.curveMode = selectedEdge.value.isCurved ? 'curved' : 'straight'
-  edgeForm.openingYear = selectedEdge.value.openingYear != null ? String(selectedEdge.value.openingYear) : ''
-  edgeForm.phase = selectedEdge.value.phase || ''
+  for (const key of Object.keys(timelineDraftByLineId)) {
+    delete timelineDraftByLineId[key]
+  }
+  for (const line of selectedEdgeLines.value) {
+    const timeline = getEdgeLineTimeline(selectedEdge.value, line.id)
+    timelineDraftByLineId[line.id] = {
+      openingYear: timeline.openingYear != null ? String(timeline.openingYear) : '',
+      phase: timeline.phase || '',
+    }
+  }
 }
 
 function applyEdgeChanges() {
@@ -95,8 +113,6 @@ function applyEdgeChanges() {
   const patch = {}
   const currentLineId = selectedEdge.value.sharedByLineIds?.[0] || ''
   const currentCurveMode = selectedEdge.value.isCurved ? 'curved' : 'straight'
-  const currentYear = selectedEdge.value.openingYear ?? null
-  const currentPhase = selectedEdge.value.phase ?? null
 
   if (edgeForm.targetLineId && edgeForm.targetLineId !== currentLineId) {
     patch.targetLineId = edgeForm.targetLineId
@@ -110,19 +126,33 @@ function applyEdgeChanges() {
     patch.isCurved = edgeForm.curveMode === 'curved'
   }
 
-  const nextYear = edgeForm.openingYear === '' ? null : Number(edgeForm.openingYear)
-  if (nextYear !== currentYear) {
-    patch.openingYear = Number.isInteger(nextYear) ? nextYear : null
+  const lineTimelineByLineId = {}
+  for (const line of selectedEdgeLines.value) {
+    const current = getEdgeLineTimeline(selectedEdge.value, line.id)
+    const draft = timelineDraftByLineId[line.id] || { openingYear: '', phase: '' }
+    const nextYear = draft.openingYear === '' ? null : Number(draft.openingYear)
+    const normalizedYear = Number.isInteger(nextYear) ? nextYear : null
+    const nextPhase = String(draft.phase || '').trim()
+    if (normalizedYear !== (current.openingYear ?? null) || nextPhase !== (current.phase || '')) {
+      lineTimelineByLineId[line.id] = {
+        openingYear: normalizedYear,
+        phase: nextPhase,
+      }
+    }
   }
-
-  const nextPhase = edgeForm.phase.trim() || null
-  if (nextPhase !== currentPhase) {
-    patch.phase = nextPhase
+  if (Object.keys(lineTimelineByLineId).length) {
+    patch.lineTimelineByLineId = lineTimelineByLineId
   }
 
   if (!Object.keys(patch).length) return
   store.updateEdgesBatch([selectedEdge.value.id], patch)
   resetEdgeForm()
+}
+
+function getTimelineSummaryLabel(lineId) {
+  const timeline = selectedEdge.value ? getEdgeLineTimeline(selectedEdge.value, lineId) : null
+  if (!timeline) return '未设年份'
+  return timeline.openingYear != null ? `${timeline.openingYear}` : '未设年份'
 }
 </script>
 
@@ -152,7 +182,7 @@ function applyEdgeChanges() {
         <span class="pp-chip" :class="selectedEdge.isCurved ? 'pp-chip--accent' : 'pp-chip--muted'">
           {{ selectedEdge.isCurved ? '曲线段' : '直线段' }}
         </span>
-        <span class="pp-chip pp-chip--muted">{{ selectedEdge.openingYear || '未设年份' }}</span>
+        <span class="pp-chip pp-chip--muted">{{ selectedEdgeLines.length > 1 ? `共线 ${selectedEdgeLines.length} 条` : getTimelineSummaryLabel(selectedEdgeLines[0]?.id) }}</span>
       </div>
     </section>
 
@@ -216,33 +246,49 @@ function applyEdgeChanges() {
       <div class="pp-card__header">
         <div>
           <h3 class="pp-card__title">时间元数据</h3>
-          <p class="pp-card__subtitle">编辑年份和分期。</p>
+          <p class="pp-card__subtitle">按所属线路分别编辑开通年份和分期。</p>
         </div>
       </div>
 
-      <div class="pp-split">
-        <label class="pp-field">
-          <span class="pp-field__label">开通年份</span>
-          <input
-            v-model="edgeForm.openingYear"
-            type="number"
-            class="pp-input"
-            min="1900"
-            max="2100"
-            step="1"
-            placeholder="例如 1999"
-          />
-        </label>
+      <div class="pp-field-stack">
+        <div
+          v-for="line in selectedEdgeLines"
+          :key="`edge-timeline-${line.id}`"
+          class="pp-card pp-card--nested"
+        >
+          <div class="pp-card__header">
+            <div>
+              <h4 class="pp-card__title">{{ displayLineName(line) }}</h4>
+              <p class="pp-card__subtitle">该线路在此共线段上的开通信息。</p>
+            </div>
+            <span class="pp-chip pp-chip--muted">{{ getTimelineSummaryLabel(line.id) }}</span>
+          </div>
 
-        <label class="pp-field">
-          <span class="pp-field__label">分期标签</span>
-          <input
-            v-model="edgeForm.phase"
-            type="text"
-            class="pp-input"
-            placeholder="例如：一期"
-          />
-        </label>
+          <div v-if="timelineDraftByLineId[line.id]" class="pp-split">
+            <label class="pp-field">
+              <span class="pp-field__label">开通年份</span>
+              <input
+                v-model="timelineDraftByLineId[line.id].openingYear"
+                type="number"
+                class="pp-input"
+                min="1900"
+                max="2100"
+                step="1"
+                placeholder="例如 1999"
+              />
+            </label>
+
+            <label class="pp-field">
+              <span class="pp-field__label">分期标签</span>
+              <input
+                v-model="timelineDraftByLineId[line.id].phase"
+                type="text"
+                class="pp-input"
+                placeholder="例如：一期"
+              />
+            </label>
+          </div>
+        </div>
       </div>
 
       <div class="pp-card__footer">

@@ -1,4 +1,5 @@
 import { PROJECT_SCHEMA_VERSION } from './projectModel'
+import { syncEdgeTimelineSummary } from './edgeTimeline'
 
 /**
  * Ordered list of version strings from oldest to newest.
@@ -15,10 +16,11 @@ const MIGRATIONS = {
 
       // Ensure all edges have openingYear and phase
       if (Array.isArray(data.edges)) {
-        data.edges = data.edges.map((edge) => ({
+        data.edges = data.edges.map((edge) => syncEdgeTimelineSummary({
           ...edge,
           openingYear: edge.openingYear ?? null,
           phase: edge.phase ?? '',
+          lineTimeline: edge?.lineTimeline && typeof edge.lineTimeline === 'object' ? edge.lineTimeline : {},
         }))
       }
 

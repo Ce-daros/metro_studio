@@ -40,6 +40,7 @@ import { useMapNavigation } from '../composables/useMapNavigation.js'
 import { useMapReachability } from '../composables/useMapReachability.js'
 import { useAnimationSettings } from '../composables/useAnimationSettings.js'
 import { DEFAULT_MAP_CENTER } from '../lib/constants'
+import { getEdgeSnapshotAtYear } from '../lib/edgeTimeline'
 import { setMapGetter, setStoreGetter } from '../composables/useMapSearch.js'
 import { setQuickNamingMapGetter, setEnglishReviewMapGetter } from '../composables/useSequentialStationReview.js'
 import TimelineSlider from './TimelineSlider.vue'
@@ -297,10 +298,9 @@ const mapLegendLines = computed(() => {
   const visibleLineIds = new Set()
 
   for (const edge of store.project?.edges || []) {
-    if (store.timelineFilterYear != null && edge.openingYear != null && edge.openingYear > store.timelineFilterYear) {
-      continue
-    }
-    for (const lineId of edge.sharedByLineIds || []) {
+    const visibleEdge = getEdgeSnapshotAtYear(edge, store.timelineFilterYear)
+    if (!visibleEdge) continue
+    for (const lineId of visibleEdge.sharedByLineIds || []) {
       if (lineById.has(lineId)) visibleLineIds.add(lineId)
     }
   }
@@ -320,9 +320,9 @@ const interchangeVisibleStations = computed(() => {
   if (store.timelineFilterYear == null) return allStations
 
   const allEdges = store.project?.edges || []
-  const visibleEdges = allEdges.filter(
-    (edge) => edge.openingYear == null || edge.openingYear <= store.timelineFilterYear,
-  )
+  const visibleEdges = allEdges
+    .map((edge) => getEdgeSnapshotAtYear(edge, store.timelineFilterYear))
+    .filter(Boolean)
 
   // 计算每个站点在当前时间轴年份下经过的线路数
   const stationLineCount = new Map()

@@ -1,5 +1,6 @@
 import { createId } from '../ids'
 import { isTrial, TRIAL_LIMITS } from '../../composables/useLicense'
+import { cloneEdgeLineTimeline, syncEdgeTimelineSummary } from '../edgeTimeline'
 
 const CLIPBOARD_VERSION = '1.0'
 
@@ -71,6 +72,7 @@ export async function copySelectedEdges(store) {
         isCurved: edge.isCurved,
         openingYear: edge.openingYear,
         phase: edge.phase,
+        lineTimeline: cloneEdgeLineTimeline(edge),
       })),
       stations: stations.map(station => ({
         id: station.id,
@@ -169,19 +171,32 @@ export async function pasteEdges(store) {
     transferLineIds: station.transferLineIds.map(oldId => idMap.get(oldId)).filter(Boolean),
   }))
 
-  const newEdges = edges.map(edge => ({
-    ...edge,
-    id: idMap.get(edge.id),
-    fromStationId: idMap.get(edge.fromStationId),
-    toStationId: idMap.get(edge.toStationId),
-    sharedByLineIds: edge.sharedByLineIds.map(oldId => idMap.get(oldId)).filter(Boolean),
-  }))
+  const newEdges = edges.map(edge => {
+    const sharedByLineIds = edge.sharedByLineIds.map(oldId => idMap.get(oldId)).filter(Boolean)
+    const lineTimeline = {}
+    const rawTimeline = edge?.lineTimeline && typeof edge.lineTimeline === 'object' ? edge.lineTimeline : {}
+    for (const oldLineId of edge.sharedByLineIds || []) {
+      const nextLineId = idMap.get(oldLineId)
+      if (!nextLineId || !rawTimeline[oldLineId]) continue
+      lineTimeline[nextLineId] = {
+        openingYear: rawTimeline[oldLineId].openingYear ?? null,
+        phase: rawTimeline[oldLineId].phase || '',
+      }
+    }
+    return syncEdgeTimelineSummary({
+      ...edge,
+      id: idMap.get(edge.id),
+      fromStationId: idMap.get(edge.fromStationId),
+      toStationId: idMap.get(edge.toStationId),
+      sharedByLineIds,
+      lineTimeline,
+    })
+  })
 
   newEdges.forEach(edge => {
-    const lineId = edge.sharedByLineIds[0]
-    if (lineId) {
+    for (const lineId of edge.sharedByLineIds || []) {
       const line = newLines.find(l => l.id === lineId)
-      if (line) {
+      if (line && !line.edgeIds.includes(edge.id)) {
         line.edgeIds.push(edge.id)
       }
     }

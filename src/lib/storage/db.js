@@ -1,5 +1,6 @@
 import { openDB } from 'idb'
 import { normalizeLayoutPreset } from '../layout/presets'
+import { cloneEdgeLineTimeline, syncEdgeTimelineSummary } from '../edgeTimeline'
 import { normalizeProject } from '../projectModel'
 
 const DB_NAME = 'metro-studio-db'
@@ -93,18 +94,22 @@ function toSerializableProject(project) {
       stationAId: String(transfer.stationAId || ''),
       stationBId: String(transfer.stationBId || ''),
     })),
-    edges: (normalized.edges || []).map((edge) => ({
-      id: String(edge.id || ''),
-      fromStationId: String(edge.fromStationId || ''),
-      toStationId: String(edge.toStationId || ''),
-      waypoints: (Array.isArray(edge.waypoints) ? edge.waypoints : []).map((point) => toPoint(point)),
-      sharedByLineIds: toStringArray(edge.sharedByLineIds),
-      lineStyleOverride: edge.lineStyleOverride != null ? String(edge.lineStyleOverride) : null,
-      lengthMeters: toFiniteNumber(edge.lengthMeters, 0),
-      isCurved: Boolean(edge.isCurved),
-      openingYear: edge.openingYear != null ? Number(edge.openingYear) : null,
-      phase: edge.phase || '',
-    })),
+    edges: (normalized.edges || []).map((rawEdge) => {
+      const edge = syncEdgeTimelineSummary({ ...rawEdge })
+      return {
+        id: String(edge.id || ''),
+        fromStationId: String(edge.fromStationId || ''),
+        toStationId: String(edge.toStationId || ''),
+        waypoints: (Array.isArray(edge.waypoints) ? edge.waypoints : []).map((point) => toPoint(point)),
+        sharedByLineIds: toStringArray(edge.sharedByLineIds),
+        lineStyleOverride: edge.lineStyleOverride != null ? String(edge.lineStyleOverride) : null,
+        lengthMeters: toFiniteNumber(edge.lengthMeters, 0),
+        isCurved: Boolean(edge.isCurved),
+        openingYear: edge.openingYear != null ? Number(edge.openingYear) : null,
+        phase: edge.phase || '',
+        lineTimeline: cloneEdgeLineTimeline(edge),
+      }
+    }),
     lines: (normalized.lines || []).map((line) => ({
       id: String(line.id || ''),
       key: String(line.key || ''),

@@ -3,6 +3,7 @@ import { createId } from './ids'
 import { normalizeLayoutPreset } from './layout/presets'
 import { normalizeLineStyle } from './lineStyles'
 import { normalizeLineNamesForLoop } from './lineNaming'
+import { syncEdgeTimelineSummary } from './edgeTimeline'
 
 export const PROJECT_SCHEMA_VERSION = '1.0.0'
 
@@ -34,6 +35,7 @@ export const PROJECT_SCHEMA_VERSION = '1.0.0'
  * @property {boolean} isCurved
  * @property {number|null} openingYear
  * @property {string} phase
+ * @property {Record<string, {openingYear: number|null, phase: string}>} lineTimeline
  */
 
 /**
@@ -290,7 +292,7 @@ export function normalizeProject(raw) {
     })
     .filter(Boolean)
 
-  merged.edges = merged.edges.map((edge) => ({
+  merged.edges = merged.edges.map((edge) => syncEdgeTimelineSummary({
     id: edge.id || createId('edge'),
     fromStationId: edge.fromStationId,
     toStationId: edge.toStationId,
@@ -301,6 +303,7 @@ export function normalizeProject(raw) {
     isCurved: Boolean(edge.isCurved),
     openingYear: edge.openingYear ?? null,
     phase: edge.phase || '',
+    lineTimeline: edge.lineTimeline && typeof edge.lineTimeline === 'object' ? edge.lineTimeline : {},
   }))
 
   merged.lines = merged.lines.map((line, index) => {
