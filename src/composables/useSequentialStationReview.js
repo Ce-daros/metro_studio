@@ -73,7 +73,7 @@ export function createSequentialStationReview(options) {
     store.statusText = `${statusTextPrefix} (${idx + 1}/${total}): ${name}`
   }
 
-  function start(lineId, startStationId, endStationId) {
+  function start(lineId, startStationId, endStationId, runtimeOptions = {}) {
     const store = useProjectStore()
     const line = store.project?.lines?.find((l) => l.id === lineId)
     if (!line) return
@@ -90,10 +90,15 @@ export function createSequentialStationReview(options) {
     const hi = Math.max(startIdx, endIdx)
     let ids = allIds.slice(lo, hi + 1)
 
-    if (filterStations) {
-      ids = filterStations(ids, store)
+    const effectiveFilter = typeof runtimeOptions?.filterStations === 'function'
+      ? runtimeOptions.filterStations
+      : filterStations
+    const effectiveEmptyFilterMessage = String(runtimeOptions?.emptyFilterMessage || '').trim() || emptyFilterMessage
+
+    if (effectiveFilter) {
+      ids = effectiveFilter(ids, store)
       if (!ids.length) {
-        if (emptyFilterMessage) store.statusText = emptyFilterMessage
+        if (effectiveEmptyFilterMessage) store.statusText = effectiveEmptyFilterMessage
         return
       }
     }

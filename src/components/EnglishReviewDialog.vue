@@ -17,6 +17,8 @@ const selectedLineId = ref('')
 const selectedStartId = ref('')
 const selectedEndId = ref('')
 
+const DEFAULT_EN_NAME_PATTERN = /^Station\s+\d+$/i
+
 const lines = computed(() => store.project?.lines || [])
 
 const orderedStationIds = computed(() => {
@@ -29,14 +31,7 @@ const orderedStationIds = computed(() => {
 // 计算需要审查的站点数量
 const reviewCount = computed(() => {
   const stationMap = new Map(store.project?.stations?.map((s) => [s.id, s]) || [])
-  const startIdx = orderedStationIds.value.indexOf(selectedStartId.value)
-  const endIdx = orderedStationIds.value.indexOf(selectedEndId.value)
-  if (startIdx === -1 || endIdx === -1) return 0
-
-  const lo = Math.min(startIdx, endIdx)
-  const hi = Math.max(startIdx, endIdx)
-
-  return orderedStationIds.value.slice(lo, hi + 1).filter((id) => {
+  return selectedRangeStationIds.value.filter((id) => {
     const station = stationMap.get(id)
     if (!station) return false
     if (station.nameEnFixed) return false
@@ -52,6 +47,25 @@ const stationOptions = computed(() => {
     const hasEn = s?.nameEn && !s.nameEnFixed
     return { id, name: s?.nameZh || s?.nameEn || '未命名', hasEn }
   })
+})
+
+const defaultEnglishStationIds = computed(() => {
+  const stationMap = new Map(store.project?.stations?.map((station) => [station.id, station]) || [])
+  return selectedRangeStationIds.value.filter((stationId) => {
+    const station = stationMap.get(stationId)
+    if (!station) return false
+    if (station.nameEnFixed) return false
+    return DEFAULT_EN_NAME_PATTERN.test(String(station.nameEn || '').trim())
+  })
+})
+
+const selectedRangeStationIds = computed(() => {
+  const startIdx = orderedStationIds.value.indexOf(selectedStartId.value)
+  const endIdx = orderedStationIds.value.indexOf(selectedEndId.value)
+  if (startIdx === -1 || endIdx === -1) return []
+  const lo = Math.min(startIdx, endIdx)
+  const hi = Math.max(startIdx, endIdx)
+  return orderedStationIds.value.slice(lo, hi + 1)
 })
 
 watch(() => props.visible, (v) => {
@@ -76,6 +90,16 @@ function doStart() {
   emit('close')
 }
 
+async function translateDefaultEnglishStations() {
+  if (!defaultEnglishStationIds.value.length || store.isStationEnglishRetranslating) return
+  try {
+    await store.retranslateStationEnglishNamesByIdsWithAi(defaultEnglishStationIds.value)
+    emit('close')
+  } catch {
+    // Keep the dialog open so the user can retry or adjust the range.
+  }
+}
+
 function doClose() {
   emit('close')
 }
@@ -84,7 +108,7 @@ function doClose() {
 <template>
   <NModal :show="visible" preset="card" title="批量审查AI英文站名" style="width:420px;max-width:calc(100vw - 32px)" @close="doClose" @mask-click="doClose">
     <div class="er-dialog__body">
-      <p class="er-hint">选择需要审查的线路区间，只审查有英文名且未固定的站点。Enter 确认并自动固定，Esc 退出。</p>
+      <p class="er-hint">选择需要处理的线路区间。可以 Enter 逐站审查，也可以一键翻译所有仍使用默认英文名 `Station X` 且未锁定的站。</p>
       <div class="er-field">
         <label class="er-label">线路</label>
         <select v-model="selectedLineId" class="er-select">
@@ -107,8 +131,14 @@ function doClose() {
           </option>
         </select>
       </div>
+      <div v-if="selectedRangeStationIds.length" class="er-count">
+        当前区间: {{ selectedRangeStationIds.length }} 个站点
+      </div>
       <div v-if="stationOptions.length" class="er-count">
         需审查: {{ reviewCount }} 个站点
+      </div>
+      <div v-if="stationOptions.length" class="er-count">
+        默认英文占位名: {{ defaultEnglishStationIds.length }} 个站点
       </div>
       <div v-else class="er-hint">该线路暂无站点</div>
     </div>
@@ -116,6 +146,14 @@ function doClose() {
     <template #footer>
       <div class="er-footer">
         <button class="er-btn" type="button" @click="doClose">取消</button>
+        <button
+          class="er-btn"
+          type="button"
+          :disabled="!defaultEnglishStationIds.length || store.isStationEnglishRetranslating"
+          @click="translateDefaultEnglishStations"
+        >
+          {{ store.isStationEnglishRetranslating ? '翻译中...' : `翻译默认英文站 (${defaultEnglishStationIds.length})` }}
+        </button>
         <button class="er-btn er-btn--primary" type="button" :disabled="!reviewCount" @click="doStart">
           开始审查 ({{ reviewCount }})
         </button>

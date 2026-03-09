@@ -112,8 +112,10 @@ export const stationActions = {
 
   renameSelectedStationsByTemplate({ zhTemplate, enTemplate, startIndex = 1 } = {}) {
     if (!this.project || !this.selectedStationIds.length) return
-    const selectedSet = new Set(this.selectedStationIds)
-    const selectedStations = this.project.stations.filter((station) => selectedSet.has(station.id))
+    const stationById = new Map((this.project.stations || []).map((station) => [station.id, station]))
+    const selectedStations = dedupeStationIds(this.selectedStationIds, new Set(stationById.keys()))
+      .map((stationId) => stationById.get(stationId))
+      .filter(Boolean)
     if (!selectedStations.length) return
 
     const normalizedStart = Number(startIndex)
