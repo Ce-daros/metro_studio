@@ -22,7 +22,7 @@ const TRANSLATION_FEW_SHOT_EXAMPLES = [
   ["玉函小区", "Yuhan Xiaoqu"],
   ["齐鲁软件园", "Qilu Software Park"],
   ["世纪大道", "Century Avenue"],
-  ["超算中心", "Supercomputer Center"],
+  ["机床二厂", "Jichuang Erchang"],
   ["经七纬二", "Jingqi Weier"],
   ["彩虹湖", "Rainbow Lake"],
   ["飞跃大道东", "Feiyue Avenue East"],
