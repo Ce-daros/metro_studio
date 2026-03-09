@@ -27,7 +27,7 @@ const TRANSLATION_FEW_SHOT_EXAMPLES = [
   ["彩虹湖", "Rainbow Lake"],
   ["飞跃大道东", "Feiyue Avenue East"],
   ["济北小学", "Jibei Primary School"],
-  ["杆石桥", "Ganshiqiao"],
+  ["杆石桥", "Ganshiqiao"],["工人新村", "Gongren Xincun"],["玉函小区南路", "Yuhan Xiaoqu South Rd."]
 ];
 
 const ENGLISH_NAMING_STANDARD = `
