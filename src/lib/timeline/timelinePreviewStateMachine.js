@@ -135,7 +135,7 @@ export class TimelinePreviewEngine {
     this._introInfoText = null
     this._transitionOverlayAlpha = 0
 
-    // Outro: holdLast → zoomOut → holdFull → idle
+    // Outro: zoomOut → idle
     this._outroPhase = null
     this._outroStart = 0
 
@@ -868,11 +868,13 @@ export class TimelinePreviewEngine {
 
     const revealedIds = new Set()
     for (const reveal of cp.stationReveals) {
-      if (globalProgress < reveal.triggerProgress) continue
+      const revealProgress = Number(reveal.triggerProgress || 0)
+      const isZeroProgressReveal = revealProgress <= 1e-6
+      if (isZeroProgressReveal ? globalProgress <= 1e-6 : globalProgress < revealProgress) continue
       const sid = reveal.stationId
       revealedIds.add(sid)
 
-      const elapsed = globalProgress - reveal.triggerProgress
+      const elapsed = globalProgress - revealProgress
 
       if (!this._stationAnimState.has(sid)) {
         this._stationAnimState.set(sid, { popT: 0, interchangeT: 0, labelAlpha: 0, lineCount: 0 })
@@ -925,6 +927,7 @@ export class TimelinePreviewEngine {
     const isIntroInfoFrame =
       !this._pseudoMode &&
       this._introZoomUntil > now &&
+      now <= (this._introZoomStart + this._introZoomHoldMs) &&
       Number.isFinite(this._introInfoYear) &&
       Boolean(this._introInfoText)
 
@@ -1004,6 +1007,7 @@ export class TimelinePreviewEngine {
       const introInfoActive =
         !this._pseudoMode &&
         this._introZoomUntil > now &&
+        now <= (this._introZoomStart + this._introZoomHoldMs) &&
         Number.isFinite(this._introInfoYear) &&
         Boolean(this._introInfoText)
       const displayYearNum = introInfoActive
@@ -1158,16 +1162,12 @@ export class TimelinePreviewEngine {
 
   _tickPlaying(now) {
     this._transitionOverlayAlpha = 0
-    // ── Outro phases: holdLast → zoomOut → holdFull → idle ──
+    // ── Outro phase: zoom out to full map, then settle in idle ──
     if (this._outroPhase) {
       const elapsed = now - this._outroStart
-      if (this._outroPhase === 'holdLast') {
-        this._renderContinuousFrame(1, now)
-        if (elapsed > 3000) { this._outroPhase = 'zoomOut'; this._outroStart = now }
-      } else if (this._outroPhase === 'zoomOut') {
+      if (this._outroPhase === 'zoomOut') {
         if (!this._outroCamFrom) this._outroCamFrom = { ...this._smoothCamera || this._camera }
-        const t = Math.min(1, elapsed / 2000)
-        this._transitionOverlayAlpha = 0.42 * t
+        const t = Math.min(1, elapsed / 1400)
         const ease = t * t * (3 - 2 * t)
         const fc = this._fullCamera
         if (fc && this._outroCamFrom) {
@@ -1178,11 +1178,7 @@ export class TimelinePreviewEngine {
           }
         }
         this._renderContinuousFrame(1, now)
-        if (t >= 1) { this._outroPhase = 'holdFull'; this._outroStart = now }
-      } else if (this._outroPhase === 'holdFull') {
-        this._transitionOverlayAlpha = Math.min(0.85, 0.42 + (elapsed / 2000) * 0.43)
-        this._renderContinuousFrame(1, now)
-        if (elapsed > 2000) {
+        if (t >= 1) {
           this._outroPhase = null
           this._setState('idle')
           this._renderIdleFrame()
@@ -1375,8 +1371,9 @@ export class TimelinePreviewEngine {
 
     if (rawProgress >= 1) {
       this._renderContinuousFrame(1, now)
-      this._outroPhase = 'holdLast'
+      this._outroPhase = 'zoomOut'
       this._outroStart = now
+      this._outroCamFrom = null
       return
     }
 

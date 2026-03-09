@@ -185,18 +185,18 @@ export function renderOverlayEvent(ctx, text, lineColor, alpha, width, height, o
   }
 
   // ── Capsule: short name (digits or first char) ──
-  const capsuleFontSize = 32 * s
-  const capsuleFont = `700 ${capsuleFontSize}px ${CJK_FONT}`
-  const capsuleH = 44 * s
-  const capsulePadH = 16 * s
-  const capsuleR = 10 * s
-
   let shortName = nameZh || text
   const digitMatch = shortName.match(/^\d+/)
   shortName = digitMatch ? digitMatch[0] : [...shortName][0]
 
+  const capsuleFontSize = 32 * s
+  const capsuleFont = `700 ${capsuleFontSize}px ${CJK_FONT}`
+  const capsuleH = 44 * s
+  const capsulePadH = (shortName.length >= 2 ? 12 : 9) * s
+  const capsuleR = 10 * s
+
   ctx.font = capsuleFont
-  const capsuleW = ctx.measureText(shortName).width + capsulePadH * 2
+  const capsuleW = Math.max(capsuleH, ctx.measureText(shortName).width + capsulePadH * 2)
 
   // ── Build inline text segments: "一期 段店⇄齐鲁软件园 开通运营" ──
   const textFont = `600 ${30 * s}px ${CJK_FONT}`
