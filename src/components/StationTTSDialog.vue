@@ -119,6 +119,7 @@ const selectedStation = computed(() => {
   return buildAnnouncementTexts(
     selectedStation.value.nameZh || '未命名',
     selectedStation.value.nameEn || 'Unnamed',
+    terminal?.nameZh || null,
     terminal?.nameEn || null,
     isFirst,
     transferLines,
@@ -385,12 +386,12 @@ async function generateOnboard() {
   const fromT = getStationTransfers(from, currentLine.value.id)
   const fromData = buildAnnouncementTexts(
     from.nameZh || '未命名', from.nameEn || 'Unnamed',
-    terminal?.nameEn || null, isFirst, fromT.transferLines, fromT.virtualTransferLines, loopDir,
+    terminal?.nameZh || null, terminal?.nameEn || null, isFirst, fromT.transferLines, fromT.virtualTransferLines, loopDir,
   )
   const toT = getStationTransfers(to, currentLine.value.id)
   const toData = buildAnnouncementTexts(
     to.nameZh || '未命名', to.nameEn || 'Unnamed',
-    terminal?.nameEn || null, false, toT.transferLines, toT.virtualTransferLines, loopDir,
+    terminal?.nameZh || null, terminal?.nameEn || null, false, toT.transferLines, toT.virtualTransferLines, loopDir,
   )
 
   const boarding = fromData.segments[0].items[0]

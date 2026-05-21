@@ -19,6 +19,7 @@ UI 组件，负责交互与渲染。
 - **StatisticsDialog.vue** — 统计信息弹窗（含线网概况、各线路排行、基础概况、路径分析、换乘枢纽、线路分析与可达性；路径栏位超长站名自动换行，避免撑宽弹窗；缺少可达性状态时自动降级为空态）
 - **QuickNamingDialog.vue** — 快速命名对话框（按线路区间进入逐站命名模式，也支持一键连续命名全图或当前区间里仍使用默认中文名 `新站 X` 的站）
 - **EnglishReviewDialog.vue** — 英文审查对话框（按线路区间逐站确认英文名，也支持一键翻译全图或当前区间里仍使用默认英文名 `Station X` 且未锁定的站）
+- **StationTTSDialog.vue** — TTS 报站对话框（单站/车上模式生成中英文 WAV；中文终点站播报使用中文站名，英文片段使用英文站名）
 - **ProjectListDialog.vue** — 项目列表对话框
 - **ConfirmDialog.vue** — 确认对话框
 - **PromptDialog.vue** — 输入对话框

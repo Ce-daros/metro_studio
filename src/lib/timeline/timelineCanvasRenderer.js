@@ -13,6 +13,8 @@ import { slicePolylineByProgress } from './timelineAnimationPlan'
 import { easeOutBack } from './timelineCanvasEasing'
 import { roundRect, geoLineWidth, drawGeoPolyline, resolveWaypointsSimple } from './timelineCanvasGeometry'
 
+const INTERCHANGE_STRETCH_MULTIPLIER = 0.8
+
 // ─── Re-exports from sub-modules (backward compatibility) ────────
 
 export { loadSourceHanSans, FONT_FAMILY } from './timelineCanvasFont'
@@ -119,13 +121,20 @@ export function renderStations(ctx, stationIds, camera, width, height, stationMa
     // Morph between circle and interchange rounded-rect
     ctx.beginPath()
     if (interchangeT > 0.01) {
-      // Interpolate dimensions: circle (r,r) → interchange (1.4r, 0.9r) rounded rect
-      const morphW = radius * (1 + interchangeT * 0.4) // 1r → 1.4r half-width
+      // Interpolate dimensions: circle (r,r) → interchange (1.8r, 0.9r) rounded rect
+      const morphW = radius * (1 + interchangeT * INTERCHANGE_STRETCH_MULTIPLIER) // 1r → 1.8r half-width
       const morphH = radius * (1 - interchangeT * 0.1) // 1r → 0.9r half-height
       const morphR = radius * (1 - interchangeT * 0.15) // corner radius shrinks slightly
       if (interchangeT >= 0.99) {
         // Full interchange
-        roundRect(ctx, -radius * 1.4, -radius * 0.9, radius * 2.8, radius * 1.8, radius * 0.85)
+        roundRect(
+          ctx,
+          -radius * (1 + INTERCHANGE_STRETCH_MULTIPLIER),
+          -radius * 0.9,
+          radius * 2 * (1 + INTERCHANGE_STRETCH_MULTIPLIER),
+          radius * 1.8,
+          radius * 0.85,
+        )
       } else {
         // Morphing: draw as rounded rect with interpolated dimensions
         roundRect(ctx, -morphW, -morphH, morphW * 2, morphH * 2, morphR)

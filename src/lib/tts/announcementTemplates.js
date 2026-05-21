@@ -32,19 +32,19 @@ function buildTransferText(transferLines, virtualTransferLines) {
  * Returns { segments: [{ key, label, items }] }
  */
 export function buildAnnouncementTexts(
-  stationNameZh, stationNameEn, terminalStationEn,
+  stationNameZh, stationNameEn, terminalStationZh, terminalStationEn,
   isFirstStation, transferLines = [], virtualTransferLines = [],
   loopDirection = 0
 ) {
   const transferText = buildTransferText(transferLines, virtualTransferLines)
 
   // ── 上车段 ──
-  const isLoop = !terminalStationEn
+  const isLoop = !terminalStationZh
   const departurePrefix = isFirstStation
     ? '欢迎乘坐济南地铁。'
     : '列车启动，请站稳扶好。'
   const loopDirText = loopDirection === 0 ? '内环' : '外环'
-  const terminalPart = isLoop ? `本次列车为${loopDirText}运行。` : `本次列车终点站：${terminalStationEn}站。`
+  const terminalPart = isLoop ? `本次列车为${loopDirText}运行。` : `本次列车终点站：${terminalStationZh}站。`
   let departureZh = `${departurePrefix}${terminalPart}前方到站：${stationNameZh}站。`
   if (transferText) departureZh += transferText + '，'
   departureZh += '下车的乘客请提前做好准备。'

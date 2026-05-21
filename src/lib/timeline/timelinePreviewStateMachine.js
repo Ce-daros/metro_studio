@@ -85,9 +85,9 @@ export class TimelinePreviewEngine {
 
     // Station pop-in & interchange morph
     this._stationAnimState = new Map()
-    this._STATION_POP_DURATION = 0.005
-    this._STATION_LABEL_DELAY = 0.0017
-    this._STATION_LABEL_DURATION = 0.0033
+    this._STATION_POP_DURATION = 0.003
+    this._STATION_LABEL_DELAY = 0.0006
+    this._STATION_LABEL_DURATION = 0.0015
     this._INTERCHANGE_MORPH_DURATION = 0.004
 
     // Year transition animation
@@ -139,6 +139,8 @@ export class TimelinePreviewEngine {
     // Outro: zoomOut → idle
     this._outroPhase = null
     this._outroStart = 0
+    this._OUTRO_HOLD_LAST_MS = 1800
+    this._OUTRO_ZOOM_OUT_MS = 1400
 
     // Stats counting-up animation
     this._displayStats = null
@@ -1166,9 +1168,17 @@ export class TimelinePreviewEngine {
     // ── Outro phase: zoom out to full map, then settle in idle ──
     if (this._outroPhase) {
       const elapsed = now - this._outroStart
-      if (this._outroPhase === 'zoomOut') {
+      if (this._outroPhase === 'holdLast') {
+        this._isLinePaused = false
+        this._renderContinuousFrame(1, now)
+        if (elapsed >= this._OUTRO_HOLD_LAST_MS) {
+          this._outroPhase = 'zoomOut'
+          this._outroStart = now
+          this._outroCamFrom = null
+        }
+      } else if (this._outroPhase === 'zoomOut') {
         if (!this._outroCamFrom) this._outroCamFrom = { ...this._smoothCamera || this._camera }
-        const t = Math.min(1, elapsed / 1400)
+        const t = Math.min(1, elapsed / this._OUTRO_ZOOM_OUT_MS)
         const ease = t * t * (3 - 2 * t)
         const fc = this._fullCamera
         if (fc && this._outroCamFrom) {
@@ -1372,7 +1382,7 @@ export class TimelinePreviewEngine {
 
     if (rawProgress >= 1) {
       this._renderContinuousFrame(1, now)
-      this._outroPhase = 'zoomOut'
+      this._outroPhase = 'holdLast'
       this._outroStart = now
       this._outroCamFrom = null
       return

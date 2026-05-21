@@ -128,6 +128,26 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
     }
   }
 
+  function resizeRendererToContainer() {
+    if (!containerRef.value || !renderer) return
+    const rect = containerRef.value.getBoundingClientRect()
+    if (rect.width > 0 && rect.height > 0) {
+      renderer.resize(rect.width, rect.height)
+    }
+  }
+
+  function syncRendererOnActivate() {
+    if (!active.value || (!hasData.value && !pseudoMode.value)) return
+
+    if (!renderer) {
+      createRenderer()
+      return
+    }
+
+    renderer.rebuild()
+    resizeRendererToContainer()
+  }
+
   // ── Playback controls ──
 
   function onPlay() {
@@ -217,7 +237,7 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
     () => active.value,
     (isActive) => {
       if (isActive && (hasData.value || pseudoMode.value)) {
-        if (!renderer) createRenderer()
+        syncRendererOnActivate()
       } else if (!isActive && renderer) {
         if (playbackState.value !== 'idle') {
           renderer.stop()
@@ -263,7 +283,7 @@ export function useTimelinePlayback(containerRef, canvasRef, { hasData, active, 
     document.addEventListener('fullscreenchange', onFullscreenChange)
     setupResizeObserver()
     if (active.value && hasData.value) {
-      createRenderer()
+      syncRendererOnActivate()
     }
   })
 
